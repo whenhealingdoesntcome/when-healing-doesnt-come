@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "when-healing-doesnt-come",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-12",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/admin", "/admin/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "whdc-devotionals",
+      "database_id": "f3d1c90b-e3b2-44ef-998e-1f56270bc9f3"
+    }
+  ]
+}
