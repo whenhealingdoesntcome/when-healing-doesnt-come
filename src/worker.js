@@ -27,16 +27,17 @@ function normalize(x){
   const str=(k,max=50000)=>{if(typeof x[k]!=='string'||x[k].length>max)throw Error(`Invalid ${k}`);return x[k].trim()};
   const id=str('id',160);if(!/^[a-zA-Z0-9_-]+$/.test(id))throw Error('Invalid ID');
   const title=str('title',150),reference=str('reference',200),bibleUrl=str('bibleUrl',500),short=str('short'),deeper=str('deeper');
+  const reflection=x.reflection==null?'':str('reflection');
   if(!title||!reference||!short||!deeper||!/^https:\/\//.test(bibleUrl))throw Error('Complete all fields and use an HTTPS Bible URL');
   if(!Array.isArray(x.topics)||x.topics.length>30||x.topics.some(t=>typeof t!=='string'||t.length>80))throw Error('Invalid topics');
   const day=Number(x.day);if(!Number.isInteger(day)||day<1||day>100000)throw Error('Invalid day');
   const status=x.status==='published'?'published':x.status==='draft'?'draft':null;if(!status)throw Error('Invalid status');
-  return {id,title,day,topics:x.topics.map(t=>t.trim()).filter(Boolean),reference,bibleUrl,short,deeper,status};
+  return {id,title,day,topics:x.topics.map(t=>t.trim()).filter(Boolean),reference,bibleUrl,short,deeper,reflection,status};
 }
-function row(r){return {id:r.id,title:r.title,day:r.day,topics:JSON.parse(r.topics||'[]'),reference:r.scripture,bibleUrl:r.bible_url,short:r.short,deeper:r.deeper,status:r.status}}
-const select='SELECT id, title, day, topics, scripture, bible_url, short, deeper, status FROM devotionals';
+function row(r){return {id:r.id,title:r.title,day:r.day,topics:JSON.parse(r.topics||'[]'),reference:r.scripture,bibleUrl:r.bible_url,short:r.short,deeper:r.deeper,reflection:r.reflection||'',status:r.status}}
+const select='SELECT id, title, day, topics, scripture, bible_url, short, deeper, reflection, status FROM devotionals';
 async function list(env,all){const q=await env.DB.prepare(`${select} ${all?'':'WHERE status = ?'} ORDER BY day ASC, created_at ASC`).bind(...(all?[]:['published'])).all();return (q.results||[]).map(row)}
-async function save(env,d){await env.DB.prepare(`INSERT INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,status) VALUES (?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET day=excluded.day,title=excluded.title,topics=excluded.topics,scripture=excluded.scripture,bible_url=excluded.bible_url,short=excluded.short,deeper=excluded.deeper,status=excluded.status,updated_at=CURRENT_TIMESTAMP`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.status).run()}
+async function save(env,d){await env.DB.prepare(`INSERT INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,reflection,status) VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET day=excluded.day,title=excluded.title,topics=excluded.topics,scripture=excluded.scripture,bible_url=excluded.bible_url,short=excluded.short,deeper=excluded.deeper,reflection=excluded.reflection,status=excluded.status,updated_at=CURRENT_TIMESTAMP`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.reflection,d.status).run()}
 export default {async fetch(request,env){
   const url=new URL(request.url),path=url.pathname;
   if(path==='/api/devotionals'&&request.method==='GET'){
@@ -52,7 +53,7 @@ export default {async fetch(request,env){
       try{const d=normalize(await request.json());await save(env,d);return json({ok:true,id:d.id})}catch(e){return fail(e.message,400)}
     }
     if(path==='/api/admin/seed'&&request.method==='POST'){
-      try{const items=await request.json();if(!Array.isArray(items)||items.length>50)return fail('Invalid import',400);const clean=items.map(x=>normalize({...x,status:'published'}));for(const d of clean){await env.DB.prepare(`INSERT OR IGNORE INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,status) VALUES (?,?,?,?,?,?,?,?,?)`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.status).run()}return json({ok:true,imported:clean.length})}catch(e){return fail(e.message,400)}
+      try{const items=await request.json();if(!Array.isArray(items)||items.length>50)return fail('Invalid import',400);const clean=items.map(x=>normalize({...x,status:'published'}));for(const d of clean){await env.DB.prepare(`INSERT OR IGNORE INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,reflection,status) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.reflection,d.status).run()}return json({ok:true,imported:clean.length})}catch(e){return fail(e.message,400)}
     }
     if(path==='/api/admin/delete'&&request.method==='POST'){
       try{const {id}=await request.json();if(typeof id!=='string')return fail('Invalid ID');await env.DB.prepare('DELETE FROM devotionals WHERE id = ?').bind(id).run();return json({ok:true})}catch{return fail('Unable to delete',400)}
