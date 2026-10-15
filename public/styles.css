@@ -43,3 +43,7 @@ h1,h2,h3,.home-topic-title,.card h2,.card h3,.reading h2,.reading h3{font-family
 .home-explore-button{background:var(--sage);border-color:var(--line);font-weight:750;padding:11px 20px}
 .home-explore-button:hover{border-color:var(--taupe);filter:brightness(.98)}
 body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
+
+/* Reading progress is stored privately on this device/browser. */
+.read-badge{display:inline-block;font-size:.8rem;color:#526b5d;margin:.25rem 0 .5rem;font-weight:700}
+.read-toggle[aria-pressed="true"]{border-color:#799786;background:rgba(121,151,134,.12)}
