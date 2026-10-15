@@ -47,3 +47,8 @@ body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
 /* Reading progress is stored privately on this device/browser. */
 .read-badge{display:inline-block;font-size:.8rem;color:#526b5d;margin:.25rem 0 .5rem;font-weight:700}
 .read-toggle[aria-pressed="true"]{border-color:#799786;background:rgba(121,151,134,.12)}
+
+/* Reading History navigation and cards */
+.read-badge{font-variant-numeric:tabular-nums}
+@media(max-width:650px){header nav{gap:10px}header .navbtn,header .navbtn[aria-current=page]{font-size:.76rem}}
+@media(max-width:400px){header .top{flex-wrap:wrap}header nav{width:100%;justify-content:space-between;gap:6px}}
