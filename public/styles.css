@@ -34,3 +34,12 @@ header .navbtn[aria-current=page]{text-decoration:underline;text-underline-offse
 .home-topic{position:relative;min-height:104px;padding:19px 33px 16px 18px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;color:var(--ink);display:flex;flex-direction:column;justify-content:center;gap:7px;cursor:pointer;box-shadow:0 4px 15px #393f4a06}
 .home-topic:hover{border-color:var(--taupe);background:var(--sage)}.home-topic-title{font-family:"Nunito Sans",system-ui,sans-serif;font-weight:750;font-size:1.06rem;line-height:1.2}.home-topic-count{color:var(--muted);font-size:.75rem}.home-topic-arrow{position:absolute;right:15px;top:16px;color:var(--taupe)}.home-reading{margin-top:30px}.home-more{margin-top:40px}
 @media(max-width:540px){.home-topic-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.home-topic{padding:15px 22px 13px 12px;min-height:106px}.home-topic-title{font-size:.94rem}.home-topic-count{font-size:.7rem}.home-topic-arrow{right:8px;top:10px}.home-hero{padding-top:25px}}
+
+/* Homepage simplicity + consistent heading typography */
+h1,h2,h3,.home-topic-title,.card h2,.card h3,.reading h2,.reading h3{font-family:"Nunito Sans",system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;letter-spacing:-.025em;line-height:1.2}
+.home-topics{margin:0 0 38px;max-width:680px}
+.home-topics h2{margin:8px 0 4px}
+.home-topics p{margin:4px 0 16px;color:var(--muted)}
+.home-explore-button{background:var(--sage);border-color:var(--line);font-weight:750;padding:11px 20px}
+.home-explore-button:hover{border-color:var(--taupe);filter:brightness(.98)}
+body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
