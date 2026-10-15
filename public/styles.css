@@ -4,3 +4,9 @@
 .btn.reflection-btn{background:var(--sage);color:var(--ink);border-color:var(--sage);font-weight:600}
 .btn.reflection-btn:hover{filter:brightness(.96);border-color:var(--taupe)}
 .btn.reflection-btn:focus-visible{outline:3px solid #486d8c;outline-offset:3px}
+
+/* Foggy mountain logo in public header */
+header .brand{display:block;flex:0 1 auto;max-width:none;line-height:0}
+header .header-logo{display:block;width:clamp(138px,20vw,215px);height:auto;max-width:100%}
+header .top{min-height:112px}
+@media(max-width:540px){header .top{gap:8px;min-height:92px}header .header-logo{width:clamp(125px,34vw,175px)}header nav{gap:3px}header .navbtn{padding:8px 10px;font-size:.85rem}}
