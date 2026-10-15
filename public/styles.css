@@ -10,3 +10,14 @@ header .brand{display:block;flex:0 1 auto;max-width:none;line-height:0}
 header .header-logo{display:block;width:clamp(138px,20vw,215px);height:auto;max-width:100%}
 header .top{min-height:112px}
 @media(max-width:540px){header .top{gap:8px;min-height:92px}header .header-logo{width:clamp(125px,34vw,175px)}header nav{gap:3px}header .navbtn{padding:8px 10px;font-size:.85rem}}
+
+/* Header correction: compact logo and plain-text navigation */
+header .top{display:flex;align-items:center;justify-content:space-between;min-height:76px;gap:12px;padding:7px 0}
+header .brand{display:block;flex:0 0 auto;line-height:0;margin:0;max-width:none}
+header .header-logo{display:block;width:132px;max-width:100%;height:auto}
+header nav{display:flex;align-items:center;flex-wrap:wrap;gap:20px}
+header .navbtn,header .navbtn[aria-current=page]{appearance:none;background:none;border:0;border-radius:0;box-shadow:none;padding:4px 0;min-height:0;color:var(--ink);font-size:.92rem;font-weight:500;text-decoration:none}
+header .navbtn:hover{background:none;border:0;text-decoration:underline;text-underline-offset:5px}
+header .navbtn[aria-current=page]{text-decoration:underline;text-underline-offset:5px;text-decoration-color:var(--taupe)}
+@media(max-width:650px){header .top{display:flex;padding:8px 0;gap:8px;min-height:68px}header .brand{margin:0}header .header-logo{width:108px}header nav{gap:12px}header .navbtn,header .navbtn[aria-current=page]{font-size:.8rem;padding:3px 0}}
+@media(max-width:380px){header .header-logo{width:94px}header nav{gap:9px}header .navbtn,header .navbtn[aria-current=page]{font-size:.76rem}}
