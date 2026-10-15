@@ -52,3 +52,16 @@ body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
 .read-badge{font-variant-numeric:tabular-nums}
 @media(max-width:650px){header nav{gap:10px}header .navbtn,header .navbtn[aria-current=page]{font-size:.76rem}}
 @media(max-width:400px){header .top{flex-wrap:wrap}header nav{width:100%;justify-content:space-between;gap:6px}}
+
+/* Add space beneath the Today's Pick banner */
+.todays-pick-banner {
+  margin-bottom: 36px;
+}
+
+/* Make the Day and Topic label more prominent */
+.home-reading .eyebrow,
+.home-reading .devotional-meta {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
