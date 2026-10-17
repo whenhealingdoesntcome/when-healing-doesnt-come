@@ -53,6 +53,32 @@ export default {async fetch(request,env){
     if(path==='/admin/outline.js'&&request.method==='GET')return new Response(OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/client.js'&&request.method==='GET')return new Response(ADMIN_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/api/admin/me'&&request.method==='GET')return json({email:(env.ADMIN_EMAIL||'').trim().toLowerCase(),displayName:(env.ADMIN_DISPLAY_NAME||'Heather Kusunoki').trim()||'Heather Kusunoki'});
+    if(path==='/api/admin/outline'&&(request.method==='GET'||request.method==='POST')){
+      try{
+        await env.DB.prepare('CREATE TABLE IF NOT EXISTS master_outline (id INTEGER PRIMARY KEY CHECK (id = 1), content TEXT NOT NULL)').run();
+        if(request.method==='GET'){
+          const existing=await env.DB.prepare('SELECT content FROM master_outline WHERE id = 1').first();
+          if(existing)return json(JSON.parse(existing.content));
+          const seed=OUTLINE_JS.match(/^const OUTLINE=(\[[^;]+\]);/)?.[1];
+          if(!seed)return fail('Outline seed unavailable',500);
+          await env.DB.prepare('INSERT OR IGNORE INTO master_outline (id,content) VALUES (1,?)').bind(seed).run();
+          const row=await env.DB.prepare('SELECT content FROM master_outline WHERE id = 1').first();
+          return json(JSON.parse(row.content));
+        }
+        const data=await request.json();
+        if(!Array.isArray(data)||data.length>100||JSON.stringify(data).length>250000)return fail('Invalid outline');
+        let entries=0;
+        for(const section of data){
+          if(!section||typeof section.name!=='string'||!section.name.trim()||section.name.length>100||!Array.isArray(section.entries))return fail('Invalid category');
+          for(const e of section.entries){entries++;
+            if(!e||typeof e.title!=='string'||!e.title.trim()||e.title.length>150||!Number.isInteger(e.number)||e.number<1||(e.day!==null&&(!Number.isInteger(e.day)||e.day<1)))return fail('Invalid outline entry');
+          }
+        }
+        if(entries>600)return fail('Too many outline entries');
+        await env.DB.prepare('INSERT INTO master_outline (id,content) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET content=excluded.content').bind(JSON.stringify(data)).run();
+        return json({ok:true});
+      }catch(e){return fail('Could not access master outline: '+e.message,503)}
+    }
     if(path==='/api/admin/devotionals'&&request.method==='GET')try{return json(await list(env,true))}catch{return fail('Database unavailable',503)}
     if(path==='/api/admin/devotionals'&&request.method==='POST'){
       try{const d=normalize(await request.json());await save(env,d);return json({ok:true,id:d.id})}catch(e){return fail(e.message,400)}
