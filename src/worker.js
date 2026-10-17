@@ -1,4 +1,4 @@
-import {ADMIN_HTML,ADMIN_JS} from './private.js';
+import {ADMIN_HTML,ADMIN_JS,OUTLINE_HTML,OUTLINE_JS} from './private.js';
 const json = (data, status = 200) => new Response(JSON.stringify(data), {status, headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 const fail = (message,status=400) => json({error:message},status);
 const b64url = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(s.length/4)*4,'=')), c=>c.charCodeAt(0));
@@ -49,6 +49,8 @@ export default {async fetch(request,env){
     const authorized=await verifyAccess(request,env);
     if(!authorized)return fail('Admin access denied. Check Cloudflare Access and Worker configuration.',403);
     if(path==='/admin'&&request.method==='GET')return new Response(ADMIN_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    if(path==='/admin/outline'&&request.method==='GET')return new Response(OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    if(path==='/admin/outline.js'&&request.method==='GET')return new Response(OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/client.js'&&request.method==='GET')return new Response(ADMIN_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/api/admin/me'&&request.method==='GET')return json({email:(env.ADMIN_EMAIL||'').trim().toLowerCase(),displayName:(env.ADMIN_DISPLAY_NAME||'Heather Kusunoki').trim()||'Heather Kusunoki'});
     if(path==='/api/admin/devotionals'&&request.method==='GET')try{return json(await list(env,true))}catch{return fail('Database unavailable',503)}
