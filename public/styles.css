@@ -65,3 +65,5 @@ body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
   font-weight: 700;
   line-height: 1.5;
 }
+
+.whdc-author-credit{margin:1.7rem 0 .6rem;padding-top:1rem;border-top:1px solid rgba(108,125,110,.22);font-size:.84rem;color:var(--muted,#66736b);text-align:center;letter-spacing:.01em}
