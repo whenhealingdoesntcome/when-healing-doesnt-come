@@ -1,19 +1,19 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "manna-missions-app",
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "when-healing-doesnt-come",
   "main": "src/worker.js",
-  "compatibility_date": "2026-10-13",
-  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": true },
-  "d1_databases": [{"binding":"DB", "database_name":"manna-missions-db", "database_id":"87914ee9-ec43-4203-a99a-46c0e9fa32f0", "migrations_dir":"migrations"}],
-  "r2_buckets": [
+  "compatibility_date": "2026-10-12",
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/admin", "/admin/*"]
+  },
+  "d1_databases": [
     {
-      "binding": "PHOTOS",
-      "bucket_name": "manna-missions-photos"
+      "binding": "DB",
+      "database_name": "whdc-devotionals",
+      "database_id": "f3d1c90b-e3b2-44ef-998e-1f56270bc9f3"
     }
-  ],
-  "vars": {
-    "ACCESS_TEAM_DOMAIN": "flat-snowflake-610d.cloudflareaccess.com",
-    "ACCESS_AUD": "631f9c3a2998d49b263cbf625d3b2a506d1ca0dd5e0e4d6831b19fc6e0006a96",
-    "ADMIN_EMAILS": "heatherkeiko@gmail.com,sharyn.beal@gmail.com"
-  }
+  ]
 }
