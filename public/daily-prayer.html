@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="manifest" href="/manifest.webmanifest?v=2"><meta name="apple-mobile-web-app-title" content="Missions Prayer"><meta name="theme-color" content="#393f4a"><meta name="description" content="Pray for one Manna Missions ministry partner each day."><title>Daily Prayer | Manna Missions</title><link rel="icon" href="/favicon.png"><link rel="apple-touch-icon" href="/apple-touch-icon.png?v=14"><link rel="stylesheet" href="/styles.css?v=105"><link rel="stylesheet" href="/daily-prayer.css?v=106?v=105"><style>
+/* Slightly larger Daily Prayer date */
+.daily-intro .daily-date{font-size:clamp(18px,2.4vw,22px)}
+/* Verse of the Day, scoped to the Daily Prayer page */
+.daily-verse{max-width:760px;margin:26px auto 36px;padding:26px clamp(20px,4vw,38px);background:#f0efec;border-left:0;text-align:center;color:#393f4a;box-shadow:0 8px 24px #393f4a0a}
+.daily-verse[hidden]{display:none}
+.daily-verse-label{font-size:11px;letter-spacing:.18em;font-weight:700;color:#aa5b27;margin:0 0 16px}
+.daily-verse blockquote{font-size:clamp(18px,2.5vw,24px);line-height:1.55;font-weight:400;margin:0 auto 14px;max-width:640px}
+.daily-verse-reference{font-size:13px;letter-spacing:.07em;font-weight:700;color:#596b7a;margin:0}
+@media(max-width:600px){.daily-verse{margin:24px 16px 30px;padding:22px 18px}}
+
+/* Daily Prayer: match the main app's expanded prayer-card styling */
+.daily-detail-card{max-width:780px;border-radius:0;overflow:visible}
+.daily-detail-inner{padding:42px 42px 45px}
+.daily-detail-card .detail-top h2{font-size:clamp(30px,5vw,48px);line-height:1.12;font-weight:400;margin:0 0 12px;max-width:620px}
+.daily-detail-card .detail-location{color:#777;margin:0 0 28px}
+.daily-detail-card .detail-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:22px 0 30px}
+.daily-detail-card .detail-gallery img{width:100%;height:210px;object-fit:cover}
+.daily-detail-card .detail-gallery img:first-child:nth-last-child(odd){grid-column:span 2;height:300px}
+.daily-detail-card .mission-statement{background:#f4f1eb;padding:25px;margin:25px 0}
+.daily-detail-card .mission-statement p:last-child{font-size:19px;line-height:1.65;margin:0}
+.daily-detail-card .detail-section{margin:28px 0}
+.daily-detail-card .detail-section h3{font-size:21px;font-weight:500;margin:0 0 12px}
+.daily-detail-card .detail-section p,.daily-detail-card .detail-list{line-height:1.8;color:#555b61}
+.daily-detail-card .preline{white-space:pre-line}
+.daily-detail-card .detail-list{padding-left:22px}
+.daily-detail-card .detail-list li{margin:9px 0}
+.daily-detail-card .detail-link{display:inline-block;background:#f37321;color:#fff;padding:14px 20px;text-decoration:none;margin-top:8px;font-size:14px;font-weight:700}
+@media(max-width:600px){.daily-detail-inner{padding:30px 22px}.daily-detail-card .detail-gallery img,.daily-detail-card .detail-gallery img:first-child:nth-last-child(odd){height:180px}}
+
+/* Daily Prayer mobile hamburger menu; desktop navigation remains unchanged */
+.mobile-menu-toggle{display:none}
+@media(max-width:700px){
+ .masthead .masthead-inner{position:relative;display:flex;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;min-height:70px;padding:12px 20px}
+ .masthead .wordmark{min-width:0;max-width:calc(100% - 68px)}
+ .masthead .church-logo{width:min(235px,100%);height:auto}
+ .mobile-menu-toggle{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px;flex:0 0 44px;width:44px;height:44px;padding:8px;background:transparent;border:1px solid #ffffff70;border-radius:4px;color:#fff;cursor:pointer}
+ .mobile-menu-toggle span{display:block;width:22px;height:2px;background:currentColor;border-radius:2px}
+ .mobile-menu-toggle:hover,.mobile-menu-toggle:focus-visible{background:#ffffff20}
+ .masthead nav#main-navigation{display:none;position:absolute;top:100%;left:0;right:0;z-index:1001;flex-direction:column;flex-wrap:nowrap;gap:0;padding:8px 20px 15px;background:#393f4a;border-top:1px solid #ffffff30;box-shadow:0 12px 24px #0003}
+ .masthead nav#main-navigation.is-open{display:flex}
+ .masthead nav#main-navigation a{display:block;padding:14px 7px;font-size:13px;letter-spacing:.1em;border-bottom:1px solid #ffffff20}
+ .masthead nav#main-navigation a:last-child{border-bottom:0}
+}
+</style></head>
+<body><a class="skip-link" href="#daily-main">Skip to today's prayer</a><header class="masthead"><div class="masthead-inner"><a class="wordmark" href="/" aria-label="Manna Missions home"><img class="church-logo" src="/manna-church-logo.png" alt="Manna Church" width="285" height="33"></a><button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="main-navigation" aria-expanded="false"><span></span><span></span><span></span></button><nav id="main-navigation" aria-label="Navigation"><a href="/">Home</a><a href="/#ministry-partners">All Ministries</a><a href="/daily-prayer.html" aria-current="page">Daily Prayer</a></nav></div></header>
+<main id="daily-main" class="daily-main"><div class="daily-intro"><p class="eyebrow dark">TOGETHER IN PRAYER · TOGETHER ON MISSION</p><h1>Daily Prayer</h1><p>Join us in lifting up one of our ministry partners each day.</p><p id="daily-date" class="daily-date"></p></div><section id="verse-of-the-day" class="daily-verse" aria-label="Verse of the Day" hidden><p class="daily-verse-label">VERSE OF THE DAY</p><blockquote id="daily-verse-text"></blockquote><p id="daily-verse-reference" class="daily-verse-reference"></p></section><div id="daily-content" aria-live="polite"><p class="daily-loading" role="status">Loading today's ministry…</p></div><div class="daily-bottom"><a href="/#ministry-partners">Explore all ministry partners</a><p>Thanks for praying with us! Come back tomorrow to pray for the next ministry.</p></div></main><footer><div class="footer-inner"><span>MANNA <strong>MISSIONS</strong></span><span>COLORADO SPRINGS</span></div></footer><script src="/mobile-menu.js?v=1" defer></script><script src="/daily-prayer.js?v=106" defer></script></body></html>

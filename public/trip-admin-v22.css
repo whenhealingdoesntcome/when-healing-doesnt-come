@@ -1,0 +1,5 @@
+
+fieldset{border:1px solid #ddd;border-radius:8px;margin:14px 0;padding:14px}
+legend{font-weight:700;padding:0 7px}
+#trip-message{min-height:24px;color:#8d4a12;font-weight:700}
+#trip-photos .photo img{object-fit:cover}

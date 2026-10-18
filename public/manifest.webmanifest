@@ -1,24 +1,35 @@
 {
-  "name": "When Healing Doesn't Come",
-  "short_name": "When Healing",
-  "description": "Gentle, Scripture-rooted devotionals for seasons of illness and waiting.",
-  "start_url": "/",
+  "name": "Missions Prayer",
+  "short_name": "Missions Prayer",
+  "description": "Pray for a Manna Missions ministry partner each day.",
+  "id": "/",
+  "start_url": "/daily-prayer.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f5f0",
-  "theme_color": "#f7f5f0",
+  "background_color": "#ffffff",
+  "theme_color": "#393f4a",
   "icons": [
     {
-      "src": "/icon-192.png",
+      "src": "/app-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/app-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Daily Prayer",
+      "url": "/daily-prayer.html"
+    },
+    {
+      "name": "Ministry Partners",
+      "url": "/#ministry-partners"
     }
   ]
 }
