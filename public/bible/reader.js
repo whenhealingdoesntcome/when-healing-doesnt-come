@@ -69,13 +69,27 @@ if(mobileBook&&mobileChapter){
   if(open)$('bibleSearch').focus({preventScroll:true});
  });
  document.addEventListener('keydown',event=>{if(event.key==='Escape'){const panel=$('bibleSearchPanel');if(panel?.classList.contains('whdc-mobile-search-open')){panel.classList.remove('whdc-mobile-search-open');panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');$('mobileSearchToggle')?.focus({preventScroll:true});}}});
- $('mobileReaderSettings')?.addEventListener('click',()=>{
-  const opts=$('mobileReaderOptions');if(!opts)return;
-  const open=!opts.open;
-  opts.open=open;
-  $('mobileReaderSettings').setAttribute('aria-expanded',String(open));
-  if(open){const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');}
- });
+ // Move the reader options out of the sidebar so the gear opens a floating panel.
+ const readerOptions=$('mobileReaderOptions');
+ const settingsGear=$('mobileReaderSettings');
+ if(readerOptions&&settingsGear){
+  readerOptions.classList.add('whdc-settings-popover');
+  readerOptions.open=false;
+  document.body.appendChild(readerOptions);
+  readerOptions.insertAdjacentHTML('afterbegin','<button type="button" class="whdc-settings-close" aria-label="Close reader settings">×</button><p class="whdc-settings-title">Bible Reader Settings</p>');
+  const closeSettings=()=>{readerOptions.open=false;settingsGear.setAttribute('aria-expanded','false');};
+  const positionSettings=()=>{const rect=settingsGear.getBoundingClientRect();document.documentElement.style.setProperty('--whdc-settings-top',Math.max(8,Math.min(rect.bottom+8,window.innerHeight-140))+'px');};
+  settingsGear.addEventListener('click',event=>{
+   event.preventDefault();event.stopPropagation();
+   const shouldOpen=!readerOptions.open;
+   if(shouldOpen){positionSettings();const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');}
+   readerOptions.open=shouldOpen;settingsGear.setAttribute('aria-expanded',String(shouldOpen));
+  });
+  readerOptions.querySelector('.whdc-settings-close').addEventListener('click',closeSettings);
+  document.addEventListener('pointerdown',event=>{if(readerOptions.open&&!readerOptions.contains(event.target)&&!settingsGear.contains(event.target))closeSettings();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&readerOptions.open){closeSettings();settingsGear.focus({preventScroll:true});}});
+  window.addEventListener('resize',()=>{if(readerOptions.open)positionSettings();});
+ }
 }$('font').value=recall('font')||19;function font(){document.documentElement.style.setProperty('--scripture-size',$('font').value+'px');$('fontValue').textContent=$('font').value;store('font',$('font').value)}$('font').addEventListener('input',font);font();$('dark').checked=recall('dark')==='true';document.body.classList.toggle('dark',$('dark').checked);$('dark').addEventListener('change',()=>{document.body.classList.toggle('dark',$('dark').checked);store('dark',$('dark').checked)});$('download').addEventListener('click',download);$('remove').addEventListener('click',remove);
 const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',e=>{e.preventDefault();runBibleSearch($('bibleSearch').value)});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs');if(searchParam){$('bibleSearch').value=searchParam;syncClear();await runBibleSearch(searchParam)}await status();}catch(e){$('reading').innerHTML='<p class="error">Unable to load Bible navigation. Please connect to the internet once to prepare the reader.</p>';}}
 init();})();
