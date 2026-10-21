@@ -416,6 +416,20 @@ function wireStudyGuide(){
 const SAVED_QUOTES_KEY='whdc-saved-quotes-v1';
 const savedQuotes=()=>{const q=load(SAVED_QUOTES_KEY,[]);return Array.isArray(q)?q:[]};
 const saveQuotes=q=>localStorage.setItem(SAVED_QUOTES_KEY,JSON.stringify(q));
+function quoteShareText(q){
+ const link=new URL(devotionalHash(q.devotionalId),location.origin+'/').href;
+ return `“${q.text}”\n\n— ${q.author||'Heather Kusunoki'}\n${q.devotionalTitle||'Devotional'}\n${link}`;
+}
+async function copySavedQuote(q){
+ const message=quoteShareText(q);
+ try{await navigator.clipboard.writeText(message);return true}
+ catch{const input=document.createElement('textarea');input.value=message;input.style.cssText='position:fixed;left:-9999px;top:0';document.body.append(input);input.select();let ok=false;try{ok=document.execCommand('copy')}catch{}input.remove();if(!ok)prompt('Copy this quote:',message);return ok}
+}
+async function shareSavedQuote(q){
+ const message=quoteShareText(q);
+ if(navigator.share){try{await navigator.share({text:message});return 'shared'}catch(error){if(error?.name==='AbortError')return 'cancelled'}}
+ return await copySavedQuote(q)?'copied':'manual';
+}
 let quotesSearch='',quoteSelectionTimer=0;
 let quoteSelectionAbort=new AbortController();
 function savedQuotesPage(){
@@ -424,11 +438,19 @@ function savedQuotesPage(){
  return `<section class="hero"><div class="eyebrow">Words to return to</div><h1>Saved Quotes</h1><p>Highlight a meaningful passage while reading a devotional and tap ♡ Save Quote. Each quote includes its devotional author.</p></section>
  <section class="card"><div class="actions"><label for="savedQuotesSearch">Search quotes <input type="search" id="savedQuotesSearch" value="${safe(quotesSearch)}" placeholder="Search words, author or devotional"></label><button type="button" class="btn" id="exportSavedQuotes">Export Saved Quotes</button></div>
  <p class="muted small">Saved privately on this device. Export a backup before clearing browser data.</p>
- <div class="grid">${filtered.map(q=>`<article class="card"><blockquote style="white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 12px">“${safe(q.text)}”</blockquote><p class="muted small">— ${safe(q.author)} · ${safe(q.devotionalTitle)}</p><div class="actions"><button type="button" class="btn" data-quote-open="${safe(q.devotionalId)}">Read devotional</button><button type="button" class="btn" data-quote-delete="${safe(q.id)}">Remove</button></div></article>`).join('')||'<p>No quotes found yet. Open a devotional and highlight text to save a quote.</p>'}</div></section>`;
+ <div class="grid">${filtered.map(q=>`<article class="card"><blockquote style="white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 12px">“${safe(q.text)}”</blockquote><p class="muted small">— ${safe(q.author)} · ${safe(q.devotionalTitle)}</p><div class="actions"><button type="button" class="btn" data-quote-copy="${safe(q.id)}">Copy Quote</button><button type="button" class="btn" data-quote-share="${safe(q.id)}">Share Quote</button><button type="button" class="btn" data-quote-open="${safe(q.devotionalId)}">Read devotional</button><button type="button" class="btn" data-quote-delete="${safe(q.id)}">Remove</button></div></article>`).join('')||'<p>No quotes found yet. Open a devotional and highlight text to save a quote.</p>'}</div></section>`;
 }
 function wireSavedQuotes(){
  const search=document.getElementById('savedQuotesSearch');if(!search)return;
  search.onchange=e=>{quotesSearch=e.target.value;render()};
+ document.querySelectorAll('[data-quote-copy]').forEach(b=>b.onclick=async()=>{
+  const q=savedQuotes().find(x=>x.id===b.dataset.quoteCopy);if(!q)return;
+  const ok=await copySavedQuote(q);if(ok){const previous=b.textContent;b.textContent='Copied!';setTimeout(()=>{if(b.isConnected)b.textContent=previous},1600)}
+ });
+ document.querySelectorAll('[data-quote-share]').forEach(b=>b.onclick=async()=>{
+  const q=savedQuotes().find(x=>x.id===b.dataset.quoteShare);if(!q)return;
+  const result=await shareSavedQuote(q);if(result==='copied'){const previous=b.textContent;b.textContent='Copied!';setTimeout(()=>{if(b.isConnected)b.textContent=previous},1600)}
+ });
  document.querySelectorAll('[data-quote-delete]').forEach(b=>b.onclick=()=>{
   if(!confirm('Remove this saved quote?'))return;
   saveQuotes(savedQuotes().filter(q=>q.id!==b.dataset.quoteDelete));render();
