@@ -63,19 +63,17 @@
     {id:'today',label:'Today',href:'/#today',icon:'sun'},
     {id:'bible',label:'Bible',href:'/bible-reader.html',icon:'book'},
     {id:'explore',label:'Explore',href:'/#explore',icon:'search'},
-    {id:'topics',label:'Topics',href:'/#topics',icon:'search'},
-    {id:'plans',label:'Reading Plans',href:'/#plans',icon:'book'},
-    {id:'journal',label:'My Journal',href:'/#journal',icon:'book'},
-    {id:'saved',label:'Saved Devotionals',href:'/#saved',icon:'book'},
-    {id:'history',label:'Reading Log',href:'/#history',icon:'book'},
-    {id:'study-guide',label:'Bible Study',href:'/#study-guide',icon:'book'},
-    {id:'support',label:'Donate',href:'/#support',icon:'home'},
-    {id:'contact',label:'Contact',href:'/#contact',icon:'home'}
+    {id:'topics',label:'Topics',href:'/#topics',icon:'list'},
+    {id:'plans',label:'Reading Plans',href:'/#plans',icon:'calendar'},
+    {id:'journal',label:'My Journal',href:'/#journal',icon:'pen'},
+    {id:'saved',label:'Saved Devotionals',href:'/#saved',icon:'bookmark'},
+    {id:'history',label:'Reading Log',href:'/#history',icon:'clock'},
+    {id:'study-guide',label:'Bible Study',href:'/#study-guide',icon:'flask'},
   ];
   function selectedTabs(){
     try{
       const parsed=JSON.parse(localStorage.getItem(NAV_KEY)||'null');
-      if(Array.isArray(parsed)&&parsed.length<=4&&parsed.length>=1&&new Set(parsed).size===parsed.length&&parsed.every(id=>customTabs.some(t=>t.id===id)))return parsed;
+      if(Array.isArray(parsed)){const valid=[...new Set(parsed.filter(id=>customTabs.some(t=>t.id===id)))].slice(0,4);if(valid.length)return valid;}
     }catch(e){}
     return defaultTabs;
   }
@@ -91,6 +89,12 @@
     sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
     book:'<path d="M12 7c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V6c-3-1-6-1-9 1zm0 0v14"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
+    list:'<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+    calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+    pen:'<path d="M12 20h9"/><path d="M16 4a2 2 0 0 1 3 3L9 17l-4 1 1-4Z"/>',
+    bookmark:'<path d="M6 3h12v18l-6-4-6 4V3Z"/>',
+    clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 3"/>',
+    flask:'<path d="M9 3h6m-5 0v7l-6 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-9V3M7 16h10"/>',
     settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l-1.86 1.86A1.7 1.7 0 0 0 16 18.4a1.7 1.7 0 0 0-1.7 1.6h-2.6A1.7 1.7 0 0 0 10 18.4a1.7 1.7 0 0 0-1.88.34l-1.86-1.86A1.7 1.7 0 0 0 6.6 15 1.7 1.7 0 0 0 5 13.3v-2.6A1.7 1.7 0 0 0 6.6 9a1.7 1.7 0 0 0-.34-1.88l1.86-1.86A1.7 1.7 0 0 0 10 5.6 1.7 1.7 0 0 0 11.7 4h2.6A1.7 1.7 0 0 0 16 5.6a1.7 1.7 0 0 0 1.88-.34l1.86 1.86A1.7 1.7 0 0 0 19.4 9 1.7 1.7 0 0 0 21 10.7v2.6a1.7 1.7 0 0 0-1.6 1.7z"/>'
   };
   function bottomNav(current,inApp){

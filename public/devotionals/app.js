@@ -78,7 +78,7 @@ function collapsedSettings(html){
 }
 function bottomNavigationSettings(){
  const selected=window.WHDCNav?.selectedTabs?.()||['home','today','bible','explore'];
- const pages=window.WHDCNav?.customTabs||[];
+ const pages=(window.WHDCNav?.customTabs||[]).filter(p=>p.id!=='support'&&p.id!=='contact');
  return `<section class="card" style="max-width:760px;margin:0 auto 2rem"><h2>Customize Navigation Bar</h2><p class="muted small">Choose up to four pages for your mobile bottom bar. Settings always stays in the fifth position. Your choices save automatically on this device.</p><div id="bottomNavChoices">${pages.map(p=>`<label class="whdc-nav-choice"><input type="checkbox" name="bottomNavPage" value="${p.id}" ${selected.includes(p.id)?'checked':''}><span>${p.label}</span></label>`).join('')}</div><p id="bottomNavStatus" class="muted small" role="status">${selected.length} of 4 pages selected.</p><p class="muted small">Settings is always visible and cannot be removed.</p></section>`;
 }
 function wireBottomNavigationSettings(){
