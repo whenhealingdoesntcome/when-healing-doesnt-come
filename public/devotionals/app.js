@@ -161,7 +161,7 @@ function journalEntryCard(e){
 }
 function devotionalJournalForm(d){
  const reflections=journalEntries().filter(e=>e.type==='reflection'&&e.devotionalId===d.id).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
- return `<div id="devotionalJournal" style="margin-top:16px"><p class="muted small">These reflections are attached to <strong>${safe(d.title)}</strong> and saved privately on this device.</p>
+ return `<div id="devotionalJournal" style="margin-top:16px">
  <form id="devotionalJournalForm"><h3 id="devotionalJournalHeading">Write a Reflection</h3>
  <input type="hidden" id="devotionalJournalTitle" value="${safe('Reflection on '+d.title)}">
  <label for="devotionalJournalText">Your reflection</label><textarea id="devotionalJournalText" required maxlength="30000" rows="6" placeholder="What stood out to you? What is God teaching you?" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0 14px"></textarea>
