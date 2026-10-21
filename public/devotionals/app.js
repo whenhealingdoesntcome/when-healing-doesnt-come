@@ -227,7 +227,7 @@ const journalId=()=>crypto.randomUUID?crypto.randomUUID():Date.now().toString(36
 
 function journalEntryCard(e){
  const d=e.devotionalId&&data.find(x=>x.id===e.devotionalId);
- return `<article class="card"><div class="eyebrow">${safe(new Date(e.createdAt).toLocaleDateString())}</div><h3>${safe(e.title)}</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${safe(e.text)}</p>${e.type==='prayer'?`<label style="display:flex;align-items:center;gap:8px;margin:12px 0;cursor:pointer"><input type="checkbox" data-journal-answered="${safe(e.id)}" ${e.answered?'checked':''} aria-label="Prayer answered: ${safe(e.title)}"> <span>Prayer answered</span></label>`:''}${d?`<p class="muted small">Devotional: ${safe(d.title)}</p>`:''}<div class="actions whdc-compact-actions"><button type="button" class="btn" data-journal-edit="${safe(e.id)}" aria-label="Edit journal entry">${compactAction('edit','Edit','Edit')}</button><button type="button" class="btn" data-journal-delete="${safe(e.id)}" aria-label="Delete journal entry">${compactAction('delete','Delete','Delete')}</button>${d?`<button type="button" class="btn" data-journal-open="${safe(d.id)}" aria-label="Open devotional">${compactAction('open','Open devotional','Open')}</button>`:''}</div></article>`;
+ return `<article class="card"><div class="eyebrow">${safe(new Date(e.createdAt).toLocaleDateString())}</div><h3>${safe(e.title)}</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${safe(e.text)}</p>${e.type==='prayer'?`<label class="whdc-answered-toggle"><input type="checkbox" data-journal-answered="${safe(e.id)}" ${e.answered?'checked':''} aria-label="Prayer answered: ${safe(e.title)}"> <span>Answered</span></label>`:''}${d?`<p class="muted small">Devotional: ${safe(d.title)}</p>`:''}<div class="actions whdc-compact-actions"><button type="button" class="btn" data-journal-edit="${safe(e.id)}" aria-label="Edit journal entry">${compactAction('edit','Edit','Edit')}</button><button type="button" class="btn" data-journal-delete="${safe(e.id)}" aria-label="Delete journal entry">${compactAction('delete','Delete','Delete')}</button>${d?`<button type="button" class="btn" data-journal-open="${safe(d.id)}" aria-label="Open devotional">${compactAction('open','Open devotional','Open')}</button>`:''}</div></article>`;
 }
 function devotionalJournalForm(d){
  const reflections=journalEntries().filter(e=>e.type==='reflection'&&e.devotionalId===d.id).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
@@ -238,19 +238,28 @@ function devotionalJournalForm(d){
  <div class="actions whdc-reflection-actions" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><button class="btn primary whdc-reflection-action" type="submit" aria-label="Save reflection" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:65px;min-height:57px;padding:7px 10px;line-height:1.15"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg><span style="font-size:12px;font-weight:600">Save</span></button><button class="btn  whdc-reflection-action" type="button" id="devotionalJournalClear" aria-label="New reflection" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:65px;min-height:57px;padding:7px 10px;line-height:1.15"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span style="font-size:12px;font-weight:600">New</span></button><button class="btn  whdc-reflection-action" type="button" id="devotionalJournalAll" aria-label="View reflection" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:65px;min-height:57px;padding:7px 10px;line-height:1.15"><svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span style="font-size:12px;font-weight:600">View</span></button></div><p role="status" id="devotionalJournalStatus"></p></form>
  <h3>Reflections for This Devotional</h3>${reflections.length?`<div class="grid">${reflections.map(journalEntryCard).join('')}</div>`:'<p class="muted">You have not written a reflection for this devotional yet.</p>'}</div>`;
 }
+function addJournalLayoutStyles(){if(document.getElementById('whdc-journal-layout-style'))return;const st=document.createElement('style');st.id='whdc-journal-layout-style';st.textContent=`.whdc-journal-section details>summary{cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none}.whdc-journal-section details>summary::-webkit-details-marker{display:none}.whdc-journal-section details>summary:after{content:'⌄';font-size:24px;line-height:1}.whdc-journal-section details[open]>summary:after{content:'⌃'}.whdc-journal-section summary h2{margin:0}.whdc-journal-inner{padding-top:16px}.whdc-journal-list{margin-top:14px}.whdc-answered-toggle{display:inline-flex!important;align-items:center;gap:6px;max-width:100%;width:max-content;font-size:13px;line-height:1.3;white-space:nowrap;margin:8px 0 12px;cursor:pointer}.whdc-answered-toggle input{width:15px!important;height:15px!important;flex:0 0 15px;margin:0!important;min-width:0!important}.whdc-journal-modal[hidden]{display:none!important}.whdc-journal-modal{position:fixed;inset:0;z-index:10050;background:rgba(18,26,29,.58);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box}.whdc-journal-dialog{width:min(100%,480px);max-height:calc(100dvh - 28px);overflow:auto;box-sizing:border-box;margin:0}.whdc-journal-dialog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.whdc-journal-dialog-head h2{margin:0}.whdc-journal-modal-open{overflow:hidden}@media(max-width:700px){.whdc-journal-dialog{padding:16px}.whdc-journal-section .card{min-width:0}.whdc-answered-toggle{font-size:12px}}`;document.head.appendChild(st)}
 function journalPage(){
+ addJournalLayoutStyles();
  const entries=journalEntries().filter(e=>`${e.title} ${e.text}`.toLowerCase().includes(journalSearch.toLowerCase())).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
  const prayers=entries.filter(e=>e.type==='prayer'),reflections=entries.filter(e=>e.type==='reflection');
+ const openReflections=journalOpenReflections;
+ journalOpenReflections=false;
  return `<section class="hero"><div class="eyebrow">Private on this device</div><h1>My Journal</h1><p>Your prayer requests and devotional reflections, organized in one place. Your writing stays on this device unless you export it.</p></section>
- <section class="card" id="prayerRequestSection"><h2 id="journalEditorTitle">Prayer Request</h2><form id="journalForm">
- <input type="hidden" id="journalTitle" value="">
- <label for="journalText">Your prayer</label><textarea id="journalText" required maxlength="30000" rows="5" placeholder="Write your prayer request here…" style="width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px"></textarea>
- <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input type="checkbox" id="journalAnswered"> Answered</label>
- <div class="actions whdc-compact-actions"><button type="submit" class="btn primary" aria-label="Save prayer request">${compactAction('save','Save prayer request','Save')}</button><button type="button" class="btn" id="journalClear" aria-label="New prayer request">${compactAction('new','New prayer request','New')}</button></div><p id="journalStatus" role="status" aria-live="polite"></p></form></section>
- <section class="card"><h2>My Journal Entries</h2><div class="actions"><label for="journalSearch">Search entries <input id="journalSearch" type="search" placeholder="Search prayers and reflections" value="${safe(journalSearch)}"></label><button type="button" class="btn" id="journalExport">Export My Journal</button></div>
- <p class="muted small">Your export includes both prayer requests and devotional reflections. Keep your backup somewhere private. Clearing this app's storage can erase entries.</p>
- <section id="journalPrayers"><h3>Prayer Requests (${prayers.length})</h3>${prayers.length?`<div class="grid">${prayers.map(journalEntryCard).join('')}</div>`:'<p class="muted">No prayer requests found.</p>'}</section>
- <section id="journalReflections"><h3>Devotional Reflections (${reflections.length})</h3>${reflections.length?`<div class="grid">${reflections.map(journalEntryCard).join('')}</div>`:'<p class="muted">No devotional reflections found. Open a devotional to write one.</p>'}</section></section>`;
+ <section class="card whdc-journal-section"><details id="journalPrayers"><summary><h2>Prayer Requests (${prayers.length})</h2></summary><div class="whdc-journal-inner"><button type="button" class="btn" id="journalNewPrayer" aria-label="New prayer request">＋ New</button>${prayers.length?`<div class="grid whdc-journal-list">${prayers.map(journalEntryCard).join('')}</div>`:'<p class="muted">No prayer requests yet.</p>'}</div></details></section>
+ <section class="card whdc-journal-section"><details id="journalReflections" ${openReflections?'open':''}><summary><h2>Devotional Reflections (${reflections.length})</h2></summary><div class="whdc-journal-inner">${reflections.length?`<div class="grid">${reflections.map(journalEntryCard).join('')}</div>`:'<p class="muted">No devotional reflections found. Open a devotional to write one.</p>'}</div></details></section>
+ <section class="card whdc-journal-export"><h2>Export Journal</h2><p class="muted small">Export your prayer requests and devotional reflections to keep a private backup. Your journal is stored on this device and can be lost if its app data is cleared.</p><button type="button" class="btn" id="journalExport">Export My Journal</button></section>
+ <div class="whdc-journal-modal" id="journalPrayerModal" hidden><div class="whdc-journal-dialog card" role="dialog" aria-modal="true" aria-labelledby="journalEditorTitle"><div class="whdc-journal-dialog-head"><h2 id="journalEditorTitle">Prayer Request</h2><button type="button" class="btn" id="journalClosePrayer" aria-label="Close prayer request form">✕</button></div><form id="journalForm"><input type="hidden" id="journalTitle" value=""><label for="journalText">Your prayer</label><textarea id="journalText" required maxlength="30000" rows="5" placeholder="Write your prayer request here…" style="width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px"></textarea><label class="whdc-answered-toggle"><input type="checkbox" id="journalAnswered"> <span>Answered</span></label><div class="actions whdc-compact-actions"><button type="submit" class="btn primary" aria-label="Save prayer request">${compactAction('save','Save prayer request','Save')}</button><button type="button" class="btn" id="journalClear" aria-label="New prayer request">${compactAction('new','New prayer request','New')}</button></div><p id="journalStatus" role="status" aria-live="polite"></p></form></div></div>`;
+}
+let journalOpenReflections=false;
+function openPrayerJournalModal(){
+ const modal=document.getElementById('journalPrayerModal');if(!modal)return;
+ modal.hidden=false;document.body.classList.add('whdc-journal-modal-open');
+ document.getElementById('journalText')?.focus({preventScroll:true});
+}
+function closePrayerJournalModal(){
+ const modal=document.getElementById('journalPrayerModal');if(modal)modal.hidden=true;
+ document.body.classList.remove('whdc-journal-modal-open');
 }
 function journalExport(){
  const blob=new Blob([JSON.stringify({format:'whdc-journal',version:1,exportedAt:new Date().toISOString(),entries:journalEntries()},null,2)],{type:'application/json'});
@@ -291,7 +300,7 @@ function wireJournalEntryActions(){
    document.getElementById('journalText').value=e.text;
    document.getElementById('journalAnswered').checked=!!e.answered;
    document.getElementById('journalEditorTitle').textContent='Edit Prayer Request';
-   document.getElementById('journalForm').scrollIntoView({behavior:'smooth'});
+   openPrayerJournalModal();
   }
  });
 }
@@ -302,7 +311,7 @@ function wireDevotionalJournal(){
  const title=document.getElementById('devotionalJournalTitle'),body=document.getElementById('devotionalJournalText');
  const reset=()=>{devotionalJournalEditing='';form.reset();title.value='Reflection on '+d.title;document.getElementById('devotionalJournalHeading').textContent='Write a Reflection'};
  document.getElementById('devotionalJournalClear').onclick=reset;
- document.getElementById('devotionalJournalAll').onclick=()=>nav('journal');
+ document.getElementById('devotionalJournalAll').onclick=()=>{journalOpenReflections=true;nav('journal')};
  form.onsubmit=e=>{
   e.preventDefault();const entries=journalEntries(),now=new Date().toISOString();
   const entry={id:devotionalJournalEditing||journalId(),type:'reflection',title:'Reflection on '+d.title,text:body.value.trim(),devotionalId:d.id,answered:false,createdAt:now,updatedAt:now};
@@ -317,7 +326,9 @@ function wireJournal(){
  const form=document.getElementById('journalForm');
  if(form){
   const title=document.getElementById('journalTitle'),body=document.getElementById('journalText'),answered=document.getElementById('journalAnswered');
-  document.getElementById('journalSearch').onchange=e=>{journalSearch=e.target.value;render()};
+  document.getElementById('journalNewPrayer')?.addEventListener('click',()=>{journalEditing='';form.reset();document.getElementById('journalEditorTitle').textContent='Prayer Request';openPrayerJournalModal()});
+  document.getElementById('journalClosePrayer')?.addEventListener('click',closePrayerJournalModal);
+  document.getElementById('journalPrayerModal')?.addEventListener('click',e=>{if(e.target.id==='journalPrayerModal')closePrayerJournalModal()});
   document.getElementById('journalClear').onclick=()=>{journalEditing='';form.reset();document.getElementById('journalEditorTitle').textContent='Prayer Request'};
   form.onsubmit=e=>{
    e.preventDefault();const entries=journalEntries(),now=new Date().toISOString();
