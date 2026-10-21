@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v11-reliability';
+const CACHE='whdc-public-shell-v12-alert-sync';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
@@ -41,9 +41,24 @@ async function badgeUpdate(type,clear=false){
 }
 self.addEventListener('message',event=>{
  const msg=event.data||{};
- if(msg.type==='WHDC_ALERT_STATUS')event.waitUntil((async()=>{const counts=await badgeRead('counts',{announcement:0,daily:0,plan:0});const prefs=await badgeRead('prefs',{announcement:true,daily:true,plan:true});event.ports?.[0]?.postMessage({counts,prefs});})().catch(()=>event.ports?.[0]?.postMessage({counts:{announcement:0,daily:0,plan:0}})));
+ if(msg.type==='WHDC_ALERT_STATUS')event.waitUntil((async()=>{
+  const counts=await badgeRead('counts',{announcement:0,daily:0,plan:0});
+  const prefs=await badgeRead('prefs',{announcement:true,daily:true,plan:true});
+  // A notification may have arrived before the latest service worker activated.
+  // Recover still-visible push notifications rather than displaying an empty inbox.
+  const notices=await self.registration.getNotifications();
+  for(const n of notices){const tag=n.tag||'';const kind=tag.startsWith('whdc-news-')?'announcement':tag.startsWith('whdc-daily-')?'daily':tag.startsWith('whdc-plan-')?'plan':null;if(kind)counts[kind]=Math.max(Number(counts[kind])||0,1)}
+  await badgeWrite('counts',counts);
+  const total=['announcement','daily','plan'].reduce((n,k)=>n+(prefs[k]===false?0:counts[k]||0),0);
+  if('setAppBadge' in self.navigator){try{if(total)await self.navigator.setAppBadge(Math.min(total,99));else await self.navigator.clearAppBadge()}catch{}}
+  event.ports?.[0]?.postMessage({counts,prefs});
+ })().catch(()=>event.ports?.[0]?.postMessage(null)));
  if(msg.type==='WHDC_ALERT_CLEAR_ALL')event.waitUntil((async()=>{await badgeWrite('counts',{announcement:0,daily:0,plan:0});if('clearAppBadge'in self.navigator)await self.navigator.clearAppBadge();const notices=await self.registration.getNotifications();notices.forEach(n=>n.close());event.ports?.[0]?.postMessage({ok:true});})().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
- if(msg.type==='WHDC_BADGE_CLEAR')event.waitUntil(badgeUpdate(msg.badgeType,true).catch(()=>{}));
+ if(msg.type==='WHDC_BADGE_CLEAR')event.waitUntil((async()=>{
+  await badgeUpdate(msg.badgeType,true);
+  const prefix={announcement:'whdc-news-',daily:'whdc-daily-',plan:'whdc-plan-'}[msg.badgeType];
+  if(prefix)for(const notice of await self.registration.getNotifications())if((notice.tag||'').startsWith(prefix))notice.close();
+ })().catch(()=>{}));
  if(msg.type==='WHDC_BADGE_PREFS')event.waitUntil((async()=>{const prefs={announcement:msg.prefs?.announcement!==false,daily:msg.prefs?.daily!==false,plan:msg.prefs?.plan!==false};await badgeWrite('prefs',prefs);const counts=await badgeRead('counts',{announcement:0,daily:0,plan:0});const total=['announcement','daily','plan'].reduce((n,k)=>n+(prefs[k]===false?0:counts[k]||0),0);if('setAppBadge'in self.navigator){if(total)await self.navigator.setAppBadge(Math.min(99,total));else await self.navigator.clearAppBadge()}})().catch(()=>{}));
 });
 self.addEventListener('push',event=>{
