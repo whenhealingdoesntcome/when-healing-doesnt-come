@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v9-notification-settings';
+const CACHE='whdc-public-shell-v10-memory-reminders';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
