@@ -346,6 +346,7 @@ const SAVED_QUOTES_KEY='whdc-saved-quotes-v1';
 const savedQuotes=()=>{const q=load(SAVED_QUOTES_KEY,[]);return Array.isArray(q)?q:[]};
 const saveQuotes=q=>localStorage.setItem(SAVED_QUOTES_KEY,JSON.stringify(q));
 let quotesSearch='',quoteSelectionTimer=0;
+let quoteSelectionAbort=new AbortController();
 function savedQuotesPage(){
  const all=savedQuotes().slice().sort((a,b)=>String(b.savedAt).localeCompare(String(a.savedAt)));
  const filtered=all.filter(q=>[q.text,q.author,q.devotionalTitle].join(' ').toLowerCase().includes(quotesSearch.toLowerCase()));
@@ -371,6 +372,7 @@ function wireSavedQuotes(){
  };
 }
 function wireDevotionalQuoteSelection(){
+ quoteSelectionAbort.abort();quoteSelectionAbort=new AbortController();
  if(view!=='today')return;
  const d=current(),container=document.getElementById('quoteSelectableDevotional');if(!d||!container)return;
  let btn=document.getElementById('saveQuoteSelection');
@@ -381,21 +383,29 @@ function wireDevotionalQuoteSelection(){
  }
  btn.hidden=true;
  let chosen='';
- const allowed=()=>[...container.querySelectorAll('.whdc-quote-text')];
  const update=()=>{
-  if(view!=='today'||!document.getElementById('quoteSelectableDevotional'))return;
-  const sel=window.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount){btn.hidden=true;return}
-  const r=sel.getRangeAt(0);
-  const eligible=allowed().some(el=>el.contains(r.startContainer)||el===r.startContainer)&&allowed().some(el=>el.contains(r.endContainer)||el===r.endContainer);
+  if(view!=='today'||!container.isConnected){btn.hidden=true;return}
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed||!sel.rangeCount){btn.hidden=true;return}
+  const range=sel.getRangeAt(0);
+  // A selection can begin or end in a nested inline element (such as emphasis).
+  // Check intersection with readable devotional prose rather than relying on
+  // the selection endpoints matching a particular wrapper.
+  const readable=[...container.querySelectorAll('.whdc-quote-text')];
+  const eligible=readable.some(el=>{
+   try{return range.intersectsNode(el)}catch{return false}
+  });
   if(!eligible){btn.hidden=true;return}
   const text=sel.toString().replace(/\s+/g,' ').trim();
-  if(!text||text.length<2){btn.hidden=true;return}
+  if(text.length<2){btn.hidden=true;return}
   chosen=text;btn.textContent='♡ Save Quote';btn.hidden=false;
  };
- const schedule=()=>{clearTimeout(quoteSelectionTimer);quoteSelectionTimer=setTimeout(update,180)};
+ const schedule=()=>{clearTimeout(quoteSelectionTimer);quoteSelectionTimer=setTimeout(update,120)};
+ container.addEventListener('pointerup',schedule);
  container.addEventListener('mouseup',schedule);
- container.addEventListener('touchend',()=>setTimeout(schedule,100));
+ container.addEventListener('touchend',schedule);
  container.addEventListener('keyup',schedule);
+ document.addEventListener('selectionchange',schedule,{signal:quoteSelectionAbort.signal});
  btn.onclick=()=>{
   if(!chosen)return;
   const list=savedQuotes(),author=String(d.author||'Heather Kusunoki'),id='quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
