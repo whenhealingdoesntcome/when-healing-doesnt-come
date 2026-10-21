@@ -242,11 +242,11 @@ function journalPage(){
  const entries=journalEntries().filter(e=>`${e.title} ${e.text}`.toLowerCase().includes(journalSearch.toLowerCase())).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
  const prayers=entries.filter(e=>e.type==='prayer'),reflections=entries.filter(e=>e.type==='reflection');
  return `<section class="hero"><div class="eyebrow">Private on this device</div><h1>My Journal</h1><p>Your prayer requests and devotional reflections, organized in one place. Your writing stays on this device unless you export it.</p></section>
- <section class="card" id="prayerRequestSection"><h2 id="journalEditorTitle">New Prayer Request</h2><p class="muted small">This form is for prayer requests. To write a devotional reflection, open the devotional and use its reflection journal.</p><form id="journalForm">
- <label for="journalTitle">Prayer request title</label><input id="journalTitle" maxlength="160" required placeholder="A prayer to remember" style="width:100%;box-sizing:border-box;padding:10px;margin:8px 0 14px">
- <label for="journalText">Prayer request</label><textarea id="journalText" required maxlength="30000" rows="6" placeholder="Write your prayer or request…" style="width:100%;box-sizing:border-box;margin:8px 0 14px;padding:12px"></textarea>
- <label style="display:block;margin-bottom:14px"><input type="checkbox" id="journalAnswered"> Prayer answered</label>
- <div class="actions"><button type="submit" class="btn primary">Save Prayer Request</button><button type="button" class="btn" id="journalClear">New Prayer Request</button></div><p id="journalStatus" role="status" aria-live="polite"></p></form></section>
+ <section class="card" id="prayerRequestSection"><h2 id="journalEditorTitle">Prayer Request</h2><form id="journalForm">
+ <input type="hidden" id="journalTitle" value="">
+ <label for="journalText">Your prayer</label><textarea id="journalText" required maxlength="30000" rows="5" placeholder="Write your prayer request here…" style="width:100%;box-sizing:border-box;margin:8px 0 12px;padding:12px"></textarea>
+ <label style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input type="checkbox" id="journalAnswered"> Answered</label>
+ <div class="actions whdc-compact-actions"><button type="submit" class="btn primary" aria-label="Save prayer request">${compactAction('save','Save prayer request','Save')}</button><button type="button" class="btn" id="journalClear" aria-label="New prayer request">${compactAction('new','New prayer request','New')}</button></div><p id="journalStatus" role="status" aria-live="polite"></p></form></section>
  <section class="card"><h2>My Journal Entries</h2><div class="actions"><label for="journalSearch">Search entries <input id="journalSearch" type="search" placeholder="Search prayers and reflections" value="${safe(journalSearch)}"></label><button type="button" class="btn" id="journalExport">Export My Journal</button></div>
  <p class="muted small">Your export includes both prayer requests and devotional reflections. Keep your backup somewhere private. Clearing this app's storage can erase entries.</p>
  <section id="journalPrayers"><h3>Prayer Requests (${prayers.length})</h3>${prayers.length?`<div class="grid">${prayers.map(journalEntryCard).join('')}</div>`:'<p class="muted">No prayer requests found.</p>'}</section>
@@ -318,10 +318,10 @@ function wireJournal(){
  if(form){
   const title=document.getElementById('journalTitle'),body=document.getElementById('journalText'),answered=document.getElementById('journalAnswered');
   document.getElementById('journalSearch').onchange=e=>{journalSearch=e.target.value;render()};
-  document.getElementById('journalClear').onclick=()=>{journalEditing='';form.reset();document.getElementById('journalEditorTitle').textContent='New Prayer Request'};
+  document.getElementById('journalClear').onclick=()=>{journalEditing='';form.reset();document.getElementById('journalEditorTitle').textContent='Prayer Request'};
   form.onsubmit=e=>{
    e.preventDefault();const entries=journalEntries(),now=new Date().toISOString();
-   const entry={id:journalEditing||journalId(),type:'prayer',title:title.value.trim(),text:body.value.trim(),devotionalId:'',answered:answered.checked,createdAt:now,updatedAt:now};
+   const entry={id:journalEditing||journalId(),type:'prayer',title:(journalEditing&&title.value.trim())||body.value.trim().replace(/\s+/g,' ').slice(0,65)+(body.value.trim().replace(/\s+/g,' ').length>65?'…':''),text:body.value.trim(),devotionalId:'',answered:answered.checked,createdAt:now,updatedAt:now};
    if(!entry.title||!entry.text)return;
    const i=entries.findIndex(x=>x.id===entry.id);
    if(i>=0){entry.createdAt=entries[i].createdAt;entries[i]=entry}else entries.push(entry);
