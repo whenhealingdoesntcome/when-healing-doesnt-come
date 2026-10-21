@@ -362,6 +362,17 @@ function wireJournal(){
    const panel=document.getElementById(tile.dataset.journalPanel+'Panel');
    if(panel)panel.hidden=!selected;
   });
+  if(!alreadyOpen){
+   const openedPanel=document.getElementById(id+'Panel');
+   if(openedPanel){
+    requestAnimationFrame(()=>{
+     if(!openedPanel.hidden){
+      const reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+      openedPanel.scrollIntoView({behavior:reducedMotion?'auto':'smooth',block:'start'});
+     }
+    });
+   }
+  }
  }));
  const form=document.getElementById('journalForm');
  if(form){
