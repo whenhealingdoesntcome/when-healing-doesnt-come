@@ -446,72 +446,93 @@ function wireDevotionalQuoteSelection(){
  quoteSelectionAbort.abort();quoteSelectionAbort=new AbortController();
  if(view!=='today')return;
  const d=current(),container=document.getElementById('quoteSelectableDevotional');if(!d||!container)return;
- let btn=document.getElementById('saveQuoteSelection');
- if(!btn){btn=document.createElement('button');btn.id='saveQuoteSelection';btn.type='button';btn.setAttribute('aria-label','Save highlighted devotional quote');btn.textContent='♡ Save Quote';document.body.append(btn)}
+ const sections=()=>[...container.querySelectorAll('.whdc-quote-text')];
+ const normalize=t=>String(t||'').replace(/\s+/g,' ').trim();
+ const colors={yellow:'#ffe49b',green:'#bce8c8',blue:'#bfdcf9',pink:'#f5c6df'};
  const styleId='whdc-quote-selection-style';
  if(!document.getElementById(styleId)){
   const st=document.createElement('style');st.id=styleId;
-  st.textContent='#saveQuoteSelection{position:fixed;left:0;top:0;bottom:auto;transform:none;z-index:2147483000;padding:7px 12px;min-height:36px;border:1px solid #a59b89;border-radius:999px;background:#f7f5f0;color:#393f4a;box-shadow:0 3px 14px #0004;font:600 13px/1.25 system-ui,sans-serif;white-space:nowrap;cursor:pointer;touch-action:manipulation}#saveQuoteSelection[hidden]{display:none!important}#quoteSelectableDevotional,#quoteSelectableDevotional .whdc-quote-text,#quoteSelectableDevotional .whdc-quote-text *{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}';document.head.append(st)
+  st.textContent=`#whdcQuoteToolbar{position:fixed;z-index:2147483000;display:flex;align-items:center;gap:5px;padding:5px 7px;border:1px solid #a59b89;border-radius:22px;background:#f7f5f0;color:#393f4a;box-shadow:0 3px 14px #0004;font:600 13px/1.25 system-ui,sans-serif;max-width:calc(100vw - 16px);touch-action:manipulation}#whdcQuoteToolbar[hidden],#whdcQuoteColors[hidden]{display:none!important}#whdcQuoteSave{border:0;background:transparent;color:inherit;padding:6px;white-space:nowrap;font:inherit;cursor:pointer}#whdcQuoteColorToggle{border:1px solid #a59b89;border-radius:50%;width:27px;height:27px;background:conic-gradient(#ffe49b 0 25%,#bce8c8 0 50%,#bfdcf9 0 75%,#f5c6df 0);cursor:pointer;flex-shrink:0}#whdcQuoteColors{display:flex;gap:4px;align-items:center}#whdcQuoteColors button{border:1px solid #aaa;background:#fff;color:#393f4a;border-radius:50%;height:25px;min-width:25px;padding:0 4px;cursor:pointer}#whdcQuoteColors button[data-style="underline"]{border-radius:6px;font-size:16px;text-decoration:underline}#quoteSelectableDevotional .whdc-quote-text,#quoteSelectableDevotional .whdc-quote-text *{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}`;
+  for(const [key,value] of Object.entries(colors))st.textContent+=`::highlight(whdc-quote-${key}){background-color:${value}}`;
+  st.textContent+='::highlight(whdc-quote-underline){text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}';document.head.append(st);
  }
- btn.hidden=true;
- let chosen='',lastRect=null;
- const update=()=>{
-  if(view!=='today'||!container.isConnected){btn.hidden=true;return}
-  const sel=window.getSelection();
-  if(!sel||sel.isCollapsed||!sel.rangeCount){if(!chosen)btn.hidden=true;return}
-  const range=sel.getRangeAt(0);
-  const readable=[...container.querySelectorAll('.whdc-quote-text')];
-  const eligible=readable.some(el=>{try{return range.intersectsNode(el)}catch{return false}});
-  if(!eligible){btn.hidden=true;chosen='';return}
-  const text=sel.toString().replace(/\s+/g,' ').trim();
-  if(text.length<2)return;
-  chosen=text;const alreadySaved=savedQuotes().some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===text);btn.textContent=alreadySaved?'♥ Save Quote':'♡ Save Quote';btn.setAttribute('aria-label',alreadySaved?'Quote already saved':'Save highlighted devotional quote');
-  const rects=[...range.getClientRects()].filter(r=>r.width&&r.height);
-  const rect=rects[rects.length-1]||range.getBoundingClientRect();
-  if(rect&&Number.isFinite(rect.left)&&Number.isFinite(rect.bottom))lastRect={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
-  btn.hidden=false;
-  const vw=document.documentElement.clientWidth,vh=window.innerHeight;
-  const bw=btn.offsetWidth||110,bh=btn.offsetHeight||36;
-  const r=lastRect||{left:vw/2,right:vw/2,top:vh/2,bottom:vh/2};
-  const x=Math.max(8,Math.min(vw-bw-8,(r.left+r.right-bw)/2));
-  const y=r.top>=bh+14?r.top-bh-9:Math.min(vh-bh-8,r.bottom+9);
-  btn.style.left=Math.round(x)+'px';btn.style.top=Math.round(Math.max(8,y))+'px';
+ document.getElementById('whdcQuoteToolbar')?.remove();
+ const bar=document.createElement('div');bar.id='whdcQuoteToolbar';bar.hidden=true;
+ bar.innerHTML='<button type="button" id="whdcQuoteSave" aria-label="Save or unsave selected quote">♡ Save Quote</button><button type="button" id="whdcQuoteColorToggle" aria-label="Change quote marking" title="Change highlight or underline"></button><div id="whdcQuoteColors" hidden></div>';
+ document.body.append(bar);
+ const saveBtn=bar.querySelector('#whdcQuoteSave'),toggle=bar.querySelector('#whdcQuoteColorToggle'),palette=bar.querySelector('#whdcQuoteColors');
+ for(const [key,value] of Object.entries(colors)){
+  const el=document.createElement('button');el.type='button';el.dataset.style=key;el.style.background=value;el.title=key[0].toUpperCase()+key.slice(1);el.setAttribute('aria-label',el.title+' highlight');palette.append(el);
+ }
+ const under=document.createElement('button');under.type='button';under.dataset.style='underline';under.textContent='U';under.title='Underline';under.setAttribute('aria-label','Underline quote');palette.append(under);
+ let chosen='',anchor=null,rect=null,active=false;
+ const nodes=el=>{const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);const arr=[];while(walker.nextNode())arr.push(walker.currentNode);return arr};
+ const rangeFrom=(section,start,end)=>{
+  const el=sections()[section];if(!el)return null;
+  const arr=nodes(el);let pos=0,first=null,last=null;
+  for(const node of arr){const next=pos+node.textContent.length;if(first===null&&start<next)first={node,offset:Math.max(0,start-pos)};if(end<=next){last={node,offset:Math.max(0,end-pos)};break}pos=next}
+  if(!first||!last)return null;const r=document.createRange();r.setStart(first.node,first.offset);r.setEnd(last.node,last.offset);return r;
  };
- const schedule=(delay=180)=>{clearTimeout(quoteSelectionTimer);quoteSelectionTimer=setTimeout(update,delay)};
- // Mobile browsers finalize selection handles after touchend, often with a delay.
+ const locate=r=>{
+  const els=sections();for(let i=0;i<els.length;i++){
+   const el=els[i];if(!el.contains(r.startContainer)||!el.contains(r.endContainer))continue;
+   const before=document.createRange();before.selectNodeContents(el);before.setEnd(r.startContainer,r.startOffset);
+   return {section:i,start:before.toString().length,end:before.toString().length+r.toString().length};
+  }return null;
+ };
+ const same=(q,t=chosen)=>q.devotionalId===d.id&&normalize(q.text)===normalize(t);
+ const matching=()=>savedQuotes().find(q=>same(q));
+ const paint=()=>{
+  const quotes=savedQuotes().filter(q=>q.devotionalId===d.id);
+  if(CSS.highlights&&typeof Highlight!=='undefined'){
+   for(const key of [...Object.keys(colors),'underline'])CSS.highlights.delete('whdc-quote-'+key);
+   const groups={};for(const q of quotes){
+    const mark=q.markStyle||'yellow';const r=q.anchor?rangeFrom(q.anchor.section,q.anchor.start,q.anchor.end):null;
+    if(r&&normalize(r.toString())===normalize(q.text))(groups[mark]??=[]).push(r);
+   }
+   for(const [key,ranges] of Object.entries(groups))if(ranges.length)CSS.highlights.set('whdc-quote-'+key,new Highlight(...ranges));
+  }
+ };
+ // Existing saved quotes may lack anchors; locate their first matching occurrence.
+ const upgrade=()=>{let changed=false;const list=savedQuotes();for(const q of list){if(q.devotionalId!==d.id||q.anchor)continue;
+  for(let i=0;i<sections().length;i++){const text=sections()[i].textContent;const at=text.indexOf(q.text);if(at>=0){q.anchor={section:i,start:at,end:at+q.text.length};q.markStyle=q.markStyle||'yellow';changed=true;break}}
+ }if(changed)saveQuotes(list)};
+ upgrade();paint();
+ const updateLabel=()=>{const q=matching();saveBtn.textContent=q?'♥ Save Quote':'♡ Save Quote';saveBtn.setAttribute('aria-pressed',q?'true':'false')};
+ const position=()=>{if(!rect)return;bar.hidden=false;const vw=document.documentElement.clientWidth,vh=window.innerHeight,bw=bar.offsetWidth||150,bh=bar.offsetHeight||40;
+  bar.style.left=Math.round(Math.max(8,Math.min(vw-bw-8,(rect.left+rect.right-bw)/2)))+'px';
+  bar.style.top=Math.round(Math.max(8,rect.top>=bh+12?rect.top-bh-8:Math.min(vh-bh-8,rect.bottom+8)))+'px';
+ };
+ const update=()=>{
+  if(!container.isConnected){bar.hidden=true;return}
+  const sel=window.getSelection();if(!sel||sel.isCollapsed||!sel.rangeCount){if(!active){bar.hidden=true;chosen='';anchor=null;palette.hidden=true}return}
+  const r=sel.getRangeAt(0),a=locate(r),t=normalize(sel.toString());if(!a||t.length<2){if(!active)bar.hidden=true;return}
+  chosen=t;anchor=a;const rects=[...r.getClientRects()].filter(x=>x.width&&x.height);const rr=rects[rects.length-1]||r.getBoundingClientRect();
+  rect={left:rr.left,right:rr.right,top:rr.top,bottom:rr.bottom};active=true;updateLabel();position();
+ };
+ const schedule=(ms=180)=>{clearTimeout(quoteSelectionTimer);quoteSelectionTimer=setTimeout(update,ms)};
  container.addEventListener('touchend',()=>{schedule(250);setTimeout(update,500)},{passive:true,signal:quoteSelectionAbort.signal});
  container.addEventListener('pointerup',()=>schedule(120),{signal:quoteSelectionAbort.signal});
  container.addEventListener('mouseup',()=>schedule(80),{signal:quoteSelectionAbort.signal});
- container.addEventListener('keyup',()=>schedule(80),{signal:quoteSelectionAbort.signal});
- document.addEventListener('selectionchange',()=>schedule(220),{signal:quoteSelectionAbort.signal});
- // Save from the captured selection, not the browser's current selection.
- // On iOS, preventing touchstart can suppress the synthetic click entirely.
- let saving=false;
- const saveSelectedQuote=()=>{
-  if(!chosen||saving)return;
-  saving=true;
-  const quoteText=chosen;
-  const list=savedQuotes(),author=String(d.author||'Heather Kusunoki');
-  const exists=list.some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===quoteText);
-  try{
-   if(!exists){
-    const id='quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
-    list.push({id,text:quoteText,author,devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString()});
-    saveQuotes(list);
-   }
-   btn.textContent='♥ Saved';
-   btn.setAttribute('aria-label','Quote saved');
-   chosen='';
-   window.getSelection()?.removeAllRanges();
-   btn.hidden=true;
-  }catch(err){console.error('Unable to save quote',err);btn.textContent='Unable to save quote'}
-  finally{saving=false}
+ document.addEventListener('selectionchange',()=>{
+  const sel=window.getSelection();if(!sel||sel.isCollapsed){if(active){clearTimeout(quoteSelectionTimer);quoteSelectionTimer=setTimeout(()=>{const current=window.getSelection();if(current&&!current.isCollapsed)return;active=false;chosen='';anchor=null;bar.hidden=true;palette.hidden=true},400)}return}schedule(220)
+ },{signal:quoteSelectionAbort.signal});
+ const toggleSave=()=>{
+  if(!chosen)return;
+  const list=savedQuotes(),existing=list.find(q=>same(q));
+  if(existing)saveQuotes(list.filter(q=>q.id!==existing.id));
+  else saveQuotes([...list,{id:'quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9),text:chosen,author:String(d.author||'Heather Kusunoki'),devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString(),anchor,markStyle:'yellow'}]);
+  paint();updateLabel();position();
  };
- // Mouse/pen: keep selection intact until the click handler saves it.
- btn.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')e.preventDefault()},{signal:quoteSelectionAbort.signal});
- // iOS WebKit may not generate click after text selection. Handle touchend directly.
- btn.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();saveSelectedQuote()},{passive:false,signal:quoteSelectionAbort.signal});
- btn.addEventListener('click',e=>{e.preventDefault();saveSelectedQuote()},{signal:quoteSelectionAbort.signal});
+ const applyStyle=style=>{if(!chosen)return;const list=savedQuotes();let q=list.find(x=>same(x));
+  if(!q){q={id:'quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9),text:chosen,author:String(d.author||'Heather Kusunoki'),devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString(),anchor};list.push(q)}
+  q.markStyle=style;q.anchor=anchor||q.anchor;saveQuotes(list);paint();updateLabel();palette.hidden=true;position();
+ };
+ // Preserve the selected text when tapping the floating controls.
+ bar.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')e.preventDefault()},{signal:quoteSelectionAbort.signal});
+ bar.addEventListener('touchend',e=>{const target=e.target.closest('button');if(!target)return;e.preventDefault();e.stopPropagation();if(target===saveBtn)toggleSave();else if(target===toggle){palette.hidden=!palette.hidden;position()}else if(target.dataset.style)applyStyle(target.dataset.style)},{passive:false,signal:quoteSelectionAbort.signal});
+ bar.addEventListener('click',e=>{if(e.detail===0||!('ontouchstart' in window)){const target=e.target.closest('button');if(target===saveBtn)toggleSave();else if(target===toggle){palette.hidden=!palette.hidden;position()}else if(target?.dataset.style)applyStyle(target.dataset.style)}},{signal:quoteSelectionAbort.signal});
+ document.addEventListener('pointerdown',e=>{if(!bar.contains(e.target)&&!container.contains(e.target)&&active){active=false;chosen='';anchor=null;bar.hidden=true;palette.hidden=true}},{signal:quoteSelectionAbort.signal});
 }
 
 function myReadingPlans(){
