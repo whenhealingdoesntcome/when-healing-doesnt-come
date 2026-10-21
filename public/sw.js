@@ -1,8 +1,11 @@
-const CACHE='whdc-public-shell-v12-alert-sync';
+const CACHE='whdc-public-shell-v13-offline-navigation';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
+const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
- await Promise.all(SHELL.map(async path=>{try{const response=await fetch(path,{cache:'reload'});if(response.ok)await cache.put(path,response)}catch{}}));
+ // Do not activate a new worker with a partially downloaded core application.
+ await Promise.all(CORE.map(async path=>{const response=await fetch(path,{cache:'reload'});if(!response.ok)throw Error('Offline shell unavailable: '+path);await cache.put(path,response)}));
+ await Promise.all(SHELL.filter(path=>!CORE.includes(path)).map(async path=>{try{const response=await fetch(path,{cache:'reload'});if(response.ok)await cache.put(path,response)}catch{}}));
  await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
@@ -13,15 +16,24 @@ self.addEventListener('fetch',event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=='GET'||url.origin!==self.location.origin)return;
  if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/admin')||url.pathname.startsWith('/editor')||url.pathname.startsWith('/writer')||url.pathname.startsWith('/cdn-cgi/'))return;
- if(req.mode==='navigate'&&(url.pathname==='/'||url.pathname==='/index.html'||url.pathname==='/bible-reader.html')){
-  event.respondWith((async()=>{try{return await fetch(req)}catch{return await caches.match(url.pathname==='/bible-reader.html'?'/bible-reader.html':'/index.html')||Response.error()}})());return;
+ if(req.mode==='navigate'){
+  event.respondWith((async()=>{
+   const page=url.pathname==='/bible-reader.html'?'/bible-reader.html':'/index.html';
+   try{const response=await fetch(req);if(response.ok){if(url.pathname==='/'||url.pathname==='/index.html'||url.pathname==='/bible-reader.html'){const cache=await caches.open(CACHE);await cache.put(page,response.clone())}return response}throw Error('Navigation unavailable')}
+   catch{return await caches.match(page)||Response.error()}
+  })());return;
  }
  if(SHELL.includes(url.pathname)){
   event.respondWith((async()=>{
-   try{const response=await fetch(req);if(response.ok){const cache=await caches.open(CACHE);await cache.put(url.pathname,response.clone())}return response}
-   catch{return await caches.match(url.pathname)||Response.error()}
-  })());
+   const cached=await caches.match(url.pathname);
+   // Cached app code is served immediately when offline. Fresh assets update on connection.
+   try{const response=await fetch(req);if(response.ok){const cache=await caches.open(CACHE);await cache.put(url.pathname,response.clone());return response}return cached||response}
+   catch{return cached||Response.error()}
+  })());return;
  }
+ // Cache other public same-origin static resources as they are visited.
+ if(!/\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?|json|ico)$/i.test(url.pathname))return;
+ event.respondWith((async()=>{try{const response=await fetch(req);if(response.ok){const cache=await caches.open(CACHE);await cache.put(req,response.clone())}return response}catch{return await caches.match(req)||Response.error()}})());
 });
 
 const BADGE_DB='whdc-badges-v1';
