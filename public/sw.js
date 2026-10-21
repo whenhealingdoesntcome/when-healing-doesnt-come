@@ -1,21 +1,35 @@
-const CACHE='whdc-public-shell-v14-reliable-offline';
+const CACHE='whdc-public-shell-v15-startup-fix';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
+// Populate the cache opportunistically. One unavailable optional resource must not
+// prevent the worker from installing and controlling the offline app.
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
- // Do not activate a new worker with a partially downloaded core application.
- await Promise.all(CORE.map(async path=>{const response=await fetch(path,{cache:'reload'});if(!response.ok)throw Error('Offline shell unavailable: '+path);await cache.put(path,response)}));
- await Promise.all(SHELL.filter(path=>!CORE.includes(path)).map(async path=>{try{const response=await fetch(path,{cache:'reload'});if(response.ok)await cache.put(path,response)}catch{}}));
- // Public content is optional: do not fail the installation if the API is unavailable.
- await Promise.all(['/api/devotionals','/api/reading-plans'].map(async path=>{
-  try{const response=await fetch(path,{cache:'no-store'});if(response.ok&&response.type==='basic'&&!response.headers.has('set-cookie'))await cache.put(path,response)}catch{}
+ const results=await Promise.allSettled(SHELL.map(async path=>{
+  const response=await fetch(path,{cache:'reload'});
+  if(!response.ok||response.type==='opaque')throw Error('Cannot cache '+path);
+  await cache.put(path,response);
  }));
+ // If the landing document cannot be cached, retain the previous working SW.
+ const landing=await cache.match('/index.html');
+ if(!landing)throw Error('Offline entry page unavailable; preserving previous worker');
+ // The other assets will be cached as users visit while online.
  await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
- for(const name of await caches.keys())if(name.startsWith('whdc-public-shell-')&&name!==CACHE)await caches.delete(name);
+ // Preserve older shell caches as a fallback until a later successful update.
  await self.clients.claim();
 })()));
+const cacheLookup=async(path,request)=>{
+ const own=await caches.open(CACHE);
+ return await own.match(request||path)||await caches.match(request||path)||await caches.match(path);
+};
+const fastNetwork=async(request,ms=1300)=>{
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),ms);
+ try{return await fetch(request,{signal:controller.signal})}
+ finally{clearTimeout(timeout)}
+};
 self.addEventListener('fetch',event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=='GET'||url.origin!==self.location.origin)return;
@@ -30,26 +44,31 @@ self.addEventListener('fetch',event=>{
    try{const response=await fetch(req);
     if(response.ok&&response.type==='basic'&&!response.headers.has('set-cookie'))await cache.put(req,response.clone());
     return response;
-   }catch{return await cache.match(req)||Response.error()}
+   }catch{return await cacheLookup(path,req)||Response.error()}
   })());return;
  }
  if(req.mode==='navigate'){
-  // All public app views share index.html; Bible Reader has its own document.
+  // Serve the offline shell immediately when a network connection is unavailable
+  // or stalled. Browser Home Screen launches must not hang indefinitely.
   const page=path==='/bible-reader.html'?'/bible-reader.html':'/index.html';
   event.respondWith((async()=>{
-   const cached=await caches.match(page);
-   try{const response=await fetch(req);
-    if(response.ok){if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
-     const cache=await caches.open(CACHE);await cache.put(page,response.clone());
-    }return response}
+   const cached=await cacheLookup(page);
+   try{
+    const response=await fastNetwork(req,1500);
+    if(response.ok){
+     if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
+      const cache=await caches.open(CACHE);await cache.put(page,response.clone());
+     }
+     return response;
+    }
     return cached||response;
-   }catch{return cached||Response.error()}
+   }catch{return cached||new Response('This page has not been saved for offline use.',{status:503,headers:{'Content-Type':'text/plain'}})}
   })());return;
  }
  if(SHELL.includes(path)){
   event.respondWith((async()=>{
    const cache=await caches.open(CACHE);
-   const cached=await cache.match(path);
+   const cached=await cacheLookup(path);
    // Keep the application runnable even if a network request hangs or fails.
    if(cached){event.waitUntil(fetch(req).then(r=>{if(r.ok&&r.type==='basic')return cache.put(path,r)}).catch(()=>{}));return cached}
    try{const response=await fetch(req);if(response.ok)await cache.put(path,response.clone());return response}
@@ -59,7 +78,7 @@ self.addEventListener('fetch',event=>{
  if(!/\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?|json|ico)$/i.test(path))return;
  event.respondWith((async()=>{
   const cache=await caches.open(CACHE);
-  const cached=await cache.match(req);
+  const cached=await cacheLookup(path,req);
   if(cached)return cached;
   try{const response=await fetch(req);if(response.ok&&response.type==='basic')await cache.put(req,response.clone());return response}
   catch{return Response.error()}
