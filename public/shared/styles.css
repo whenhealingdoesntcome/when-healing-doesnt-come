@@ -67,3 +67,93 @@ body.dark .home-explore-button{background:var(--sage);color:var(--ink)}
 }
 
 .whdc-author-credit{margin:1.7rem 0 .6rem;padding-top:1rem;border-top:1px solid rgba(108,125,110,.22);font-size:.84rem;color:var(--muted,#66736b);text-align:center;letter-spacing:.01em}
+
+/* Compact featured banner on Devotional of the Day page */
+.today-featured-heading{margin:0 0 1rem;text-align:center}
+.today-featured-banner{display:block;width:100%;max-width:650px;height:auto;margin:0 auto;border-radius:14px}
+@media(max-width:650px){.today-featured-heading{margin-bottom:.75rem}.today-featured-banner{max-width:100%;border-radius:12px}}
+
+/* Published devotional preview uses the actual reader and its styles. */
+body.whdc-published-preview .hero,body.whdc-published-preview main.wrap>h2,body.whdc-published-preview main.wrap>.grid{display:none!important}
+body.whdc-published-preview .reading{margin-top:22px}
+
+/* Main Scripture is centered within the short devotional card. */
+.whdc-main-verse{text-align:center;max-width:640px;margin:0 auto 1.8rem;padding:0.35rem 0 0.9rem;}
+.whdc-main-verse p{text-align:center!important;white-space:normal;}
+.whdc-main-verse-reference{margin-top:0.55rem;color:var(--muted);}
+
+/* Home announcement: hidden elements must not reserve any space. */
+.whdc-announcement{box-sizing:border-box;max-width:960px;margin:0 auto 28px;padding:clamp(20px,4vw,38px);background:#7f9991;color:#fff;border-radius:14px;box-shadow:0 8px 22px rgba(45,67,62,.10);text-align:center}
+.whdc-announcement[hidden]{display:none!important}
+.whdc-announcement h2{color:#fff;margin:0 0 14px;font-size:clamp(1.5rem,3vw,2.1rem);letter-spacing:.04em}
+.whdc-announcement p{color:#fff;line-height:1.75;margin:0 0 12px}
+.whdc-announcement p:last-child{margin-bottom:0}
+
+/* Announcement formatting controls in Admin Dashboard. */
+.whdc-format-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+.whdc-format-toolbar button{min-width:38px;padding:6px 12px}
+.whdc-announcement strong{font-weight:700}
+.whdc-announcement em{font-style:italic}
+
+/* Devotional Scripture in Context: Bible Reader-inspired continuous reading */
+.whdc-context-passage + .whdc-context-passage{margin-top:2rem;padding-top:1.4rem;border-top:1px solid var(--line)}
+.whdc-context-passage h4{font:700 1.1rem "Nunito Sans",system-ui,sans-serif;color:var(--ink);margin:0 0 .8rem}
+.whdc-context-text{font-family:inherit;font-size:inherit;line-height:inherit;letter-spacing:inherit}
+.reading .whdc-context-text p{margin:0 0 1.1em;white-space:normal}
+.whdc-context-verse{font:normal .61em system-ui,sans-serif;vertical-align:super;color:#758981;margin-right:.26em;user-select:none}
+.whdc-context-chapter{display:inline-block;font:700 .82em system-ui,sans-serif;color:#637f75;background:#edf3ee;border-radius:5px;padding:0 .4em;margin:0 .35em 0 .15em}
+body.dark .whdc-context-chapter{background:#3c514b;color:#e1eee7}
+body.dark .whdc-context-verse{color:#b1c8be}
+
+/* Reader preferences */
+.reading .card>p,.reading .card>.whdc-main-verse,.reading .deep p,.reading .whdc-context-text{font-size:calc(1rem * var(--whdc-reading-scale,1));line-height:1.7}
+.whdc-reading-settings fieldset{border:0;padding:0;margin:20px 0}
+.whdc-reading-settings legend{font-weight:700;margin-bottom:8px}
+.whdc-reading-settings .whdc-appearance-option{display:flex;align-items:center;gap:10px;font-weight:400;margin:10px 0}
+.whdc-reading-settings input[type=radio]{width:auto;accent-color:#738f85}
+.whdc-reading-settings output{min-width:54px;text-align:center;font-variant-numeric:tabular-nums}
+.whdc-reading-settings button:disabled{opacity:.45;cursor:not-allowed}
+body.dark .whdc-nav,body.dark .whdc-nav .navbtn,body.dark .whdc-nav .navbtn:nth-child(even){background:#2a3335;color:#f0eee8}
+body.dark .whdc-nav .navbtn:hover,body.dark .whdc-nav .navbtn:focus-visible,body.dark .whdc-nav .navbtn[aria-current="page"]{background:#50665e;color:#fff}
+
+/* Live Settings text size sample */
+.whdc-reading-preview{margin-top:16px;padding:15px 18px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.whdc-reading-preview .whdc-preview-label{font-size:.85rem}
+.whdc-reading-preview #readingPreviewText{font-family:inherit;line-height:1.7;margin:8px 0 0;font-size:100%;overflow-wrap:anywhere}
+
+/* Keep the public app header visible while scrolling. */
+body > #app > header{position:sticky;top:0;z-index:1100;isolation:isolate;}
+
+/* Mobile accessibility improvements */
+html{scroll-padding-top:105px}body{overflow-wrap:break-word}img,video,svg{max-width:100%}button,a,input,select,textarea{touch-action:manipulation}header .whdc-menu-button{min-width:44px;min-height:44px}header .whdc-nav .navbtn{min-height:44px}header .whdc-nav .navbtn:focus-visible{outline:3px solid #284f67;outline-offset:-3px}.reading,.card,.deep{min-width:0}.reading p,.reading .whdc-context-text{overflow-wrap:anywhere}@media(max-width:650px){.actions .btn,.actions button{min-height:44px}.card{max-width:100%}}
+
+/* Mobile app uses the five-item bottom navigation instead of the top header.
+   This applies only to the main devotional app; desktop and backend remain unchanged. */
+@media (max-width: 650px) {
+  body > #app > header { display: none !important; }
+  html { scroll-padding-top: 16px; }
+}
+
+/* Notification preferences: compact, touch-friendly layout */
+.whdc-notification-prefs{min-width:0;max-width:100%;box-sizing:border-box;padding:16px;border:1px solid var(--border,#d9dbd6);border-radius:12px}
+.whdc-notification-prefs legend{padding:0 6px;max-width:100%}
+.whdc-notification-choice{display:flex;align-items:center;gap:10px;margin:12px 0;font-weight:600;line-height:1.4}
+.whdc-notification-choice input{flex:none;margin:0;width:20px;height:20px}
+.whdc-reminder-label{display:block;margin:18px 0 6px;font-weight:600}
+.whdc-notification-prefs .whdc-reminder-time{display:block;width:100%;max-width:260px;box-sizing:border-box;margin:0;padding:8px 12px}
+.whdc-reminder-days-title{margin:16px 0 8px}
+.whdc-reminder-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;max-width:440px}
+.whdc-reminder-day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-width:0;padding:6px 0;cursor:pointer;font-size:13px;line-height:1.2;text-align:center}
+.whdc-reminder-day input{width:20px;height:20px;margin:0;flex:none}
+.whdc-notification-actions{display:flex;flex-wrap:wrap;gap:10px}
+@media(max-width:600px){
+ .whdc-notifications{min-width:0;padding:16px!important;box-sizing:border-box}
+ .whdc-notifications #pushEnable{max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:center}
+ .whdc-notification-prefs{padding:12px 10px}
+ .whdc-notification-prefs legend{font-size:1rem}
+ .whdc-notification-choice{font-size:.95rem;gap:9px}
+ .whdc-reminder-days{max-width:100%;gap:2px}
+ .whdc-reminder-day{font-size:12px;padding:5px 0}
+ .whdc-notification-actions{flex-direction:column;align-items:stretch}
+ .whdc-notification-actions .btn{width:100%;max-width:100%;white-space:normal}
+}

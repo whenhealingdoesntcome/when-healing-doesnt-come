@@ -1,0 +1,30 @@
+/* WHDC administrative mobile layouts. Only loaded on private dashboard pages. */
+@media (max-width: 720px) {
+ html { -webkit-text-size-adjust: 100%; }
+ body { overflow-x: hidden; }
+ body > header, body > #app > header { display: block !important; position: relative !important; }
+ header .wrap, header .top, .whdc-header-top { min-width: 0; max-width: 100%; }
+ main.wrap, .wrap, .preview-wrap { width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box; padding-left: 14px; padding-right: 14px; }
+ .hero { padding: 18px 0 10px; }
+ .hero h1, main h1 { font-size: clamp(1.5rem, 6vw, 2rem); line-height: 1.2; overflow-wrap: anywhere; }
+ .card, .preview-detail, .preview-banner, fieldset { min-width: 0; max-width: 100%; box-sizing: border-box; }
+ input:not([type=checkbox]):not([type=radio]), select, textarea { max-width: 100%; box-sizing: border-box; font-size: 16px; }
+ textarea { width: 100%; min-height: 120px; }
+ button, .btn, input[type=submit], input[type=button], summary { min-height: 44px; touch-action: manipulation; }
+ .writer-tabs, .whdc-status-tabs, .preview-tabs, .whdc-toolbar, .writer-row-actions, .preview-top, .toc-controls { flex-wrap: wrap !important; gap: 8px; }
+ .writer-tabs .btn, .whdc-status-tabs .btn, .preview-tabs .btn { flex: 1 1 auto; text-align: center; }
+ .writer-row, .preview-row { flex-wrap: wrap; align-items: flex-start; }
+ .writer-row-actions { width: 100%; }
+ .writer-row-body { min-width: 0; overflow-wrap: anywhere; }
+ .whdc-nav { max-height: min(70vh, 560px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+ .whdc-nav .navbtn { min-height: 44px; }
+ .modal, [role=dialog], dialog { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; }
+ table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+ img, video, audio { max-width: 100%; }
+ pre, code { overflow-wrap: anywhere; }
+ :is(button,a,input,select,textarea,summary):focus-visible { outline: 3px solid #557f75; outline-offset: 2px; }
+}
+@media (max-width: 380px) {
+ main.wrap, .wrap, .preview-wrap { padding-left: 10px; padding-right: 10px; }
+ .writer-tabs .btn, .whdc-status-tabs .btn { padding-left: 9px; padding-right: 9px; }
+}

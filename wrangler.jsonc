@@ -3,17 +3,41 @@
   "name": "when-healing-doesnt-come",
   "main": "src/worker.js",
   "compatibility_date": "2026-10-12",
-  "observability": { "enabled": true },
+  "observability": {
+    "enabled": true
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*", "/admin", "/admin/*"]
+    "run_worker_first": [
+      "/api/*",
+      "/admin",
+      "/admin/*"
+    ]
   },
+  "r2_buckets": [
+    {
+      "binding": "AUDIO_BUCKET",
+      "bucket_name": "whdc-audio"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "whdc-devotionals",
       "database_id": "f3d1c90b-e3b2-44ef-998e-1f56270bc9f3"
     }
-  ]
+  ],
+  "vars": {
+    "CLOUDFLARE_ACCOUNT_ID": "a35cbba1e96e87a6894089a02df4c5da",
+    "CLOUDFLARE_ACCESS_APP_ID": "9fb5734b-9ae9-4eb9-a3aa-e9d4ddd6d0cf",
+    "CLOUDFLARE_WRITERS_POLICY_ID": "f85f3600-b202-459c-937d-50e934e679d1",
+    "VAPID_PUBLIC_KEY": "BJbxVBaZRwybbW_Hb_87fKKsW15RD7Eh8k7lpghHBshsW8JTHvjKS4KxRQ6miwM6NU4fgoZFJ9ARzGKrmeHaa94",
+    "VAPID_SUBJECT": "mailto:whenhealingdoesntcome@gmail.com"
+  },
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  }
 }
