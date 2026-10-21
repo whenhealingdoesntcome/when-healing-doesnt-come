@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v8-badges';
+const CACHE='whdc-public-shell-v9-notification-settings';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
  const cache=await caches.open(CACHE);
@@ -52,7 +52,7 @@ self.addEventListener('push',event=>{
   if(url.origin!==self.location.origin)return;
   const badgeType=data.badgeType||(/^whdc-news-/.test(data.tag||'')?'announcement':/^whdc-daily-/.test(data.tag||'')?'daily':/^whdc-plan-/.test(data.tag||'')?'plan':null);
   if(badgeType)await badgeUpdate(badgeType).catch(()=>{});
-  await self.registration.showNotification(typeof data.title==='string'?data.title.slice(0,100):"When Healing Doesn't Come",{body:typeof data.body==='string'?data.body.slice(0,220):'A new update is available.',icon:'/images/icons/icon-192.png',badge:'/images/icons/icon-192.png',tag:typeof data.tag==='string'?data.tag.slice(0,100):'whdc-notice',data:{url:url.href}});
+  await self.registration.showNotification(typeof data.title==='string'?data.title.slice(0,100):"Notification",{body:typeof data.body==='string'?data.body.slice(0,220):'A new update is available.',icon:'/images/icons/icon-192.png',badge:'/images/icons/icon-192.png',tag:typeof data.tag==='string'?data.tag.slice(0,100):'whdc-notice',data:{url:url.href}});
  })());
 });
 self.addEventListener('notificationclick',event=>{

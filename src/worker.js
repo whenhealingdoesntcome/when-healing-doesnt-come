@@ -418,6 +418,8 @@ const pushValidate=body=>{
  if(!p||typeof p!=='object'||typeof p.announcements_enabled!=='boolean'||typeof p.reminders_enabled!=='boolean'||!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.reminder_local_time)||!Array.isArray(p.reminder_days)||p.reminder_days.length>7||p.reminder_days.some(d=>!Number.isInteger(d)||d<0||d>6)||new Set(p.reminder_days).size!==p.reminder_days.length||typeof p.timezone!=='string'||p.timezone.length>80)throw Error('Invalid notification preferences');
  try{new Intl.DateTimeFormat('en-US',{timeZone:p.timezone})}catch{throw Error('Invalid time zone')}
  if(p.plan_reminders_enabled!==undefined&&typeof p.plan_reminders_enabled!=='boolean')throw Error('Invalid reading plan reminder preference');
+ if(p.plan_reminder_local_time!==undefined&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.plan_reminder_local_time))throw Error('Invalid reading plan time');
+ if(p.plan_reminder_days!==undefined&&(!Array.isArray(p.plan_reminder_days)||p.plan_reminder_days.length>7||p.plan_reminder_days.some(d=>!Number.isInteger(d)||d<0||d>6)||new Set(p.plan_reminder_days).size!==p.plan_reminder_days.length))throw Error('Invalid reading plan days');
  return {sub,p};
 };
 
@@ -477,30 +479,43 @@ async function pushSend(row,env,payload){
  if(!response.ok)throw Error('Push provider rejected request ('+response.status+')');
  return true;
 }
-async function pushPublishAnnouncement(env,revision,title,body){
- const {results=[]}=await env.DB.prepare('SELECT endpoint_hash,endpoint,p256dh,auth,last_announcement_revision FROM push_subscriptions WHERE announcements_enabled=1 AND last_announcement_revision<? LIMIT 1000').bind(revision).all();
+function pushLocalHour(timezone,now=new Date()){
+ try{return Number(new Intl.DateTimeFormat('en-US',{timeZone:timezone||'UTC',hour:'2-digit',hourCycle:'h23'}).format(now))}catch{return -1}
+}
+async function pushPublishAnnouncement(env,revision,title,body,onlyMorning=false){
+ const {results=[]}=await env.DB.prepare('SELECT endpoint_hash,endpoint,p256dh,auth,timezone,last_announcement_revision FROM push_subscriptions WHERE announcements_enabled=1 AND last_announcement_revision<? LIMIT 10000').bind(revision).all();
  const summary=body.replace(/[*_`#]/g,'').slice(0,180);
  for(let i=0;i<results.length;i+=10)await Promise.all(results.slice(i,i+10).map(async row=>{
   try{
-   const sent=await pushSend(row,env,{title:title||"What's New",body:summary,url:'/#home',tag:'whdc-news-'+revision});
-   if(sent)await env.DB.prepare('UPDATE push_subscriptions SET last_announcement_revision=? WHERE endpoint_hash=? AND last_announcement_revision<?').bind(revision,row.endpoint_hash,revision).run();
+   const hour=pushLocalHour(row.timezone);
+   if(onlyMorning?hour!==8:hour<8||hour>=21)return;
+   const claim=await env.DB.prepare('UPDATE push_subscriptions SET last_announcement_revision=? WHERE endpoint_hash=? AND announcements_enabled=1 AND last_announcement_revision<?').bind(revision,row.endpoint_hash,revision).run();
+   if(!claim.meta?.changes)return;
+   try{await pushSend(row,env,{title:"What's New",body:summary,url:'/#home',tag:'whdc-news-'+revision,badgeType:'announcement'})}
+   catch(e){await env.DB.prepare('UPDATE push_subscriptions SET last_announcement_revision=? WHERE endpoint_hash=? AND last_announcement_revision=?').bind(revision-1,row.endpoint_hash,revision).run();throw e}
   }catch(e){console.error('Announcement push failed',e)}
  }));
+}
+async function pushDeferredAnnouncements(env){
+ const row=await env.DB.prepare('SELECT title,body,revision,visible FROM site_announcement WHERE id=1').first();
+ if(row?.visible&&row.revision>0)await pushPublishAnnouncement(env,row.revision,row.title,row.body,true);
 }
 async function ensurePlanReminderColumns(env){
  const cols=(await env.DB.prepare('PRAGMA table_info(push_subscriptions)').all()).results||[];
  if(!cols.some(c=>c.name==='plan_reminders_enabled'))await env.DB.prepare('ALTER TABLE push_subscriptions ADD COLUMN plan_reminders_enabled INTEGER NOT NULL DEFAULT 0').run();
+ if(!cols.some(c=>c.name==='plan_reminder_local_time'))await env.DB.prepare("ALTER TABLE push_subscriptions ADD COLUMN plan_reminder_local_time TEXT NOT NULL DEFAULT '08:00'").run();
+ if(!cols.some(c=>c.name==='plan_reminder_days'))await env.DB.prepare("ALTER TABLE push_subscriptions ADD COLUMN plan_reminder_days TEXT NOT NULL DEFAULT '[0,1,2,3,4,5,6]'").run();
  if(!cols.some(c=>c.name==='last_plan_local_date'))await env.DB.prepare('ALTER TABLE push_subscriptions ADD COLUMN last_plan_local_date TEXT').run();
 }
 async function pushReadingPlanReminders(env){
  await ensurePlanReminderColumns(env);
- const now=new Date();const {results=[]}=await env.DB.prepare('SELECT endpoint_hash,endpoint,p256dh,auth,reminder_local_time,reminder_days,timezone,last_plan_local_date FROM push_subscriptions WHERE plan_reminders_enabled=1 LIMIT 10000').all();
+ const now=new Date();const {results=[]}=await env.DB.prepare('SELECT endpoint_hash,endpoint,p256dh,auth,plan_reminder_local_time,plan_reminder_days,timezone,last_plan_local_date FROM push_subscriptions WHERE plan_reminders_enabled=1 LIMIT 10000').all();
  for(let i=0;i<results.length;i+=10)await Promise.all(results.slice(i,i+10).map(async row=>{
   try{const parts=Object.fromEntries(new Intl.DateTimeFormat('en-US',{timeZone:row.timezone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(now).map(p=>[p.type,p.value]));
    const date=parts.year+'-'+parts.month+'-'+parts.day;
-   if(parts.hour+':'+parts.minute!==row.reminder_local_time||!JSON.parse(row.reminder_days||'[]').includes(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(parts.weekday))||row.last_plan_local_date===date)return;
+   if(parts.hour+':'+parts.minute!==row.plan_reminder_local_time||!JSON.parse(row.plan_reminder_days||'[]').includes(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(parts.weekday))||row.last_plan_local_date===date)return;
    const claim=await env.DB.prepare("UPDATE push_subscriptions SET last_plan_local_date=? WHERE endpoint_hash=? AND plan_reminders_enabled=1 AND (last_plan_local_date IS NULL OR last_plan_local_date<>?)").bind(date,row.endpoint_hash,date).run();if(!claim.meta?.changes)return;
-   try{await pushSend(row,env,{title:'Your Reading Plan',body:'Continue your reading plan when you are ready.',url:'/#plans',tag:'whdc-plan-'+date,badgeType:'plan'})}
+   try{await pushSend(row,env,{title:'Reading Reminder',body:'Continue your reading plan when you are ready.',url:'/#plans',tag:'whdc-plan-'+date,badgeType:'plan'})}
    catch(e){console.error('Plan reminder push failed',e);await env.DB.prepare('UPDATE push_subscriptions SET last_plan_local_date=NULL WHERE endpoint_hash=? AND last_plan_local_date=?').bind(row.endpoint_hash,date).run()}
   }catch(e){console.error('Plan reminder processing failed',e)}
  }));
@@ -519,7 +534,7 @@ async function pushDailyReminders(env){
    // Atomic claim prevents overlapping cron invocations from sending duplicates.
    const claim=await env.DB.prepare("UPDATE push_subscriptions SET last_reminder_local_date=? WHERE endpoint_hash=? AND reminders_enabled=1 AND (last_reminder_local_date IS NULL OR last_reminder_local_date<>?)").bind(date,row.endpoint_hash,date).run();
    if(!claim.meta?.changes)return;
-   try{await pushSend(row,env,{title:'Your Daily Devotional',body:"Take a moment with today's devotional.",url:'/#today',tag:'whdc-daily-'+date})}
+   try{await pushSend(row,env,{title:"Today's Devotional",body:"Take a moment with today's devotional.",url:'/#today',tag:'whdc-daily-'+date})}
    catch(e){console.error('Daily reminder push failed',e);await env.DB.prepare('UPDATE push_subscriptions SET last_reminder_local_date=NULL WHERE endpoint_hash=? AND last_reminder_local_date=?').bind(row.endpoint_hash,date).run()}
   }catch(e){console.error('Daily reminder processing failed',e)}
  }));
@@ -546,8 +561,8 @@ export default {async fetch(request,env,ctx){
     const endpoint=url.searchParams.get('endpoint')||'';
     if(endpoint.length<10||endpoint.length>2048)return fail('Invalid endpoint');
     const hash=await pushDigest(endpoint);
-    try{await ensurePlanReminderColumns(env);const row=await env.DB.prepare('SELECT announcements_enabled,reminders_enabled,reminder_local_time,reminder_days,timezone,plan_reminders_enabled FROM push_subscriptions WHERE endpoint_hash=? AND endpoint=?').bind(hash,endpoint).first();
-      return json({preferences:row?{announcements_enabled:!!row.announcements_enabled,reminders_enabled:!!row.reminders_enabled,reminder_local_time:row.reminder_local_time,reminder_days:JSON.parse(row.reminder_days),timezone:row.timezone,plan_reminders_enabled:!!row.plan_reminders_enabled}:null});
+    try{await ensurePlanReminderColumns(env);const row=await env.DB.prepare('SELECT announcements_enabled,reminders_enabled,reminder_local_time,reminder_days,timezone,plan_reminders_enabled,plan_reminder_local_time,plan_reminder_days FROM push_subscriptions WHERE endpoint_hash=? AND endpoint=?').bind(hash,endpoint).first();
+      return json({preferences:row?{announcements_enabled:!!row.announcements_enabled,reminders_enabled:!!row.reminders_enabled,reminder_local_time:row.reminder_local_time,reminder_days:JSON.parse(row.reminder_days),timezone:row.timezone,plan_reminders_enabled:!!row.plan_reminders_enabled,plan_reminder_local_time:row.plan_reminder_local_time,plan_reminder_days:JSON.parse(row.plan_reminder_days)}:null});
     }catch{return fail('Notification database unavailable',503)}
   }
   if((path==='/api/push/subscribe'||path==='/api/push/unsubscribe')&&request.method==='POST'){
@@ -562,10 +577,10 @@ export default {async fetch(request,env,ctx){
     const {sub,p}=validated;
     try{
       await ensurePlanReminderColumns(env);
-      await env.DB.prepare(`INSERT INTO push_subscriptions(endpoint_hash,endpoint,p256dh,auth,announcements_enabled,reminders_enabled,reminder_local_time,reminder_days,timezone,plan_reminders_enabled)
-      VALUES(?,?,?,?,?,?,?,?,?,?)
-      ON CONFLICT(endpoint_hash) DO UPDATE SET endpoint=excluded.endpoint,p256dh=excluded.p256dh,auth=excluded.auth,announcements_enabled=excluded.announcements_enabled,reminders_enabled=excluded.reminders_enabled,reminder_local_time=excluded.reminder_local_time,reminder_days=excluded.reminder_days,timezone=excluded.timezone,plan_reminders_enabled=excluded.plan_reminders_enabled,updated_at=CURRENT_TIMESTAMP`)
-      .bind(await pushDigest(sub.endpoint),sub.endpoint,sub.keys.p256dh,sub.keys.auth,Number(p.announcements_enabled),Number(p.reminders_enabled),p.reminder_local_time,JSON.stringify(p.reminder_days),p.timezone,Number(!!p.plan_reminders_enabled)).run();
+      await env.DB.prepare(`INSERT INTO push_subscriptions(endpoint_hash,endpoint,p256dh,auth,announcements_enabled,reminders_enabled,reminder_local_time,reminder_days,timezone,plan_reminders_enabled,plan_reminder_local_time,plan_reminder_days)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(endpoint_hash) DO UPDATE SET endpoint=excluded.endpoint,p256dh=excluded.p256dh,auth=excluded.auth,announcements_enabled=excluded.announcements_enabled,reminders_enabled=excluded.reminders_enabled,reminder_local_time=excluded.reminder_local_time,reminder_days=excluded.reminder_days,timezone=excluded.timezone,plan_reminders_enabled=excluded.plan_reminders_enabled,plan_reminder_local_time=excluded.plan_reminder_local_time,plan_reminder_days=excluded.plan_reminder_days,updated_at=CURRENT_TIMESTAMP`)
+      .bind(await pushDigest(sub.endpoint),sub.endpoint,sub.keys.p256dh,sub.keys.auth,Number(p.announcements_enabled),Number(p.reminders_enabled),p.reminder_local_time,JSON.stringify(p.reminder_days),p.timezone,Number(!!p.plan_reminders_enabled),p.plan_reminder_local_time||p.reminder_local_time,JSON.stringify(p.plan_reminder_days||p.reminder_days)).run();
       return json({ok:true,preferences:p});
     }catch{return fail('Notification database unavailable',503)}
   }
@@ -1259,5 +1274,5 @@ export default {async fetch(request,env,ctx){
   if(path==='/admin.html'||path==='/admin.js')return fail('Not found',404); // never serve dashboard assets without Access
   return env.ASSETS.fetch(request);
 },
- async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env)]).catch(e=>console.error('Scheduled notifications failed',e)))}
+ async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env),pushDeferredAnnouncements(env)]).catch(e=>console.error('Scheduled notifications failed',e)))}
 };
