@@ -51,7 +51,8 @@ self.addEventListener('message',event=>{
   await badgeWrite('counts',counts);
   const total=['announcement','daily','plan'].reduce((n,k)=>n+(prefs[k]===false?0:counts[k]||0),0);
   if('setAppBadge' in self.navigator){try{if(total)await self.navigator.setAppBadge(Math.min(total,99));else await self.navigator.clearAppBadge()}catch{}}
-  event.ports?.[0]?.postMessage({counts,prefs});
+  const alerts=notices.map(n=>{const tag=n.tag||'';const kind=tag.startsWith('whdc-news-')?'announcement':tag.startsWith('whdc-daily-')?'daily':tag.startsWith('whdc-plan-')?'plan':null;return kind?{type:kind,title:n.title||'',body:n.body||''}:null}).filter(Boolean);
+  event.ports?.[0]?.postMessage({counts,prefs,alerts});
  })().catch(()=>event.ports?.[0]?.postMessage(null)));
  if(msg.type==='WHDC_ALERT_CLEAR_ALL')event.waitUntil((async()=>{await badgeWrite('counts',{announcement:0,daily:0,plan:0});if('clearAppBadge'in self.navigator)await self.navigator.clearAppBadge();const notices=await self.registration.getNotifications();notices.forEach(n=>n.close());event.ports?.[0]?.postMessage({ok:true});})().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
  if(msg.type==='WHDC_BADGE_CLEAR')event.waitUntil((async()=>{
