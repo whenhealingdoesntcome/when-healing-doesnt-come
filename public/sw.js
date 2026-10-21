@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v13-offline-navigation';
+const CACHE='whdc-public-shell-v14-reliable-offline';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
@@ -6,6 +6,10 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  // Do not activate a new worker with a partially downloaded core application.
  await Promise.all(CORE.map(async path=>{const response=await fetch(path,{cache:'reload'});if(!response.ok)throw Error('Offline shell unavailable: '+path);await cache.put(path,response)}));
  await Promise.all(SHELL.filter(path=>!CORE.includes(path)).map(async path=>{try{const response=await fetch(path,{cache:'reload'});if(response.ok)await cache.put(path,response)}catch{}}));
+ // Public content is optional: do not fail the installation if the API is unavailable.
+ await Promise.all(['/api/devotionals','/api/reading-plans'].map(async path=>{
+  try{const response=await fetch(path,{cache:'no-store'});if(response.ok&&response.type==='basic'&&!response.headers.has('set-cookie'))await cache.put(path,response)}catch{}
+ }));
  await self.skipWaiting();
 })()));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
@@ -15,25 +19,51 @@ self.addEventListener('activate',event=>event.waitUntil((async()=>{
 self.addEventListener('fetch',event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=='GET'||url.origin!==self.location.origin)return;
- if(url.pathname.startsWith('/api/')||url.pathname.startsWith('/admin')||url.pathname.startsWith('/editor')||url.pathname.startsWith('/writer')||url.pathname.startsWith('/cdn-cgi/'))return;
+ const path=url.pathname;
+ // Never store authenticated, private, or account-specific responses.
+ if(path.startsWith('/admin')||path.startsWith('/editor')||path.startsWith('/writer')||path.startsWith('/cdn-cgi/'))return;
+ if(path.startsWith('/api/')){
+  // Only cache published, public read-only resources. Other APIs stay network-only.
+  if(!['/api/devotionals','/api/reading-plans','/api/scripture'].includes(path))return;
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE);
+   try{const response=await fetch(req);
+    if(response.ok&&response.type==='basic'&&!response.headers.has('set-cookie'))await cache.put(req,response.clone());
+    return response;
+   }catch{return await cache.match(req)||Response.error()}
+  })());return;
+ }
  if(req.mode==='navigate'){
+  // All public app views share index.html; Bible Reader has its own document.
+  const page=path==='/bible-reader.html'?'/bible-reader.html':'/index.html';
   event.respondWith((async()=>{
-   const page=url.pathname==='/bible-reader.html'?'/bible-reader.html':'/index.html';
-   try{const response=await fetch(req);if(response.ok){if(url.pathname==='/'||url.pathname==='/index.html'||url.pathname==='/bible-reader.html'){const cache=await caches.open(CACHE);await cache.put(page,response.clone())}return response}throw Error('Navigation unavailable')}
-   catch{return await caches.match(page)||Response.error()}
+   const cached=await caches.match(page);
+   try{const response=await fetch(req);
+    if(response.ok){if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
+     const cache=await caches.open(CACHE);await cache.put(page,response.clone());
+    }return response}
+    return cached||response;
+   }catch{return cached||Response.error()}
   })());return;
  }
- if(SHELL.includes(url.pathname)){
+ if(SHELL.includes(path)){
   event.respondWith((async()=>{
-   const cached=await caches.match(url.pathname);
-   // Cached app code is served immediately when offline. Fresh assets update on connection.
-   try{const response=await fetch(req);if(response.ok){const cache=await caches.open(CACHE);await cache.put(url.pathname,response.clone());return response}return cached||response}
-   catch{return cached||Response.error()}
+   const cache=await caches.open(CACHE);
+   const cached=await cache.match(path);
+   // Keep the application runnable even if a network request hangs or fails.
+   if(cached){event.waitUntil(fetch(req).then(r=>{if(r.ok&&r.type==='basic')return cache.put(path,r)}).catch(()=>{}));return cached}
+   try{const response=await fetch(req);if(response.ok)await cache.put(path,response.clone());return response}
+   catch{return Response.error()}
   })());return;
  }
- // Cache other public same-origin static resources as they are visited.
- if(!/\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?|json|ico)$/i.test(url.pathname))return;
- event.respondWith((async()=>{try{const response=await fetch(req);if(response.ok){const cache=await caches.open(CACHE);await cache.put(req,response.clone())}return response}catch{return await caches.match(req)||Response.error()}})());
+ if(!/\.(?:js|css|png|jpg|jpeg|webp|svg|woff2?|json|ico)$/i.test(path))return;
+ event.respondWith((async()=>{
+  const cache=await caches.open(CACHE);
+  const cached=await cache.match(req);
+  if(cached)return cached;
+  try{const response=await fetch(req);if(response.ok&&response.type==='basic')await cache.put(req,response.clone());return response}
+  catch{return Response.error()}
+ })());
 });
 
 const BADGE_DB='whdc-badges-v1';
