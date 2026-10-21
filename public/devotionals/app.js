@@ -90,11 +90,12 @@ function openWHDCReminderPopup(kind,onClose){
  document.getElementById('whdcReminderOverlay')?.remove();
  const isPlan=kind==='plan',key='whdc-push-preferences-v2',draft=(()=>{try{return JSON.parse(localStorage.getItem(key)||'{}')}catch{return {}}})();
  const timeKey=isPlan?'plan_reminder_local_time':'memory_reminder_local_time',daysKey=isPlan?'plan_reminder_days':'memory_reminder_days',enabledKey=isPlan?'plan_reminders_requested':'memory_reminders_enabled';
- const old=document.activeElement,overlay=document.createElement('div');overlay.id='whdcReminderOverlay';overlay.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px';
+ const old=document.activeElement,overlay=document.createElement('div');overlay.id='whdcReminderOverlay';overlay.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:12px';
  const days=Array.isArray(draft[daysKey])?draft[daysKey]:[0,1,2,3,4,5,6];
- overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="whdcReminderTitle" style="width:min(100%,440px);max-height:90vh;overflow:auto;background:var(--card,var(--surface,#fff));color:var(--text,inherit);border:1px solid var(--border,#bbb);border-radius:14px;padding:22px;box-shadow:0 12px 40px #0004"><h2 id="whdcReminderTitle">${isPlan?'Reading Plan Reminder':'Scripture Memory Reminder'}</h2><p>${isPlan?'Would you like a reminder to continue your reading plan?':'Choose when you would like to practice your saved verses.'}</p><div id="whdcReminderFields"><label for="whdcPopupTime">Reminder time</label><input id="whdcPopupTime" type="time" value="${draft[timeKey]||'08:00'}" style="display:block;margin:8px 0 12px;min-height:44px;font:inherit"><p>Reminder days</p><div style="display:flex;flex-wrap:wrap;gap:10px">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<label><input type="checkbox" name="whdcPopupDay" value="${i}" ${days.includes(i)?'checked':''}> ${d}</label>`).join('')}</div></div><p id="whdcPopupStatus" role="status" class="muted small"></p><div class="actions" style="margin-top:18px"><button class="btn primary" id="whdcPopupSave" type="button">Save Settings</button><button class="btn" id="whdcPopupCancel" type="button">${isPlan?'No, thanks':'Cancel'}</button></div></section>`;
+ overlay.innerHTML=`<section role="dialog" aria-modal="true" aria-labelledby="whdcReminderTitle" style="width:min(100%,360px);max-height:calc(100dvh - 24px);overflow:auto;background:var(--card,var(--surface,#fff));color:var(--text,inherit);border:1px solid var(--border,#bbb);border-radius:14px;padding:16px;box-shadow:0 12px 40px #0004"><h2 id="whdcReminderTitle">${isPlan?'Reading Plan Reminder':'Scripture Memory Reminder'}</h2><p>${isPlan?'Would you like a reminder to continue your reading plan?':'Choose when you would like to practice your saved verses.'}</p><div id="whdcReminderChoice" ${isPlan?'':'hidden'} style="display:${isPlan?'flex':'none'};gap:10px;flex-wrap:wrap;margin-top:14px"><button type="button" class="btn primary" id="whdcPopupYes">Yes</button><button type="button" class="btn" id="whdcPopupNo">No</button></div><div id="whdcReminderFields" ${isPlan?'hidden':''}><label for="whdcPopupTime">Reminder time</label><input id="whdcPopupTime" type="time" value="${draft[timeKey]||'08:00'}" style="display:block;margin:8px 0 12px;min-height:44px;font:inherit"><p style="margin:8px 0">Reminder days</p><div style="display:flex;flex-wrap:wrap;gap:7px 10px;font-size:13px">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`<label><input type="checkbox" name="whdcPopupDay" value="${i}" ${days.includes(i)?'checked':''}> ${d}</label>`).join('')}</div></div><p id="whdcPopupStatus" role="status" class="muted small"></p><div class="actions" id="whdcPopupActions" style="margin-top:14px;display:${isPlan?'none':'flex'}" ${isPlan?'hidden':''}><button class="btn primary" id="whdcPopupSave" type="button">Save Settings</button><button class="btn" id="whdcPopupCancel" type="button">Cancel</button></div></section>`;
  document.body.appendChild(overlay);const close=()=>{overlay.remove();old?.focus?.();onClose?.()};
  overlay.querySelector('#whdcPopupCancel').onclick=close;
+ if(isPlan){overlay.querySelector('#whdcPopupNo').onclick=close;overlay.querySelector('#whdcPopupYes').onclick=()=>{overlay.querySelector('#whdcReminderChoice').hidden=true;overlay.querySelector('#whdcReminderChoice').style.display='none';overlay.querySelector('#whdcReminderFields').hidden=false;overlay.querySelector('#whdcPopupActions').hidden=false;overlay.querySelector('#whdcPopupActions').style.display='flex';};}
  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
  overlay.querySelector('#whdcPopupSave').onclick=async()=>{
   const button=overlay.querySelector('#whdcPopupSave'),status=overlay.querySelector('#whdcPopupStatus');button.disabled=true;
@@ -114,7 +115,7 @@ function openWHDCReminderPopup(kind,onClose){
   }catch(e){console.warn('Reminder preference:',e.message);alert(e.message)}
   close();
  };
- overlay.querySelector('#whdcPopupTime').focus();
+ if(isPlan)overlay.querySelector('#whdcPopupYes').focus();
 }
 function wireNotificationSettings(){
  const el=id=>document.getElementById(id),status=el('pushStatus'),setStatus=t=>status.textContent=t;
@@ -464,7 +465,7 @@ function wireDevotionalQuoteSelection(){
   if(!eligible){btn.hidden=true;chosen='';return}
   const text=sel.toString().replace(/\s+/g,' ').trim();
   if(text.length<2)return;
-  chosen=text;btn.textContent='♡ Save Quote';
+  chosen=text;const alreadySaved=savedQuotes().some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===text);btn.textContent=alreadySaved?'♥ Save Quote':'♡ Save Quote';btn.setAttribute('aria-label',alreadySaved?'Quote already saved':'Save highlighted devotional quote');
   const rects=[...range.getClientRects()].filter(r=>r.width&&r.height);
   const rect=rects[rects.length-1]||range.getBoundingClientRect();
   if(rect&&Number.isFinite(rect.left)&&Number.isFinite(rect.bottom))lastRect={left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom};
@@ -489,7 +490,7 @@ function wireDevotionalQuoteSelection(){
  btn.onclick=()=>{
   if(!chosen)return;
   const list=savedQuotes(),author=String(d.author||'Heather Kusunoki'),id='quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
-  try{list.push({id,text:chosen,author,devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString()});saveQuotes(list);btn.textContent='♥ Quote Saved';window.getSelection()?.removeAllRanges();chosen='';setTimeout(()=>{btn.hidden=true},1200)}
+  try{if(!list.some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===chosen)){list.push({id,text:chosen,author,devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString()});saveQuotes(list)}btn.textContent='♥ Saved';window.getSelection()?.removeAllRanges();chosen='';btn.hidden=true}
   catch{btn.textContent='Unable to save quote'}
  };
 }
@@ -596,7 +597,7 @@ function wirePlans(){
  document.getElementById('planBack')?.addEventListener('click',()=>nav('plans'));
  document.getElementById('planStart')?.addEventListener('click',()=>{
   const p=planItems().find(x=>x.id===selectedReadingPlan);if(!p)return;
-  localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify([...new Set([...planEnrollments(),p.id])]));syncReadingPlanPush().catch(()=>{});
+  localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify([...new Set([...planEnrollments(),p.id])]));
   openWHDCReminderPopup('plan',()=>openFromReadingPlan(p.devotional_ids.find(id=>!readDate(id))||p.devotional_ids[0],p.id));
  });
  document.getElementById('planLeave')?.addEventListener('click',()=>{localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify(planEnrollments().filter(id=>id!==selectedReadingPlan)));syncReadingPlanPush().catch(()=>{});render()});
