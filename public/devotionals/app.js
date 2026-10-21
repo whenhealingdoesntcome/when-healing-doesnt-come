@@ -484,15 +484,34 @@ function wireDevotionalQuoteSelection(){
  container.addEventListener('mouseup',()=>schedule(80),{signal:quoteSelectionAbort.signal});
  container.addEventListener('keyup',()=>schedule(80),{signal:quoteSelectionAbort.signal});
  document.addEventListener('selectionchange',()=>schedule(220),{signal:quoteSelectionAbort.signal});
- // Prevent tapping the floating button from collapsing the selection before saving.
- btn.addEventListener('pointerdown',e=>e.preventDefault(),{signal:quoteSelectionAbort.signal});
- btn.addEventListener('touchstart',e=>e.preventDefault(),{passive:false,signal:quoteSelectionAbort.signal});
- btn.onclick=()=>{
-  if(!chosen)return;
-  const list=savedQuotes(),author=String(d.author||'Heather Kusunoki'),id='quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
-  try{if(!list.some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===chosen)){list.push({id,text:chosen,author,devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString()});saveQuotes(list)}btn.textContent='♥ Saved';window.getSelection()?.removeAllRanges();chosen='';btn.hidden=true}
-  catch{btn.textContent='Unable to save quote'}
+ // Save from the captured selection, not the browser's current selection.
+ // On iOS, preventing touchstart can suppress the synthetic click entirely.
+ let saving=false;
+ const saveSelectedQuote=()=>{
+  if(!chosen||saving)return;
+  saving=true;
+  const quoteText=chosen;
+  const list=savedQuotes(),author=String(d.author||'Heather Kusunoki');
+  const exists=list.some(q=>q.devotionalId===d.id&&q.text.replace(/\s+/g,' ').trim()===quoteText);
+  try{
+   if(!exists){
+    const id='quote-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9);
+    list.push({id,text:quoteText,author,devotionalId:d.id,devotionalTitle:d.title,savedAt:new Date().toISOString()});
+    saveQuotes(list);
+   }
+   btn.textContent='♥ Saved';
+   btn.setAttribute('aria-label','Quote saved');
+   chosen='';
+   window.getSelection()?.removeAllRanges();
+   btn.hidden=true;
+  }catch(err){console.error('Unable to save quote',err);btn.textContent='Unable to save quote'}
+  finally{saving=false}
  };
+ // Mouse/pen: keep selection intact until the click handler saves it.
+ btn.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch')e.preventDefault()},{signal:quoteSelectionAbort.signal});
+ // iOS WebKit may not generate click after text selection. Handle touchend directly.
+ btn.addEventListener('touchend',e=>{e.preventDefault();e.stopPropagation();saveSelectedQuote()},{passive:false,signal:quoteSelectionAbort.signal});
+ btn.addEventListener('click',e=>{e.preventDefault();saveSelectedQuote()},{signal:quoteSelectionAbort.signal});
 }
 
 function myReadingPlans(){
