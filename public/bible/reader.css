@@ -92,3 +92,19 @@ html{scroll-padding-top:110px}body{overflow-wrap:break-word}button,select,input{
 .dark .whdc-header-top .mobile-bible-toolbar select{background-color:#283c39!important;color:#f2f5f0!important;-webkit-text-fill-color:#f2f5f0!important;border-color:#90a79c!important}
 .dark .whdc-header-top .mobile-bible-toolbar button{color:#f2f5f0!important}
 .dark .whdc-header-top .mobile-bible-toolbar button:hover{background-color:#40594f!important}
+
+/* Bible header colors follow the reader's own light/dark appearance setting. */
+body:not(.dark) .site-header{background:#fffefa!important;color:#263d36!important;border-bottom-color:#deded8!important}
+body.dark .site-header{background:#223132!important;color:#f2f5f0!important;border-bottom-color:#465952!important}
+body:not(.dark) .site-header .mobile-bible-toolbar{background:transparent!important;color:#263d36!important}
+body.dark .site-header .mobile-bible-toolbar{background:transparent!important;color:#f2f5f0!important}
+/* Keep book and chapter dropdowns white in both desktop themes. */
+@media(min-width:801px){
+ .whdc-header-top .mobile-bible-toolbar select,
+ body.dark .whdc-header-top .mobile-bible-toolbar select{background:#fff!important;color:#263d36!important;-webkit-text-fill-color:#263d36!important;border-color:#849d92!important;opacity:1!important;color-scheme:light}
+}
+/* Search floats over the current Scripture instead of pushing the page down. */
+#bibleSearchPanel.whdc-mobile-search-open{position:fixed!important;top:calc(var(--bible-search-top, 82px) + 8px);right:clamp(12px,4vw,48px);left:auto;width:min(520px,calc(100vw - 24px));max-height:calc(100dvh - 110px);overflow-y:auto;z-index:1100;margin:0!important;padding:0!important;background:transparent!important;box-shadow:0 12px 35px rgba(0,0,0,.24);border-radius:14px}
+#bibleSearchPanel.whdc-mobile-search-open form{margin:0;background:#fffefa;color:#263d36;border:1px solid #b6c6bc}
+body.dark #bibleSearchPanel.whdc-mobile-search-open form{background:#223132;color:#f2f5f0;border-color:#627b70}
+@media(max-width:800px){#bibleSearchPanel.whdc-mobile-search-open{top:calc(var(--bible-search-top, 64px) + 5px);right:8px;width:calc(100vw - 16px)}}

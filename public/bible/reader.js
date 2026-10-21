@@ -66,8 +66,9 @@ if(mobileBook&&mobileChapter){
   $('mobileReaderSettings')?.setAttribute('aria-expanded','false');
   panel.style.display=open?'block':'none';
   $('mobileSearchToggle').setAttribute('aria-expanded',String(open));
-  if(open)$('bibleSearch').focus();
+  if(open)$('bibleSearch').focus({preventScroll:true});
  });
+ document.addEventListener('keydown',event=>{if(event.key==='Escape'){const panel=$('bibleSearchPanel');if(panel?.classList.contains('whdc-mobile-search-open')){panel.classList.remove('whdc-mobile-search-open');panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');$('mobileSearchToggle')?.focus({preventScroll:true});}}});
  $('mobileReaderSettings')?.addEventListener('click',()=>{
   const opts=$('mobileReaderOptions');if(!opts)return;
   const open=!opts.open;
