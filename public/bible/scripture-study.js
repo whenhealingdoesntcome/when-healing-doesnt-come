@@ -26,7 +26,10 @@ const css=document.createElement('style');css.textContent=`
 #whdcStudyActions button[aria-expanded="true"]{background:#e7e2d8;border-color:#827974}
 #whdcStudyBar button{font:inherit;font-size:.85rem;border:1px solid #c7c1b8;border-radius:8px;background:transparent;color:inherit;padding:7px 9px;cursor:pointer}
 #whdcStudyBar button:focus-visible,#whdcStudyToggle:focus-visible{outline:2px solid #393f4a}
-#whdcStudyActions{display:flex;gap:6px;flex-wrap:wrap}
+#whdcStudyActions{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
+#whdcStudyMarkActions,#whdcStudySaveActions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#whdcStudySaveActions{margin-left:auto;padding-left:10px;border-left:1px solid #c7c1b8;justify-content:flex-end}
+@media(max-width:440px){#whdcStudyActions{gap:8px}#whdcStudySaveActions{width:100%;border-left:0;border-top:1px solid #c7c1b8;padding:8px 0 0;margin-left:0}}
 #whdcStudyPalette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px;max-height:38vh;overflow:auto}
 #whdcStudyPalette button{text-align:left;display:flex;align-items:center;gap:7px}
 .whdcStudyDot{display:inline-block;width:15px;height:15px;border-radius:50%;flex:none}
@@ -41,7 +44,7 @@ const css=document.createElement('style');css.textContent=`
 #reading .whdc-linked-verse-fallback{background:#ffe58c;border-radius:3px}
 `;document.head.append(css);
 const toggle=document.createElement('button');toggle.id='whdcStudyToggle';toggle.type='button';toggle.textContent='✎ Study';toggle.setAttribute('aria-expanded','false');
-const bar=document.createElement('div');bar.id='whdcStudyBar';bar.hidden=true;bar.innerHTML='<div id="whdcStudyHeader"><p id="whdcStudyHint">Touch and hold or drag to select words. Only selected text is marked.</p><button type="button" id="whdcStudyClose" aria-label="Close Study menu" title="Close Study menu">×</button></div><div id="whdcStudyActions"><button type="button" data-action="highlight">Highlight ▾</button><button type="button" data-action="circle">◯ Circle</button><button type="button" data-action="underline">U̲ Underline</button><button type="button" data-action="favorite">♡ Save to Favorites</button><button type="button" data-action="note">▤ Add Note</button><button type="button" data-action="erase">Remove All Marks</button><button type="button" data-action="undo" disabled aria-label="Undo last study mark">↶ Undo</button></div><div id="whdcStudyPalette" hidden></div><div id="whdcStudyNotice" role="status"></div>';
+const bar=document.createElement('div');bar.id='whdcStudyBar';bar.hidden=true;bar.innerHTML='<div id="whdcStudyHeader"><p id="whdcStudyHint">Touch and hold or drag to select words. Only selected text is marked.</p><button type="button" id="whdcStudyClose" aria-label="Close Study menu" title="Close Study menu">×</button></div><div id="whdcStudyActions"><div id="whdcStudyMarkActions"><button type="button" data-action="highlight">Highlight ▾</button><button type="button" data-action="circle">◯ Circle</button><button type="button" data-action="underline">U̲ Underline</button><button type="button" data-action="erase">Remove All Marks</button><button type="button" data-action="undo" disabled aria-label="Undo last study mark">↶ Undo</button></div><div id="whdcStudySaveActions"><button type="button" data-action="favorite">♡ Save Verse</button><button type="button" data-action="note">▤ Add Note</button></div></div><div id="whdcStudyPalette" hidden></div><div id="whdcStudyNotice" role="status"></div>';
 document.body.append(toggle,bar);
 const palette=bar.querySelector('#whdcStudyPalette');
 THEMES.forEach(([key,color,name,description])=>{const b=document.createElement('button');b.type='button';b.dataset.theme=key;b.title=description;b.innerHTML='<span class="whdcStudyDot" style="background:'+color+'"></span><span>'+name+'</span>';palette.append(b)});
