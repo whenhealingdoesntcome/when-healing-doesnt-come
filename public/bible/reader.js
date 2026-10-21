@@ -61,14 +61,19 @@ if(mobileBook&&mobileChapter){
  $('mobileSearchToggle')?.addEventListener('click',()=>{
   const panel=$('bibleSearchPanel');if(!panel)return;
   const open=panel.classList.toggle('whdc-mobile-search-open');
+  // Search and reader settings are independent; opening search never opens settings.
+  const opts=$('mobileReaderOptions');if(opts)opts.open=false;
+  $('mobileReaderSettings')?.setAttribute('aria-expanded','false');
   panel.style.display=open?'block':'none';
   $('mobileSearchToggle').setAttribute('aria-expanded',String(open));
   if(open)$('bibleSearch').focus();
  });
  $('mobileReaderSettings')?.addEventListener('click',()=>{
   const opts=$('mobileReaderOptions');if(!opts)return;
-  opts.open=!opts.open;
-  $('mobileReaderSettings').setAttribute('aria-expanded',String(opts.open));
+  const open=!opts.open;
+  opts.open=open;
+  $('mobileReaderSettings').setAttribute('aria-expanded',String(open));
+  if(open){const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');}
  });
 }$('font').value=recall('font')||19;function font(){document.documentElement.style.setProperty('--scripture-size',$('font').value+'px');$('fontValue').textContent=$('font').value;store('font',$('font').value)}$('font').addEventListener('input',font);font();$('dark').checked=recall('dark')==='true';document.body.classList.toggle('dark',$('dark').checked);$('dark').addEventListener('change',()=>{document.body.classList.toggle('dark',$('dark').checked);store('dark',$('dark').checked)});$('download').addEventListener('click',download);$('remove').addEventListener('click',remove);
 const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',e=>{e.preventDefault();runBibleSearch($('bibleSearch').value)});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs');if(searchParam){$('bibleSearch').value=searchParam;syncClear();await runBibleSearch(searchParam)}await status();}catch(e){$('reading').innerHTML='<p class="error">Unable to load Bible navigation. Please connect to the internet once to prepare the reader.</p>';}}

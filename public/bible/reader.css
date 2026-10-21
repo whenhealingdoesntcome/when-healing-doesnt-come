@@ -47,10 +47,10 @@ html{scroll-padding-top:110px}body{overflow-wrap:break-word}button,select,input{
  .mobile-bible-toolbar label{font-size:11px;margin:0 0 3px;line-height:1.2}
  .mobile-bible-toolbar select{height:40px;width:100%;min-width:0;padding:6px 5px;font-size:14px;background:#fffefa;border:1px solid #a9b9b3}
  .dark .mobile-bible-toolbar select{background:#223132}
- .mobile-bible-toolbar #mobileGo{height:40px;min-width:43px;padding:0 8px;background:#e5e9e4;border:1px solid #9aaea5;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer}
- .mobile-bible-toolbar #mobileGo:hover,.mobile-bible-toolbar #mobileGo:active{background:#c6d5cd}
- .dark .mobile-bible-toolbar #mobileGo{background:#2a3939;border-color:#839b91}
- .dark .mobile-bible-toolbar #mobileGo:hover,.dark .mobile-bible-toolbar #mobileGo:active{background:#40594f;color:#fff}
+
+
+
+
  .mobile-bible-toolbar .mobile-search-toggle{width:44px;height:40px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;cursor:pointer}
  .mobile-bible-toolbar .mobile-search-toggle:hover,.mobile-bible-toolbar .mobile-search-toggle:active{color:#446d5e}
  .mobile-bible-toolbar :is(button,select):focus-visible{outline:3px solid #507e77;outline-offset:2px}
@@ -84,3 +84,11 @@ html{scroll-padding-top:110px}body{overflow-wrap:break-word}button,select,input{
  .mobile-reader-options>summary{display:none}
  .mobile-reader-options[open]{margin:0 12px 8px;padding:14px 16px}
 }
+
+/* Reader toolbar: clear, active controls on desktop and mobile. */
+.whdc-header-top .mobile-bible-toolbar select{background-color:#fffefa!important;color:#263d36!important;border:1px solid #849d92!important;opacity:1!important;-webkit-text-fill-color:#263d36!important;cursor:pointer}
+.whdc-header-top .mobile-bible-toolbar button{color:#263d36!important;opacity:1!important;cursor:pointer}
+.whdc-header-top .mobile-bible-toolbar button:hover{background-color:#d3e2d9!important}
+.dark .whdc-header-top .mobile-bible-toolbar select{background-color:#283c39!important;color:#f2f5f0!important;-webkit-text-fill-color:#f2f5f0!important;border-color:#90a79c!important}
+.dark .whdc-header-top .mobile-bible-toolbar button{color:#f2f5f0!important}
+.dark .whdc-header-top .mobile-bible-toolbar button:hover{background-color:#40594f!important}
