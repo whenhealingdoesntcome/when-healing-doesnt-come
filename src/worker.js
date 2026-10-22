@@ -186,7 +186,7 @@ function writerData(d){return {id:d.id,title:d.title,day:d.day,topics:d.topics,r
 // Chirp 3 HD pilot: fixed, administrator-only samples. No public generation endpoint.
 const AUDIO_SAMPLE = "When healing doesn't come in the way we hope, God's presence remains. He is near to the brokenhearted, and his faithfulness does not change.";
 // Gemini 3.1 Flash TTS supports a separate direction prompt and MP3 output.
-const AUDIO_MODEL='gemini-3.1-flash-tts-preview';
+const AUDIO_MODEL='gemini-3.8-flash-tts';
 const AUDIO_STYLE="Read aloud in a warm, welcoming tone with consistent volume throughout.";
 const AUDIO_VOICES={sulafat:'Sulafat',sadachbia:'Sadachbia'};
 const AUDIO_VERSION='gemini31-flash-v5-single-request';
@@ -211,6 +211,7 @@ async function googleAccessToken(env){
   const result=await response.json();if(!result.access_token)throw Error('Google OAuth response missing token');return result.access_token;
 }
 async function generateAudioSample(env,voice){
+  throw Error('Legacy Gemini 3.1 voice samples are retired. Use Gemini 3.8 Audio Testing.');
   if(!env.AUDIO_BUCKET)throw Error('Missing AUDIO_BUCKET R2 binding');
   const token=await googleAccessToken(env);
   const response=await fetch('https://texttospeech.googleapis.com/v1/text:synthesize',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(geminiAudioRequest(narrationText(AUDIO_SAMPLE),voice))});
@@ -302,7 +303,7 @@ async function publishedAudioSource(env,id,part,request){
   if(!text)return null;
   const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)));
   const version=Array.from(digest.slice(0,12),b=>b.toString(16).padStart(2,'0')).join('');
-  return {text,version,key:voice=>`devotionals/${id}/${part}/${voice}-${version}.mp3`};
+  return {text,version,key:voice=>`devotionals/${id}/${part}/${voice}-${version}.wav`};
 }
 // A recording's freshness depends on its spoken words, not website releases,
 // synthesis model versions, or narration style instructions.
@@ -335,7 +336,7 @@ async function storedAudioRecording(env,id,part,voice,source){
   do{
     const page=await env.AUDIO_BUCKET.list({prefix,limit:1000,...(cursor?{cursor}:{})});
     for(const obj of page.objects||[]){
-      if(!obj.key.endsWith('.mp3'))continue;
+      if(!obj.key.endsWith('.wav'))continue;
       if(!latest||new Date(obj.uploaded)>new Date(latest.uploaded))latest=obj;
     }
     cursor=page.truncated?page.cursor:null;
@@ -366,7 +367,7 @@ async function deleteSupersededAudio(env,id,part,voice,keepKey){
     // Capture the cursor before deleting keys from this page.
     cursor=page.truncated?page.cursor:null;
     for(const object of page.objects||[]){
-      if(object.key===keepKey||!object.key.endsWith('.mp3'))continue;
+      if(object.key===keepKey||!object.key.endsWith('.wav'))continue;
       try{await env.AUDIO_BUCKET.delete(object.key);removed++}
       catch(error){failed++;console.error('Unable to remove superseded audio:',error?.message||'R2 deletion failed')}
     }
@@ -397,27 +398,33 @@ function audioChunks(text,maxBytes=4000){
 }
 async function synthesizeDevotionalAudio(env,text,voice,key){
   if(!env.AUDIO_BUCKET)throw Error('Audio storage unavailable');
-  const chunks=audioChunks(text);
-  if(chunks.length>24)throw Error('Reading is too long for audio generation (over 24 sections).');
-  const token=await googleAccessToken(env);
-  const parts=[];
-  for(let i=0;i<chunks.length;i++){
-    const response=await fetch('https://texttospeech.googleapis.com/v1/text:synthesize',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(geminiAudioRequest(chunks[i],voice))});
-    if(!response.ok)throw Error('Google synthesis failed on section '+(i+1)+' of '+chunks.length+' (HTTP '+response.status+'). No recording was saved.');
-    const result=await response.json();
-    if(!result.audioContent)throw Error('Google returned no audio for section '+(i+1)+'. No recording was saved.');
-    const raw=atob(result.audioContent),bytes=new Uint8Array(raw.length);
-    for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
-    parts.push(bytes);
-  }
-  // Each section is a complete MP3 stream; concatenation preserves playback in browsers.
-  const size=parts.reduce((total,part)=>total+part.length,0);
-  const audio=new Uint8Array(size);let offset=0;
-  for(const part of parts){audio.set(part,offset);offset+=part.length;}
-  await env.AUDIO_BUCKET.put(key,audio,{httpMetadata:{contentType:'audio/mpeg'}});
-  return {bytes:size,segments:chunks.length};
+  // Use the same Gemini 3.8 Vertex synthesis and voice instructions as the test page.
+  return gemini38Synthesize(env,text,voice,key,{production:true});
 }
 
+// Byte-range responses let the browser seek through saved audio recordings.
+async function audioPlaybackResponse(request,env,key,cacheControl){
+  const head=await env.AUDIO_BUCKET.head(key);
+  if(!head)return null;
+  const size=head.size,mime=key.endsWith('.wav')?'audio/wav':'audio/mpeg';
+  const range=request.headers.get('range');
+  const headers={'content-type':mime,'cache-control':cacheControl,'x-content-type-options':'nosniff','accept-ranges':'bytes'};
+  if(range){
+    const match=/^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if(!match)return new Response(null,{status:416,headers:{...headers,'content-range':`bytes */${size}`}});
+    let start=match[1]?Number(match[1]):null,end=match[2]?Number(match[2]):null;
+    if(start===null){if(end===null||end<=0)return new Response(null,{status:416,headers:{...headers,'content-range':`bytes */${size}`}});start=Math.max(0,size-end);end=size-1;}
+    else if(end===null||end>=size)end=size-1;
+    if(!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start>=size||start>end)return new Response(null,{status:416,headers:{...headers,'content-range':`bytes */${size}`}});
+    const length=end-start+1;
+    const item=request.method==='HEAD'?null:await env.AUDIO_BUCKET.get(key,{range:{offset:start,length}});
+    if(request.method!=='HEAD'&&!item)return null;
+    return new Response(request.method==='HEAD'?null:item.body,{status:206,headers:{...headers,'content-length':String(length),'content-range':`bytes ${start}-${end}/${size}`}});
+  }
+  const item=request.method==='HEAD'?null:await env.AUDIO_BUCKET.get(key);
+  if(request.method!=='HEAD'&&!item)return null;
+  return new Response(request.method==='HEAD'?null:item.body,{headers:{...headers,'content-length':String(size)}});
+}
 // Reuse the same persistent admin navigation on standalone admin tools.
 const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><nav class="whdc-tool-nav" aria-label="Admin navigation"><a href="/admin">Home</a><a href="/admin/audio">Audio Library</a><a href="/admin?submissions=1">Guest Writers</a><a href="/admin?editorNotes=1">Editors</a><a href="/admin/outline">Master Outline</a><a href="/admin/reading-plans">Reading Plans</a><a href="/cdn-cgi/access/logout">Log Out</a></nav></div></header>`;
 const ADMIN_TOOL_CSS = `<style>
@@ -443,7 +450,9 @@ function withAdminToolNav(html,active){
  const beforeContent=hasBody?bodyStart.replace(/(<body[^>]*>)/i,`$1${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`):bodyStart.replace('<body class="whdc-admin-tool">',`<body class="whdc-admin-tool">${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`);
  return beforeContent+'</main>'+tail;
 }
-const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p><a href="/admin/gemini38-audio">Open Gemini 3.8 Flash TTS testing →</a></p><p>Generate recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Generate each sample once and save it to R2. Readers can preview these recordings in Settings without generating audio again.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><div id="items"></div><script>
+const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p><a href="/admin/gemini38-audio">Open Gemini 3.8 Flash TTS testing →</a></p><p>Generate new Gemini 3.8 recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Legacy voice samples are retired. Use the Gemini 3.8 testing page for new voice previews.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><section style="border:1px solid #a66;padding:14px;border-radius:9px;margin:18px 0"><h2>Start fresh with Gemini 3.8</h2><p>Delete all legacy Gemini 3.1 production MP3s, their tracking records, and legacy voice samples from R2. Existing Gemini 3.8 WAV recordings and experimental tests are preserved. This cannot be undone.</p><button id="deleteLegacyAudio" type="button">Delete Gemini 3.1 recordings</button><span id="legacyCleanupStatus" role="status"></span></section><div id="items"></div><script>
+document.getElementById('deleteLegacyAudio').onclick=async()=>{const confirmation=prompt('Type DELETE GEMINI 3.1 AUDIO to permanently delete legacy recordings:');if(confirmation!=='DELETE GEMINI 3.1 AUDIO')return;const button=document.getElementById('deleteLegacyAudio'),note=document.getElementById('legacyCleanupStatus');button.disabled=true;note.textContent=' Deleting legacy recordings…';try{const r=await fetch('/api/admin/audio/cleanup-legacy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirm:confirmation})});const d=await r.json();if(!r.ok)throw Error(d.error||'Cleanup failed');note.textContent=' Deleted '+d.deleted+' objects; failures: '+d.failed+'. Refresh this page.';}catch(e){note.textContent=' '+e.message}finally{button.disabled=false}};
+
 const status=document.getElementById('status'),items=document.getElementById('items');
 const pronunciation=document.createElement('section');pronunciation.innerHTML='<h2>Pronunciation Overrides</h2><p>Replace words only in generated narration. Written devotionals stay unchanged. Save overrides before generating recordings. Previously generated recordings will need regeneration when an override changes.</p><form id="pronunciationForm"><label>Written word <input name="written" required maxlength="100" placeholder="hesed"></label> <label>Spoken pronunciation <input name="spoken" required maxlength="150" placeholder="HEH-sed"></label> <button>Save pronunciation</button></form><div id="pronunciationList"></div><h3>Preview pronunciation</h3><label>Test text <input id="pronunciationPreviewText" value="God’s hesed never fails." style="width:min(100%,420px)"></label> <select id="pronunciationVoice"><option value="sulafat">Sulafat</option><option value="sadachbia">Sadachbia</option></select> <button id="pronunciationPreviewButton">Generate test</button><p id="pronunciationPreviewStatus" role="status" aria-live="polite"></p><audio id="pronunciationPlayer" controls preload="none" style="display:block;margin-top:10px;max-width:100%"></audio><hr>';items.before(pronunciation);
 const sampleRoot=document.getElementById('savedSampleRows'),sampleStatus=document.getElementById('savedSampleStatus');
@@ -555,7 +564,7 @@ function joinGemini38Wav(chunks){
   for(const part of parsed)for(const bytes of part.data){out.set(bytes,pos);pos+=bytes.length;}
   return out;
 }
-async function gemini38Synthesize(env,text,voice,key){
+async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
   const credentials=JSON.parse(env.GOOGLE_TTS_CREDENTIALS||'{}');
   const project=String(env.GEMINI38_PROJECT_ID||credentials.project_id||'').trim();
   if(!/^[a-z][a-z0-9-]{4,61}[a-z0-9]$/.test(project))throw Error('Google Cloud project ID missing. Set GEMINI38_PROJECT_ID or use a service account with project_id.');
@@ -579,9 +588,9 @@ async function gemini38Synthesize(env,text,voice,key){
   }
   const combined=joinGemini38Wav(pieces);
   // Test files cannot overwrite production recordings or other test results.
-  if(await hasProductionAudio(env,key.split('/')[2]))throw Error('Production audio was added during generation. No test was saved.');
-  if(await env.AUDIO_BUCKET.head(key))throw Error('Test recording already exists.');
-  await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:'true'}});
+  if(!production&&await hasProductionAudio(env,key.split('/')[2]))throw Error('Production audio was added during generation. No test was saved.');
+  if(!production&&await env.AUDIO_BUCKET.head(key))throw Error('Test recording already exists.');
+  await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:String(!production)}});
   return {bytes:combined.length,segments:chunks.length};
 }
 const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
@@ -878,7 +887,7 @@ export default {async fetch(request,env,ctx){
       const recording=await storedAudioRecording(env,match[1],match[2],match[3],source);
       if(!recording||recording.outdated)return fail('Recording not yet available',404);
       const item=await env.AUDIO_BUCKET.get(recording.key);if(!item)return fail('Recording not yet available',404);
-      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','cache-control':'public, max-age=300','x-content-type-options':'nosniff','accept-ranges':'none'}});
+      return await audioPlaybackResponse(request,env,recording.key,'public, max-age=300')||fail('Recording not yet available',404);
     }catch{return fail('Audio unavailable',503)}
   }
   if(path==='/api/devotionals'&&request.method==='GET'){
@@ -952,6 +961,7 @@ export default {async fetch(request,env,ctx){
       return json({ok:true});
     }
     if(path==='/api/admin/audio/pronunciation-preview'&&request.method==='POST'){
+      return fail('Legacy preview retired. Use Gemini 3.8 Audio Testing.',410);
       if(!isAdmin(user))return fail('Administrator only',403);
       const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
       if(Number(request.headers.get('content-length')||0)>2048)return fail('Request too large',413);
@@ -978,7 +988,7 @@ export default {async fetch(request,env,ctx){
         if(!recording)return fail('Recording not found',404);
         const item=await env.AUDIO_BUCKET.get(recording.key);
         if(!item)return fail('Recording not found',404);
-        return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','content-length':String(item.size),'cache-control':'private, no-store','x-content-type-options':'nosniff','accept-ranges':'none'}});
+        return await audioPlaybackResponse(request,env,recording.key,'private, no-store')||fail('Recording not found',404);
       }catch(error){console.error('Admin audio playback failed:',error);return fail('Audio unavailable',503)}
     }
     if(path==='/api/admin/audio/status'&&request.method==='POST'||path==='/api/admin/audio/recording'&&request.method==='DELETE'){
@@ -1020,6 +1030,28 @@ export default {async fetch(request,env,ctx){
         catch(error){cleanup.failed++;console.error('Audio cleanup could not complete:',error?.message||'R2 list failed')}
         return json({ok:true,bytes:saved.size,segments:generationResult.segments,oldRecordingsDeleted:cleanup.removed,cleanupFailed:cleanup.failed});
       }catch(e){console.error('Devotional audio generation:',e.message);return fail(e.message,502)}
+    }
+    if(path==='/api/admin/audio/cleanup-legacy'&&request.method==='POST'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+      let body;try{body=await request.json()}catch{return fail('Invalid JSON',400)}
+      if(body?.confirm!=='DELETE GEMINI 3.1 AUDIO')return fail('Explicit confirmation required',400);
+      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
+      try{
+        let deleted=0,failed=0;
+        for(const prefix of ['devotionals/','audio-fingerprints/','pilot/gemini31-']){
+          let cursor;
+          do{
+            const page=await env.AUDIO_BUCKET.list({prefix,limit:500,...(cursor?{cursor}:{})});
+            cursor=page.truncated?page.cursor:null;
+            for(const item of page.objects||[]){
+              if(prefix==='devotionals/'&&!item.key.endsWith('.mp3'))continue;
+              try{await env.AUDIO_BUCKET.delete(item.key);deleted++}catch(e){failed++;console.error('Legacy audio cleanup:',e)}
+            }
+          }while(cursor);
+        }
+        return json({ok:true,deleted,failed});
+      }catch(e){console.error('Legacy audio cleanup:',e);return fail('Cleanup incomplete: '+e.message,503)}
     }
     if(path==='/admin/gemini38-audio'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
@@ -1066,7 +1098,7 @@ export default {async fetch(request,env,ctx){
     }
     if(path==='/admin/audio-test'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(AUDIO_TEST_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+      return Response.redirect(url.origin+'/admin/gemini38-audio',302);
     }
     if(path==='/api/admin/audio-test/generate'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
