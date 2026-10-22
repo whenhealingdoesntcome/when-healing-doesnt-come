@@ -51,7 +51,7 @@
     location.reload();
   };
   const check=async()=>{
-    if(checking||refreshing||!navigator.onLine)return;
+    if(checking||refreshing||!navigator.onLine)return 'error';
     checking=true;
     try{
       // Compare only after all initial fingerprints are established.
@@ -66,9 +66,11 @@
         const registration=await navigator.serviceWorker.getRegistration('/');
         if(registration)await registration.update();
       }
-    }catch(error){/* Offline or temporary server error: retry next check. */}
+      return changed ? 'changed' : 'unchanged';
+    }catch(error){return 'error';}
     finally{checking=false;}
   };
+  window.WHDCCheckForUpdates=check;
   if(navigator.serviceWorker){
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(oldController)refresh();
