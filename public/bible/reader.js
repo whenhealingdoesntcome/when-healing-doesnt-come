@@ -18,10 +18,13 @@ for(const [ch,verses] of Object.entries(current))for(const [v,text] of Object.en
  if(v==='1')chapterAnchors[ch]='para-'+lastPara;
  const marker=v==='1'?'<span class="chapter" id="chapter-'+ch+'" title="Chapter '+ch+'">'+ch+'</span>':'';
  const verse='<sup class="verse" id="verse-'+key.replace(':','-')+'" title="'+escape(NAMES[books.indexOf(book)]+' '+key)+'" aria-label="Verse '+v+'">'+v+'</sup>';
- para.push(marker+verse+escape(text));
+ if(v==='1'&&ch!=='1')para.push('<span class="chapter-break" aria-hidden="true"></span>');para.push('<span class="verse-unit">'+marker+verse+escape(text)+'</span>');
 }flush();article.innerHTML='<h1 class="book-title">'+escape(NAMES[books.indexOf(book)])+'</h1><p class="translation">World English Bible Updated</p><div class="scripture">'+out.join('')+'</div>';
 // Chapter navigation targets the beginning of its containing paragraph, even if it starts in a prior chapter.
-article.dataset.anchors=JSON.stringify(chapterAnchors);}
+article.dataset.anchors=JSON.stringify(chapterAnchors);applyReaderDisplay();}
+
+function applyReaderDisplay(){const el=$('reading');if(!el)return;el.classList.toggle('verse-layout',($('readingStyle')?.value||'paragraph')==='verses');el.classList.toggle('chapter-separated',($('chapterLayout')?.value||'continuous')==='separated');for(const kind of ['chapter','verse']){el.classList.remove(kind+'-size-medium',kind+'-size-large');const value=$(kind+'NumberSize')?.value||'small';if(value!=='small')el.classList.add(kind+'-size-'+value)}}
+for(const id of ['readingStyle','chapterLayout','chapterNumberSize','verseNumberSize']){const el=$(id);if(el){el.value=recall(id)||el.value;el.addEventListener('change',()=>{store(id,el.value);applyReaderDisplay()})}}
 function goChapter(ch){chapter=Number(ch);$('chapter').value=String(chapter);store('chapter',chapter);const params=new URLSearchParams(location.search);params.set('book',book);params.set('chapter',chapter);history.replaceState(null,'','?'+params.toString());const anchors=JSON.parse($('reading').dataset.anchors||'{}');position(anchors[chapter]||'chapter-'+chapter)}
 async function openBook(code,ch=1){const token=++loading;book=code;chapter=Number(ch)||1;$('reading').innerHTML='<p class="loading">Opening Scripture…</p>';$('book').value=book;
 try{const data=await get('/bible/'+code+'.json');if(token!==loading)return;current=data;setChapterOptions();if($('mobileBook'))$('mobileBook').value=book;if($('mobileChapter')){$('mobileChapter').replaceChildren(...Array.from($('chapter').options,o=>new Option(o.text,o.value)));$('mobileChapter').value=String(chapter)}render();store('book',book);goChapter(chapter);const ref=new URLSearchParams(location.search).get('references');const match=ref&&ref.match(/(\d+):(\d+)/);if(match){requestAnimationFrame(()=>setTimeout(()=>document.getElementById('verse-'+match[1]+'-'+match[2])?.scrollIntoView({block:'start',behavior:'auto'}),180))}updateButtons()}catch(e){if(token===loading)$('reading').innerHTML='<p class="error">This book is not available on this device. Connect to the internet or download the Bible for offline reading.</p>';}}
@@ -78,12 +81,12 @@ if(mobileBook&&mobileChapter){
   document.body.appendChild(readerOptions);
   readerOptions.insertAdjacentHTML('afterbegin','<button type="button" class="whdc-settings-close" aria-label="Close reader settings">×</button><p class="whdc-settings-title">Bible Reader Settings</p>');
   const closeSettings=()=>{readerOptions.open=false;settingsGear.setAttribute('aria-expanded','false');};
-  const positionSettings=()=>{const rect=settingsGear.getBoundingClientRect();document.documentElement.style.setProperty('--whdc-settings-top',Math.max(8,Math.min(rect.bottom+8,window.innerHeight-140))+'px');};
+  const positionSettings=()=>{const rect=settingsGear.getBoundingClientRect();const top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-140));document.documentElement.style.setProperty('--whdc-settings-top',top+'px');readerOptions.style.zoom='1';const available=Math.max(100,window.innerHeight-top-12);const needed=readerOptions.scrollHeight;if(needed>available)readerOptions.style.zoom=String(Math.max(.65,available/needed));};
   settingsGear.addEventListener('click',event=>{
    event.preventDefault();event.stopPropagation();
    const shouldOpen=!readerOptions.open;
    if(shouldOpen){positionSettings();const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');}
-   readerOptions.open=shouldOpen;settingsGear.setAttribute('aria-expanded',String(shouldOpen));
+   readerOptions.open=shouldOpen;if(shouldOpen)requestAnimationFrame(positionSettings);settingsGear.setAttribute('aria-expanded',String(shouldOpen));
   });
   readerOptions.querySelector('.whdc-settings-close').addEventListener('click',closeSettings);
   document.addEventListener('pointerdown',event=>{if(readerOptions.open&&!readerOptions.contains(event.target)&&!settingsGear.contains(event.target))closeSettings();});
