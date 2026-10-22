@@ -382,6 +382,31 @@ async function synthesizeDevotionalAudio(env,text,voice,key){
   return size;
 }
 
+// Reuse the same persistent admin navigation on standalone admin tools.
+const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><nav class="whdc-tool-nav" aria-label="Admin navigation"><a href="/admin">Home</a><a href="/admin/audio">Audio Library</a><a href="/admin?submissions=1">Guest Writers</a><a href="/admin?editorNotes=1">Editors</a><a href="/admin/outline">Master Outline</a><a href="/admin/reading-plans">Reading Plans</a><a href="/cdn-cgi/access/logout">Log Out</a></nav></div></header>`;
+const ADMIN_TOOL_CSS = `<style>
+body.whdc-admin-tool{max-width:none!important;margin:0!important;padding:0!important;background:#f3f5f2;color:#303b3c;font:16px system-ui;line-height:1.5}
+.whdc-tool-header{position:sticky;top:0;z-index:1500;background:#fff;box-shadow:0 2px 12px #00000012}
+.whdc-tool-header-inner{max-width:1200px;margin:auto;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.whdc-tool-brand img{display:block;max-width:190px;max-height:64px;width:auto;height:auto}
+.whdc-tool-nav{display:flex;align-items:center;justify-content:flex-end;gap:5px;flex-wrap:wrap}
+.whdc-tool-nav a{display:block;padding:9px 11px;min-height:42px;box-sizing:border-box;border-radius:7px;text-decoration:none;color:#393f4a;font-size:.91rem;white-space:nowrap}
+.whdc-tool-nav a:hover,.whdc-tool-nav a:focus-visible{background:#dce8e5;color:#243c3d}
+.whdc-tool-nav a[aria-current="page"]{background:#4d7275;color:#fff}
+.whdc-tool-main{max-width:900px;margin:0 auto;padding:24px 16px 60px;box-sizing:border-box}
+@media(max-width:800px){.whdc-tool-header-inner{flex-direction:column;align-items:stretch;gap:4px}.whdc-tool-brand{align-self:center}.whdc-tool-nav{width:100%;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:4px 0 7px}.whdc-tool-nav a{flex:0 0 auto;min-height:44px}}
+</style>`;
+function withAdminToolNav(html,active){
+ const nav=ADMIN_TOOL_NAV.replace(`href="${active}"`,`href="${active}" aria-current="page"`);
+ // Both tool pages use inline scripts. Keep the scripts outside the content wrapper.
+ const firstScript=html.indexOf('<script>');
+ if(firstScript<0)return html;
+ const head=html.slice(0,firstScript),tail=html.slice(firstScript);
+ const hasBody=/<body\b/i.test(head);
+ const bodyStart=hasBody?head.replace(/<body([^>]*)>/i,'<body$1 class="whdc-admin-tool">'):head.replace('</style>','</style><body class="whdc-admin-tool">');
+ const beforeContent=hasBody?bodyStart.replace(/(<body[^>]*>)/i,`$1${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`):bodyStart.replace('<body class="whdc-admin-tool">',`<body class="whdc-admin-tool">${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`);
+ return beforeContent+'</main>'+tail;
+}
 const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p>Generate recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Generate each sample once and save it to R2. Readers can preview these recordings in Settings without generating audio again.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><div id="items"></div><script>
 const status=document.getElementById('status'),items=document.getElementById('items');
 const pronunciation=document.createElement('section');pronunciation.innerHTML='<h2>Pronunciation Overrides</h2><p>Replace words only in generated narration. Written devotionals stay unchanged. Save overrides before generating recordings. Previously generated recordings will need regeneration when an override changes.</p><form id="pronunciationForm"><label>Written word <input name="written" required maxlength="100" placeholder="hesed"></label> <label>Spoken pronunciation <input name="spoken" required maxlength="150" placeholder="HEH-sed"></label> <button>Save pronunciation</button></form><div id="pronunciationList"></div><h3>Preview pronunciation</h3><label>Test text <input id="pronunciationPreviewText" value="God’s hesed never fails." style="width:min(100%,420px)"></label> <select id="pronunciationVoice"><option value="sulafat">Sulafat</option><option value="sadachbia">Sadachbia</option></select> <button id="pronunciationPreviewButton">Generate test</button><p id="pronunciationPreviewStatus" role="status" aria-live="polite"></p><audio id="pronunciationPlayer" controls preload="none" style="display:block;margin-top:10px;max-width:100%"></audio><hr>';items.before(pronunciation);
@@ -712,7 +737,7 @@ export default {async fetch(request,env,ctx){
 
     if(path==='/admin/reading-plans'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(READING_PLANS_ADMIN_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+      return new Response(withAdminToolNav(READING_PLANS_ADMIN_HTML,'/admin/reading-plans'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/api/admin/reading-plans'&&['GET','POST','DELETE'].includes(request.method)){
       if(!isAdmin(user))return fail('Administrator only',403);
@@ -746,7 +771,7 @@ export default {async fetch(request,env,ctx){
     if(path==='/admin/client.js'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_JS:isAdmin(user)?ADMIN_JS:WRITER_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if((path==='/admin/audio-library'||path==='/admin/audio')&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(AUDIO_LIBRARY_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self' data:; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+      return new Response(withAdminToolNav(AUDIO_LIBRARY_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self' data:; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
     }
     if(path==='/api/admin/audio/pronunciations'&&['GET','POST','DELETE'].includes(request.method)){
       if(!isAdmin(user))return fail('Administrator only',403);
