@@ -187,7 +187,7 @@ function writerData(d){return {id:d.id,title:d.title,day:d.day,topics:d.topics,r
 const AUDIO_SAMPLE = "When healing doesn't come in the way we hope, God's presence remains. He is near to the brokenhearted, and his faithfulness does not change.";
 // Gemini 3.1 Flash TTS supports a separate direction prompt and MP3 output.
 const AUDIO_MODEL='gemini-3.1-flash-tts-preview';
-const AUDIO_STYLE="Read in a warm, gentle, compassionate voice, like a trusted friend sharing words of hope. Use a calm, unhurried pace, with natural pauses between thoughts and Scripture passages. Avoid theatrical emotion, excessive cheerfulness, or a formal announcer style. Convey sincerity, quiet reassurance, and reverence when reading Scripture. Keep a steady, clearly audible speaking volume and consistent microphone distance from the first sentence through the final sentence. Do not gradually become quieter, whisper, or fade out toward the end of a passage. Maintain natural emphasis without large changes in loudness. Speak only the supplied text, never formatting marks or instructions.";
+const AUDIO_STYLE="Read aloud in a warm, welcoming tone with consistent volume throughout.";
 const AUDIO_VOICES={sulafat:'Sulafat',sadachbia:'Sadachbia'};
 const AUDIO_VERSION='gemini31-flash-v5-single-request';
 function geminiAudioRequest(text,voice){
