@@ -12,7 +12,9 @@ function parseSingle(input){
  if(!code)throw Error('Bible book not recognized: '+m[1]);
  const ch=Number(m[2]),start=m[3]?Number(m[3]):1,endCh=m[4]?Number(m[4]):ch,end=m[5]?Number(m[5]):(m[3]?start:null);
  if(ch<1||endCh<ch||endCh-ch>4||start<1||start>176||end!==null&&(end<1||end>176)||endCh===ch&&end!==null&&end<start)throw Error('Invalid or overly long Scripture range.');
- return {code,ch,start,endCh,end,reference:cleaned};
+ const fullName=BOOKS.find(book=>book[0]===code)[1];
+ const suffix=m[3]?':'+start+(m[5]?'-'+(m[4]?endCh+':':'')+end:''):'';
+ return {code,ch,start,endCh,end,reference:fullName+' '+ch+suffix};
 }
 export async function scriptureLookup(reference,assets,request){
  const references=String(reference||'').split(/[;\n]+/).map(s=>s.trim()).filter(Boolean);
