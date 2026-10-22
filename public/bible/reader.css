@@ -137,19 +137,3 @@ body.dark .site-brand{background:#fffefa;border-radius:9px;padding:5px 7px}
 body.dark .scripture .verse{color:#b7cfc4}
 body.dark .scripture .section{color:#c2d6c9}
 body.dark .translation{color:#c6d6cf}
-
-/* Match the shared mobile bottom navigation to the Bible Reader theme. */
-@media (max-width: 767px) {
-  body.dark #whdc-bottom-nav.whdc-bottom-nav {
-    background: #223132;
-    color: #eef3ed;
-    border-top-color: #52675e;
-    box-shadow: 0 -3px 14px rgba(0,0,0,.28);
-  }
-  body.dark #whdc-bottom-nav.whdc-bottom-nav a,
-  body.dark #whdc-bottom-nav.whdc-bottom-nav button { color: inherit; }
-  body.dark #whdc-bottom-nav.whdc-bottom-nav [aria-current="page"] {
-    background: #40594f;
-    color: #fff;
-  }
-}
