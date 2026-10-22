@@ -504,9 +504,10 @@ for(const part of ['devotional','deeper','scripture']){const row=document.create
 });
 box.append(name,generate,remove,message,player);row.append(box);refresh()}section.append(row)}items.append(section)}}catch(e){status.textContent=e.message}})();
 </script></body></html>`;
-// Experimental Gemini 3.8 Flash TTS. Test MP3s never enter public narration.
+// Experimental Gemini 3.8 Flash TTS through Vertex AI, separate from production audio.
 const GEMINI38_MODEL='gemini-3.8-flash-tts';
 const GEMINI38_PREFIX='experiments/gemini38/';
+const GEMINI38_STYLE='Read in a warm, gentle, compassionate voice, with a calm, unhurried pace, consistent volume, and reverence when reading Scripture. Read the supplied words faithfully.';
 async function hasProductionAudio(env,id){
   let cursor;
   do{
@@ -516,29 +517,71 @@ async function hasProductionAudio(env,id){
   }while(cursor);
   return false;
 }
-function gemini38Key(id,part,voice){return `${GEMINI38_PREFIX}${id}/${part}/${voice}.mp3`;}
+function gemini38Key(id,part,voice){return `${GEMINI38_PREFIX}${id}/${part}/${voice}.wav`;}
 async function gemini38Eligible(env,id){
   const row=await env.DB.prepare('SELECT id,title,day FROM devotionals WHERE id=? AND status=?').bind(id,'published').first();
   if(!row||await hasProductionAudio(env,id))return null;
   return row;
 }
+// Gemini 3.8 returns WAV, not MP3. Merge only matching PCM WAV chunks.
+function joinGemini38Wav(chunks){
+  const parsed=chunks.map(bytes=>{
+    const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);
+    const str=(offset,n)=>String.fromCharCode(...bytes.subarray(offset,offset+n));
+    if(bytes.length<44||str(0,4)!=='RIFF'||str(8,4)!=='WAVE')throw Error('Gemini returned audio that is not a WAV file.');
+    let pos=12,fmt=null,data=[];
+    while(pos+8<=bytes.length){
+      const name=str(pos,4),len=view.getUint32(pos+4,true);pos+=8;
+      if(pos+len>bytes.length)throw Error('Gemini returned a truncated WAV file.');
+      if(name==='fmt ')fmt=bytes.slice(pos,pos+len);
+      if(name==='data')data.push(bytes.slice(pos,pos+len));
+      pos+=len+(len%2);
+    }
+    if(!fmt||!data.length||fmt.length<16)throw Error('Gemini WAV is missing audio format or data.');
+    const format=new DataView(fmt.buffer,fmt.byteOffset,fmt.byteLength).getUint16(0,true);
+    if(format!==1)throw Error('Gemini returned a WAV encoding other than PCM.');
+    return {fmt,data};
+  });
+  const fmt=parsed[0].fmt;
+  if(parsed.some(p=>p.fmt.length!==fmt.length||p.fmt.some((v,i)=>v!==fmt[i])))throw Error('Gemini returned incompatible WAV segments.');
+  const total=parsed.reduce((n,p)=>n+p.data.reduce((m,b)=>m+b.length,0),0);
+  if(total>100*1024*1024)throw Error('Test recording is too large.');
+  const size=12+8+fmt.length+(fmt.length%2)+8+total+(total%2);
+  const out=new Uint8Array(size),view=new DataView(out.buffer);
+  const write=(offset,str)=>{for(let i=0;i<str.length;i++)out[offset+i]=str.charCodeAt(i);};
+  write(0,'RIFF');view.setUint32(4,size-8,true);write(8,'WAVE');write(12,'fmt ');view.setUint32(16,fmt.length,true);
+  out.set(fmt,20);let pos=20+fmt.length+(fmt.length%2);
+  write(pos,'data');view.setUint32(pos+4,total,true);pos+=8;
+  for(const part of parsed)for(const bytes of part.data){out.set(bytes,pos);pos+=bytes.length;}
+  return out;
+}
 async function gemini38Synthesize(env,text,voice,key){
+  const credentials=JSON.parse(env.GOOGLE_TTS_CREDENTIALS||'{}');
+  const project=String(env.GEMINI38_PROJECT_ID||credentials.project_id||'').trim();
+  if(!/^[a-z][a-z0-9-]{4,61}[a-z0-9]$/.test(project))throw Error('Google Cloud project ID missing. Set GEMINI38_PROJECT_ID or use a service account with project_id.');
   const chunks=audioChunks(text);
   if(chunks.length>24)throw Error('Reading exceeds the test limit of 24 segments.');
   const token=await googleAccessToken(env),pieces=[];
+  const endpoint=`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${GEMINI38_MODEL}:generateContent`;
   for(let i=0;i<chunks.length;i++){
-    const payload={input:{text:chunks[i],prompt:AUDIO_STYLE},voice:{languageCode:'en-US',name:AUDIO_VOICES[voice],modelName:GEMINI38_MODEL},audioConfig:{audioEncoding:'MP3'}};
-    const r=await fetch('https://texttospeech.googleapis.com/v1/text:synthesize',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok)throw Error(`Gemini 3.8 synthesis failed (HTTP ${r.status}, segment ${i+1}/${chunks.length}). Verify model availability and permissions in Google Cloud.`);
-    const result=await r.json();if(!result.audioContent)throw Error('Google returned no audio.');
-    const raw=atob(result.audioContent),bytes=new Uint8Array(raw.length);for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
+    const payload={contents:[{role:'user',parts:[{text:chunks[i],speechMetadata:{style:GEMINI38_STYLE}}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{voice:AUDIO_VOICES[voice]}}}};
+    const r=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok){
+      const info=await r.json().catch(()=>null);
+      const reason=String(info?.error?.message||'').replace(/https?:\/\/\S+/g,'[URL]').slice(0,300);
+      throw Error(`Gemini 3.8 generation failed (HTTP ${r.status}, segment ${i+1}/${chunks.length})${reason?': '+reason:''}`);
+    }
+    const result=await r.json();
+    const audio=result?.candidates?.flatMap(c=>c?.content?.parts||[]).find(p=>p?.inlineData?.data)?.inlineData;
+    if(!audio?.data)throw Error('Gemini 3.8 did not return audio.');
+    const raw=atob(audio.data),bytes=new Uint8Array(raw.length);for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
     pieces.push(bytes);
   }
-  const combined=new Uint8Array(pieces.reduce((n,b)=>n+b.length,0));let offset=0;
-  for(const b of pieces){combined.set(b,offset);offset+=b.length;}
-  // Check again immediately before writing, to avoid overriding an existing test.
+  const combined=joinGemini38Wav(pieces);
+  // Test files cannot overwrite production recordings or other test results.
+  if(await hasProductionAudio(env,key.split('/')[2]))throw Error('Production audio was added during generation. No test was saved.');
   if(await env.AUDIO_BUCKET.head(key))throw Error('Test recording already exists.');
-  await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/mpeg'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:'true'}});
+  await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:'true'}});
   return {bytes:combined.length,segments:chunks.length};
 }
 const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
@@ -1002,7 +1045,7 @@ export default {async fetch(request,env,ctx){
       if(!/^[a-zA-Z0-9_-]{1,160}$/.test(id||'')||!AUDIO_PARTS.has(part)||!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid test recording',400);
       if(!await gemini38Eligible(env,id))return fail('Devotional is not eligible for testing',409);
       const item=await env.AUDIO_BUCKET.get(gemini38Key(id,part,voice));if(!item)return fail('Test recording not found',404);
-      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/api/admin/gemini38/generate'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
@@ -1038,7 +1081,7 @@ export default {async fetch(request,env,ctx){
       const voice=url.searchParams.get('voice');if(!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid voice',400);
       if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
       const item=await env.AUDIO_BUCKET.get('pilot/gemini31-'+voice+'.mp3');if(!item)return fail('Generate this voice first',404);
-      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/api/admin/audio/library'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return handleAdminAudio(request,env,url)}
     if(path==='/api/admin/me'&&request.method==='GET')return json(user);
