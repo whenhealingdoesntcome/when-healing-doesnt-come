@@ -103,13 +103,17 @@
       .whdc-bottom-nav{display:none}
       @media(max-width:767px){
         body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))!important}
-        .whdc-bottom-nav{display:grid;grid-template-columns:repeat(var(--whdc-tab-count,5),minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;z-index:1100;min-height:76px;padding:5px 4px calc(17px + env(safe-area-inset-bottom,0px));background:var(--card,#fffefa);color:var(--ink,#393f4a);border-top:1px solid var(--line,#deded8);box-shadow:0 -3px 14px rgba(20,30,28,.1)}
-        .whdc-bottom-nav a,.whdc-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;min-width:0;padding:4px 0;border:0;border-radius:9px;background:transparent;color:inherit;text-decoration:none;font:inherit;font-size:11px;line-height:1.2;cursor:pointer}
+        .whdc-bottom-nav{display:grid!important;gap:0!important;flex-wrap:nowrap!important;grid-template-columns:repeat(var(--whdc-tab-count,5),minmax(0,1fr));position:fixed;bottom:0;left:0;right:0;z-index:1100;min-height:76px;padding:5px 4px calc(17px + env(safe-area-inset-bottom,0px));background:#fffefa;color:#393f4a;border-top:1px solid #deded8;box-shadow:0 -3px 14px rgba(20,30,28,.1)}
+        .whdc-bottom-nav a,.whdc-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;min-width:0;padding:4px 0;border:0;border-radius:9px;background:transparent;color:inherit!important;text-decoration:none;font:inherit;font-size:11px;line-height:1.2;cursor:pointer}
         .whdc-bottom-nav svg{height:23px;width:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-        .whdc-bottom-nav [aria-current="page"]{background:rgba(115,151,137,.18);font-weight:700;color:var(--ink,#393f4a)}
+        .whdc-bottom-nav [aria-current="page"]{background:rgba(115,151,137,.18);font-weight:700;color:inherit!important}
+        /* Identical palette across the app and the standalone Bible Reader. */
+        body.dark .whdc-bottom-nav{background:#2a3335!important;color:#f0eee8!important;border-top-color:#4d5959!important}
+        body.dark .whdc-bottom-nav a,body.dark .whdc-bottom-nav button{color:#f0eee8!important}
+        body.dark .whdc-bottom-nav [aria-current="page"]{background:#50665e!important;color:#fff!important}
+        body.dark .whdc-bottom-nav [aria-current="page"] svg{stroke:#fff!important}
         /* Use the same selected Bible tab in both the app and the Bible Reader. */
-        .whdc-bottom-nav [data-nav="bible"][aria-current="page"]{background:#40594f;color:#fff!important}
-        .whdc-bottom-nav [data-nav="bible"][aria-current="page"] svg{stroke:#fff!important;fill:none!important}
+        body.dark .whdc-bottom-nav [data-nav="bible"] svg{stroke:#fff!important;fill:none!important}
         .whdc-bottom-nav a:focus-visible,.whdc-bottom-nav button:focus-visible{outline:3px solid #477f76;outline-offset:-3px}
       }`;
       document.head.appendChild(css);
