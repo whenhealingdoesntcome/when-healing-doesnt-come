@@ -138,6 +138,14 @@ self.addEventListener('message',event=>{
   event.ports?.[0]?.postMessage({counts,prefs,alerts});
  })().catch(()=>event.ports?.[0]?.postMessage(null)));
  if(msg.type==='WHDC_ALERT_CLEAR_ALL')event.waitUntil((async()=>{await badgeWrite('counts',{announcement:0,daily:0,plan:0});if('clearAppBadge'in self.navigator)await self.navigator.clearAppBadge();const notices=await self.registration.getNotifications();notices.forEach(n=>n.close());event.ports?.[0]?.postMessage({ok:true});})().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
+ if(typeof msg.type==='string'&&msg.type.startsWith('WHDC_BADGE_CLEAR_ONE:'))event.waitUntil((async()=>{
+  const badgeType=msg.type.slice('WHDC_BADGE_CLEAR_ONE:'.length);
+  const prefix={announcement:'whdc-news-',daily:'whdc-daily-',plan:'whdc-plan-'}[badgeType];
+  if(!prefix){event.ports?.[0]?.postMessage({ok:false});return}
+  await badgeUpdate(badgeType,true);
+  for(const notice of await self.registration.getNotifications())if((notice.tag||'').startsWith(prefix))notice.close();
+  event.ports?.[0]?.postMessage({ok:true});
+ })().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
  if(msg.type==='WHDC_BADGE_CLEAR')event.waitUntil((async()=>{
   await badgeUpdate(msg.badgeType,true);
   const prefix={announcement:'whdc-news-',daily:'whdc-daily-',plan:'whdc-plan-'}[msg.badgeType];

@@ -812,7 +812,7 @@ function wireAlertCenter(){
  document.getElementById('whdcAlertClose').onclick=close;
  document.getElementById('whdcAlertClear').onclick=async()=>{const result=await ask('WHDC_ALERT_CLEAR_ALL');if(result?.ok){await refresh()}else list.textContent='Could not clear alerts. Please try again.'};
  document.getElementById('whdcAlertSettings').onclick=()=>{close();view='settings';render();document.querySelectorAll('.whdc-settings-collapsible').forEach(d=>{if(d.querySelector('.whdc-notifications'))d.open=true})};
- list.onclick=e=>{const button=e.target.closest('[data-alert-open]');if(!button)return;const type=button.dataset.alertOpen;close();if(type==='announcement'){view='home'}else if(type==='daily'){view='today'}else{view='plans'}render()};
+ list.onclick=async e=>{const button=e.target.closest('[data-alert-open]');if(!button)return;const type=button.dataset.alertOpen;button.disabled=true;const result=await ask('WHDC_BADGE_CLEAR_ONE:'+type);if(!result?.ok){button.disabled=false;list.insertAdjacentHTML('beforeend','<p class="muted small">Could not clear this notification. Please try again.</p>');return}close();if(type==='announcement'){view='home'}else if(type==='daily'){view='today'}else{view='plans'}render()};
  if(!window.__whdcAlertOutsideBound){window.__whdcAlertOutsideBound=true;document.addEventListener('pointerdown',e=>{const p=document.getElementById('whdcAlertPanel');if(p&&!p.hidden&&!e.target.closest('.whdc-alert-wrap')){p.hidden=true;document.getElementById('whdcAlertBell')?.setAttribute('aria-expanded','false')}})}
  refresh();
 }
