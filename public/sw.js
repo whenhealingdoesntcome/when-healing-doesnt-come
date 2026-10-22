@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v18-pull-refresh';
+const CACHE='whdc-public-shell-v19-alert-clear';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 
@@ -137,6 +137,14 @@ self.addEventListener('message',event=>{
   const alerts=notices.map(n=>{const tag=n.tag||'';const kind=tag.startsWith('whdc-news-')?'announcement':tag.startsWith('whdc-daily-')?'daily':tag.startsWith('whdc-plan-')?'plan':null;return kind?{type:kind,title:n.title||'',body:n.body||''}:null}).filter(Boolean);
   event.ports?.[0]?.postMessage({counts,prefs,alerts});
  })().catch(()=>event.ports?.[0]?.postMessage(null)));
+ if(typeof msg.type==='string'&&msg.type.startsWith('WHDC_BADGE_CLEAR_ONE:'))event.waitUntil((async()=>{
+  const type=msg.type.slice('WHDC_BADGE_CLEAR_ONE:'.length);
+  if(!['announcement','daily','plan'].includes(type)){event.ports?.[0]?.postMessage({ok:false});return;}
+  await badgeUpdate(type,true);
+  const prefix={announcement:'whdc-news-',daily:'whdc-daily-',plan:'whdc-plan-'}[type];
+  for(const notice of await self.registration.getNotifications())if((notice.tag||'').startsWith(prefix))notice.close();
+  event.ports?.[0]?.postMessage({ok:true});
+ })().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
  if(msg.type==='WHDC_ALERT_CLEAR_ALL')event.waitUntil((async()=>{await badgeWrite('counts',{announcement:0,daily:0,plan:0});if('clearAppBadge'in self.navigator)await self.navigator.clearAppBadge();const notices=await self.registration.getNotifications();notices.forEach(n=>n.close());event.ports?.[0]?.postMessage({ok:true});})().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
  if(msg.type==='WHDC_BADGE_CLEAR')event.waitUntil((async()=>{
   await badgeUpdate(msg.badgeType,true);
@@ -159,7 +167,7 @@ self.addEventListener('notificationclick',event=>{
  event.notification.close();
  event.waitUntil((async()=>{
   const url=new URL(event.notification.data?.url||'/',self.location.origin);
-  const tag=event.notification.tag||'';const type=tag.startsWith('whdc-news-')?'announcement':tag.startsWith('whdc-daily-')?'daily':tag.startsWith('whdc-plan-')?'plan':null;if(type)await badgeUpdate(type,true).catch(()=>{});
+  const tag=event.notification.tag||'';const type=tag.startsWith('whdc-news-')?'announcement':tag.startsWith('whdc-daily-')?'daily':tag.startsWith('whdc-plan-')?'plan':null;if(type){await badgeUpdate(type,true).catch(()=>{});const prefix={announcement:'whdc-news-',daily:'whdc-daily-',plan:'whdc-plan-'}[type];for(const notice of await self.registration.getNotifications())if((notice.tag||'').startsWith(prefix))notice.close();}
   if(url.origin!==self.location.origin)return;
   const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
   for(const client of clients)if(new URL(client.url).origin===url.origin){await client.navigate(url.href);return client.focus()}
