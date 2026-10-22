@@ -108,3 +108,32 @@ body.dark .site-header .mobile-bible-toolbar{background:transparent!important;co
 #bibleSearchPanel.whdc-mobile-search-open form{margin:0;background:#fffefa;color:#263d36;border:1px solid #b6c6bc}
 body.dark #bibleSearchPanel.whdc-mobile-search-open form{background:#223132;color:#f2f5f0;border-color:#627b70}
 @media(max-width:800px){#bibleSearchPanel.whdc-mobile-search-open{top:calc(var(--bible-search-top, 64px) + 5px);right:8px;width:calc(100vw - 16px)}}
+
+
+/* Bible Reader dark appearance: contrast for text, controls, popovers and study tools. */
+body.dark { color-scheme:dark; }
+body.dark .reading,body.dark .controls,body.dark .mobile-reader-options {
+  background:#223132; color:#eef3ed; border-color:#61776e;
+}
+body.dark .scripture,body.dark .scripture p,body.dark .scripture .verse,
+body.dark .reading h1,body.dark .reading h2,body.dark .reading h3 { color:#eef3ed; }
+body.dark .intro,body.dark .help,body.dark .translation,body.dark .result-count,
+body.dark .loading { color:#c6d6cf; }
+body.dark input,body.dark textarea,body.dark select {
+  background:#283c39; color:#f2f5f0; border-color:#8ca79b; -webkit-text-fill-color:#f2f5f0;
+}
+body.dark input::placeholder,body.dark textarea::placeholder { color:#c3d0ca; opacity:1; }
+body.dark button { border-color:#80998e; }
+body.dark button:disabled { opacity:.65; }
+body.dark .result-links a { color:#c5e5ff; }
+body.dark .search-filters,body.dark .bible-search form { background:#223132; color:#eef3ed; border-color:#61776e; }
+body.dark .search-filters label,body.dark .mobile-reader-options summary { color:#eef3ed; }
+body.dark .scripture mark { background:#8a6c2f; color:#fff; }
+body.dark a:focus-visible,body.dark button:focus-visible,
+body.dark input:focus-visible,body.dark select:focus-visible { outline-color:#c5e2fa; }
+
+/* Keep the Bible logo legible and use the shared appearance preference. */
+body.dark .site-brand{background:#fffefa;border-radius:9px;padding:5px 7px}
+body.dark .scripture .verse{color:#b7cfc4}
+body.dark .scripture .section{color:#c2d6c9}
+body.dark .translation{color:#c6d6cf}

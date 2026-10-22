@@ -157,3 +157,39 @@ html{scroll-padding-top:105px}body{overflow-wrap:break-word}img,video,svg{max-wi
  .whdc-notification-actions{flex-direction:column;align-items:stretch}
  .whdc-notification-actions .btn{width:100%;max-width:100%;white-space:normal}
 }
+
+
+/* WHDC dark appearance accessibility: maintain legibility on mobile and desktop.
+   Only applies when the app has enabled its dark appearance. */
+body.dark { color-scheme:dark; --text:#f0eee8; --border:#62706d; }
+body.dark .card,body.dark .whdc-settings-collapsible,body.dark .whdc-reading-preview,
+body.dark details,body.dark fieldset { color:var(--ink); border-color:var(--line); }
+body.dark .whdc-settings-collapsible>summary { color:var(--ink); background:var(--card); }
+body.dark .whdc-settings-collapsible[open]>.card { background:var(--card); color:var(--ink); }
+body.dark .muted,body.dark .small.muted,body.dark .help,
+body.dark .whdc-preview-label { color:#cbd4d1; }
+body.dark input:not([type=checkbox]):not([type=radio]),body.dark textarea,body.dark select {
+  background:#263234; color:#f4f4ef; border-color:#81938e; -webkit-text-fill-color:#f4f4ef;
+}
+body.dark input::placeholder,body.dark textarea::placeholder { color:#bfcac7; opacity:1; }
+body.dark input[type=checkbox],body.dark input[type=radio] { accent-color:#a7c5b8; }
+body.dark button:not(.primary):not(.whdc-alert-bell),body.dark .btn:not(.primary) { border-color:#758782; }
+body.dark button:disabled,body.dark .btn:disabled { opacity:.65; }
+body.dark .whdc-announcement { background:#34403d; color:#f0eee8; border-color:#6b8076; }
+body.dark .whdc-announcement h2,body.dark .whdc-announcement p { color:#f0eee8; }
+body.dark .read-badge,body.dark .read-toggle[aria-pressed=true] { color:#f0eee8; }
+body.dark .whdc-context-text,body.dark .whdc-main-verse,body.dark .deep,
+body.dark .reading,body.dark .whdc-reading-preview { color:var(--ink); }
+body.dark .whdc-alert-panel { background:#fff; color:#111; color-scheme:light; }
+body.dark .whdc-alert-panel a,body.dark .whdc-alert-panel button,
+body.dark .whdc-alert-panel .whdc-alert-row { color:#111; }
+body.dark .whdc-alert-panel button { background:#fff; border-color:#b7b7b7; }
+body.dark .whdc-alert-panel .muted { color:#454545; }
+body.dark a:focus-visible,body.dark button:focus-visible,
+body.dark input:focus-visible,body.dark select:focus-visible { outline-color:#c5e2fa; }
+
+/* Keep the logo and notification trigger visible against dark header surfaces. */
+body.dark header .brand:has(.header-logo){background:#fffefa;border-radius:9px;padding:5px 7px;display:inline-flex;align-items:center}
+body.dark .whdc-alert-wrap{background:#fffefa!important;color:#202c2a!important;border-color:#b6c4be!important}
+body.dark .whdc-alert-bell,body.dark .whdc-alert-bell svg{color:#202c2a!important;stroke:#202c2a!important;opacity:1!important}
+body.dark .whdc-alert-panel{background:#fff!important;color:#111!important}
