@@ -443,7 +443,7 @@ function withAdminToolNav(html,active){
  const beforeContent=hasBody?bodyStart.replace(/(<body[^>]*>)/i,`$1${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`):bodyStart.replace('<body class="whdc-admin-tool">',`<body class="whdc-admin-tool">${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`);
  return beforeContent+'</main>'+tail;
 }
-const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p>Generate recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Generate each sample once and save it to R2. Readers can preview these recordings in Settings without generating audio again.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><div id="items"></div><script>
+const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p><a href="/admin/gemini38-audio">Open Gemini 3.8 Flash TTS testing →</a></p><p>Generate recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Generate each sample once and save it to R2. Readers can preview these recordings in Settings without generating audio again.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><div id="items"></div><script>
 const status=document.getElementById('status'),items=document.getElementById('items');
 const pronunciation=document.createElement('section');pronunciation.innerHTML='<h2>Pronunciation Overrides</h2><p>Replace words only in generated narration. Written devotionals stay unchanged. Save overrides before generating recordings. Previously generated recordings will need regeneration when an override changes.</p><form id="pronunciationForm"><label>Written word <input name="written" required maxlength="100" placeholder="hesed"></label> <label>Spoken pronunciation <input name="spoken" required maxlength="150" placeholder="HEH-sed"></label> <button>Save pronunciation</button></form><div id="pronunciationList"></div><h3>Preview pronunciation</h3><label>Test text <input id="pronunciationPreviewText" value="God’s hesed never fails." style="width:min(100%,420px)"></label> <select id="pronunciationVoice"><option value="sulafat">Sulafat</option><option value="sadachbia">Sadachbia</option></select> <button id="pronunciationPreviewButton">Generate test</button><p id="pronunciationPreviewStatus" role="status" aria-live="polite"></p><audio id="pronunciationPlayer" controls preload="none" style="display:block;margin-top:10px;max-width:100%"></audio><hr>';items.before(pronunciation);
 const sampleRoot=document.getElementById('savedSampleRows'),sampleStatus=document.getElementById('savedSampleStatus');
@@ -504,6 +504,51 @@ for(const part of ['devotional','deeper','scripture']){const row=document.create
 });
 box.append(name,generate,remove,message,player);row.append(box);refresh()}section.append(row)}items.append(section)}}catch(e){status.textContent=e.message}})();
 </script></body></html>`;
+// Experimental Gemini 3.8 Flash TTS. Test MP3s never enter public narration.
+const GEMINI38_MODEL='gemini-3.8-flash-tts';
+const GEMINI38_PREFIX='experiments/gemini38/';
+async function hasProductionAudio(env,id){
+  let cursor;
+  do{
+    const page=await env.AUDIO_BUCKET.list({prefix:`devotionals/${id}/`,limit:1000,...(cursor?{cursor}:{})});
+    if((page.objects||[]).some(x=>/\.mp3$/i.test(x.key)))return true;
+    cursor=page.truncated?page.cursor:null;
+  }while(cursor);
+  return false;
+}
+function gemini38Key(id,part,voice){return `${GEMINI38_PREFIX}${id}/${part}/${voice}.mp3`;}
+async function gemini38Eligible(env,id){
+  const row=await env.DB.prepare('SELECT id,title,day FROM devotionals WHERE id=? AND status=?').bind(id,'published').first();
+  if(!row||await hasProductionAudio(env,id))return null;
+  return row;
+}
+async function gemini38Synthesize(env,text,voice,key){
+  const chunks=audioChunks(text);
+  if(chunks.length>24)throw Error('Reading exceeds the test limit of 24 segments.');
+  const token=await googleAccessToken(env),pieces=[];
+  for(let i=0;i<chunks.length;i++){
+    const payload={input:{text:chunks[i],prompt:AUDIO_STYLE},voice:{languageCode:'en-US',name:AUDIO_VOICES[voice],modelName:GEMINI38_MODEL},audioConfig:{audioEncoding:'MP3'}};
+    const r=await fetch('https://texttospeech.googleapis.com/v1/text:synthesize',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});
+    if(!r.ok)throw Error(`Gemini 3.8 synthesis failed (HTTP ${r.status}, segment ${i+1}/${chunks.length}). Verify model availability and permissions in Google Cloud.`);
+    const result=await r.json();if(!result.audioContent)throw Error('Google returned no audio.');
+    const raw=atob(result.audioContent),bytes=new Uint8Array(raw.length);for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
+    pieces.push(bytes);
+  }
+  const combined=new Uint8Array(pieces.reduce((n,b)=>n+b.length,0));let offset=0;
+  for(const b of pieces){combined.set(b,offset);offset+=b.length;}
+  // Check again immediately before writing, to avoid overriding an existing test.
+  if(await env.AUDIO_BUCKET.head(key))throw Error('Test recording already exists.');
+  await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/mpeg'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:'true'}});
+  return {bytes:combined.length,segments:chunks.length};
+}
+const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
+const status=document.getElementById('status'),root=document.getElementById('items');
+async function api(path,opts){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opts}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d;}
+const post=(path,data)=>api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
+async function load(){try{const data=await api('/api/admin/gemini38/list');root.replaceChildren();status.textContent=data.length+' eligible devotionals (no production audio).';for(const d of data){const section=document.createElement('section'),h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;section.append(h);for(const part of ['devotional','deeper','scripture']){const row=document.createElement('div');row.style.margin='12px 0';const name=document.createElement('strong');name.textContent=part+' ';row.append(name);for(const voice of ['sulafat','sadachbia']){const box=document.createElement('div');const button=document.createElement('button'),note=document.createElement('span'),player=document.createElement('audio');player.controls=true;player.preload='none';const exists=!!d.tests?.[part]?.[voice];button.textContent=exists?'Test saved':'Generate '+voice+' test';button.disabled=exists;if(exists){player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice;box.append(player);}button.onclick=async()=>{button.disabled=true;note.textContent=' Generating…';try{const out=await post('/api/admin/gemini38/generate',{id:d.id,part,voice});note.textContent=' Saved ('+out.segments+' segment(s)).';button.textContent='Test saved';player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice+'&v='+Date.now();box.append(player);}catch(e){note.textContent=' '+e.message;button.disabled=false;}};box.append(button,note);row.append(box);}section.append(row);}root.append(section);}if(!data.length)root.textContent='No eligible published devotionals. Every published devotional may already have production audio.';}catch(e){status.textContent='Unable to load tests: '+e.message;}}
+load();
+</script></body></html>`;
+
 const AUDIO_TEST_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Voice Test</title><body style="font:16px system-ui;max-width:720px;margin:3rem auto;padding:1rem;line-height:1.6"><a href="/admin">← Admin</a><h1>WHDC Gemini 3.1 Flash Voice Test</h1><p>Admin-only preview. Generate each sample once, then listen to its stored R2 recording. This does not change reader audio.</p><p>Sample: ${AUDIO_SAMPLE}</p><div id="voices"></div><p id="status" role="status"></p><script>const status=document.getElementById('status'),root=document.getElementById('voices');for(const voice of ['sulafat','sadachbia']){const box=document.createElement('section');const title=document.createElement('h2');title.textContent=voice==='sadachbia'?'Sadachbia (male)':voice.charAt(0).toUpperCase()+voice.slice(1)+' (female)';const btn=document.createElement('button');btn.textContent='Generate sample';const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src='/api/admin/audio-test/file?voice='+voice;btn.onclick=async()=>{btn.disabled=true;status.textContent='Generating '+voice+'…';try{const r=await fetch('/api/admin/audio-test/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({voice})});const data=await r.json();if(!r.ok)throw Error(data.error||'Generation failed');audio.src='/api/admin/audio-test/file?voice='+voice+'&v='+Date.now();status.textContent='Saved '+voice+' recording to R2.'}catch(e){status.textContent=e.message}finally{btn.disabled=false}};box.append(title,btn,document.createElement('br'),audio);root.append(box)}</script></body></html>`;
 
 
@@ -932,6 +977,49 @@ export default {async fetch(request,env,ctx){
         catch(error){cleanup.failed++;console.error('Audio cleanup could not complete:',error?.message||'R2 list failed')}
         return json({ok:true,bytes:saved.size,segments:generationResult.segments,oldRecordingsDeleted:cleanup.removed,cleanupFailed:cleanup.failed});
       }catch(e){console.error('Devotional audio generation:',e.message);return fail(e.message,502)}
+    }
+    if(path==='/admin/gemini38-audio'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(withAdminToolNav(GEMINI38_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+    }
+    if(path==='/api/admin/gemini38/list'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
+      try{
+        const result=await env.DB.prepare("SELECT id,title,day FROM devotionals WHERE status='published' ORDER BY day ASC").all();
+        const eligible=[];
+        for(const d of result.results||[]){
+          if(await hasProductionAudio(env,d.id))continue;
+          const tests={};for(const part of AUDIO_PARTS){tests[part]={};for(const voice of Object.keys(AUDIO_VOICES))tests[part][voice]=!!await env.AUDIO_BUCKET.head(gemini38Key(d.id,part,voice));}
+          eligible.push({...d,tests});
+        }
+        return json(eligible);
+      }catch(e){console.error('Gemini 3.8 listing failed:',e);return fail('Unable to check audio eligibility',503);}
+    }
+    if(path==='/api/admin/gemini38/file'&&['GET','HEAD'].includes(request.method)){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const id=url.searchParams.get('id'),part=url.searchParams.get('part'),voice=url.searchParams.get('voice');
+      if(!/^[a-zA-Z0-9_-]{1,160}$/.test(id||'')||!AUDIO_PARTS.has(part)||!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid test recording',400);
+      if(!await gemini38Eligible(env,id))return fail('Devotional is not eligible for testing',409);
+      const item=await env.AUDIO_BUCKET.get(gemini38Key(id,part,voice));if(!item)return fail('Test recording not found',404);
+      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
+    }
+    if(path==='/api/admin/gemini38/generate'&&request.method==='POST'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+      if(Number(request.headers.get('content-length')||0)>1024)return fail('Request too large',413);
+      let body;try{body=await request.json()}catch{return fail('Invalid JSON',400)}
+      const {id,part,voice}=body||{};
+      if(typeof id!=='string'||!/^[a-zA-Z0-9_-]{1,160}$/.test(id)||!AUDIO_PARTS.has(part)||!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid test request',400);
+      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
+      try{
+        if(!await gemini38Eligible(env,id))return fail('This devotional already has production audio, so testing is disabled.',409);
+        const key=gemini38Key(id,part,voice);
+        if(await env.AUDIO_BUCKET.head(key))return fail('A test recording already exists for this voice and section.',409);
+        const source=await publishedAudioSource(env,id,part,request);if(!source)return fail('Published reading or Scripture content unavailable',404);
+        if(!await gemini38Eligible(env,id))return fail('Production audio was added during the request.',409);
+        return json({ok:true,...await gemini38Synthesize(env,source.text,voice,key)});
+      }catch(e){console.error('Gemini 3.8 test generation failed:',e.message);return fail(e.message,502);}
     }
     if(path==='/admin/audio-test'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
