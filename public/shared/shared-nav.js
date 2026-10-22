@@ -126,6 +126,34 @@
       else location.assign('/#'+button.dataset.nav);
     }));
   }
+  // Offline status is shared by the devotional app and the Bible Reader.
+  // Display only when the browser reports that the connection is unavailable.
+  function setupOfflineIndicator(){
+    if(document.getElementById('whdc-offline-indicator'))return;
+    const style=document.createElement('style');
+    style.id='whdc-offline-indicator-style';
+    style.textContent=`
+      #whdc-offline-indicator{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 9px);left:12px;z-index:2600;display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #b5c1bd;border-radius:999px;background:#fff;color:#263a35;font:600 12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 10px #0002;pointer-events:none;max-width:calc(100vw - 88px)}
+      #whdc-offline-indicator::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#a06a35;flex:none}
+      #whdc-offline-indicator[hidden]{display:none!important}
+      @media(min-width:768px){#whdc-offline-indicator{top:16px;left:16px}}
+    `;
+    document.head.appendChild(style);
+    const badge=document.createElement('div');
+    badge.id='whdc-offline-indicator';
+    badge.setAttribute('role','status');
+    badge.setAttribute('aria-live','polite');
+    badge.textContent='Offline · Saved content only';
+    badge.hidden=true;
+    document.body.appendChild(badge);
+    const update=()=>{badge.hidden=navigator.onLine!==false};
+    window.addEventListener('online',update);
+    window.addEventListener('offline',update);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});
+    update();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupOfflineIndicator,{once:true});
+  else setupOfflineIndicator();
   window.WHDCNav={items,render,setup,bottomNav,customTabs,selectedTabs,setTabs};
   document.addEventListener('DOMContentLoaded',()=>{
     if(document.getElementById('bibleSiteNav'))bottomNav('bible',false);
