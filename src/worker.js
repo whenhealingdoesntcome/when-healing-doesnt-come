@@ -593,11 +593,12 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
   await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:String(!production)}});
   return {bytes:combined.length,segments:chunks.length};
 }
-const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
+const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><section><h2>Remove test recordings</h2><p>Delete all experimental Gemini 3.8 recordings from R2. This will not affect the recordings in the main Audio Library or public devotionals.</p><button id="clearTests" type="button">Delete all test recordings</button><p id="clearStatus" role="status"></p></section><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
 const status=document.getElementById('status'),root=document.getElementById('items');
 async function api(path,opts){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opts}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d;}
 const post=(path,data)=>api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
 async function load(){try{const data=await api('/api/admin/gemini38/list');root.replaceChildren();status.textContent=data.length+' eligible devotionals (no production audio).';for(const d of data){const section=document.createElement('section'),h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;section.append(h);for(const part of ['devotional','deeper','scripture']){const row=document.createElement('div');row.style.margin='12px 0';const name=document.createElement('strong');name.textContent=part+' ';row.append(name);for(const voice of ['sulafat','sadachbia']){const box=document.createElement('div');const button=document.createElement('button'),note=document.createElement('span'),player=document.createElement('audio');player.controls=true;player.preload='none';const exists=!!d.tests?.[part]?.[voice];button.textContent=exists?'Test saved':'Generate '+voice+' test';button.disabled=exists;if(exists){player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice;box.append(player);}button.onclick=async()=>{button.disabled=true;note.textContent=' Generating…';try{const out=await post('/api/admin/gemini38/generate',{id:d.id,part,voice});note.textContent=' Saved ('+out.segments+' segment(s)).';button.textContent='Test saved';player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice+'&v='+Date.now();box.append(player);}catch(e){note.textContent=' '+e.message;button.disabled=false;}};box.append(button,note);row.append(box);}section.append(row);}root.append(section);}if(!data.length)root.textContent='No eligible published devotionals. Every published devotional may already have production audio.';}catch(e){status.textContent='Unable to load tests: '+e.message;}}
+document.getElementById('clearTests').onclick=async()=>{if(!confirm('Permanently delete ALL Gemini 3.8 experimental test recordings? Production devotional audio will be kept.'))return;const button=document.getElementById('clearTests'),message=document.getElementById('clearStatus');button.disabled=true;message.textContent='Deleting test recordings…';try{const result=await post('/api/admin/gemini38/delete-tests',{});message.textContent='Deleted '+result.deleted+' test recordings.'+(result.failed?' '+result.failed+' could not be deleted.':'');await load();}catch(e){message.textContent='Unable to delete tests: '+e.message}finally{button.disabled=false}};
 load();
 </script></body></html>`;
 
@@ -1056,6 +1057,25 @@ export default {async fetch(request,env,ctx){
     if(path==='/admin/gemini38-audio'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
       return new Response(withAdminToolNav(GEMINI38_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+    }
+    if(path==='/api/admin/gemini38/delete-tests'&&request.method==='POST'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
+      try{
+        let cursor,deleted=0,failed=0;
+        do{
+          const page=await env.AUDIO_BUCKET.list({prefix:GEMINI38_PREFIX,limit:500,...(cursor?{cursor}:{})});
+          const keys=(page.objects||[]).map(item=>item.key).filter(key=>key.startsWith(GEMINI38_PREFIX));
+          for(let i=0;i<keys.length;i+=100){
+            const batch=keys.slice(i,i+100);
+            try{await env.AUDIO_BUCKET.delete(batch);deleted+=batch.length}
+            catch(e){console.error('Test audio delete batch:',e);failed+=batch.length}
+          }
+          cursor=page.truncated?page.cursor:null;
+        }while(cursor);
+        return json({ok:failed===0,deleted,failed});
+      }catch(e){console.error('Gemini 3.8 test cleanup failed:',e);return fail('Test cleanup incomplete: '+e.message,503)}
     }
     if(path==='/api/admin/gemini38/list'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
