@@ -12,6 +12,16 @@ css.textContent=`
 #whdcNoteDialog .whdc-note-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
 #whdcNoteDialog button{font:inherit;border:1px solid #b9aa91;border-radius:8px;padding:7px 12px;background:#fff;color:#393f4a;cursor:pointer}
 #whdcNoteDialog #whdcNoteSave{background:#393f4a;color:white}
+/* Match the Bible Reader dark theme, including the modal and its form controls. */
+body.dark .whdc-note-icon{background:#304343;border-color:#617b72;color:#e7eee9}
+body.dark .whdc-note-icon[data-has-note="true"]{background:#4c4734;border-color:#98865f;color:#f5e8c6}
+body.dark #whdcNoteDialog{background:#223132;color:#eef3ed;border-color:#536b63;color-scheme:dark}
+body.dark #whdcNoteDialog textarea{background:#192829;color:#eef3ed;border-color:#617b72;caret-color:#eef3ed;color-scheme:dark}
+body.dark #whdcNoteDialog textarea::placeholder{color:#aebfba;opacity:1}
+body.dark #whdcNoteDialog button{background:#304343;color:#eef3ed;border-color:#617b72}
+body.dark #whdcNoteDialog #whdcNoteSave{background:#72958b;color:#102421;border-color:#92afa5;font-weight:600}
+body.dark #whdcNoteDialog button:hover{background:#405954;color:#fff}
+body.dark #whdcNoteDialog #whdcNoteSave:hover{background:#94b6a9;color:#102421}
 `;
 document.head.append(css);
 const dialog=document.createElement('dialog');dialog.id='whdcNoteDialog';
