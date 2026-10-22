@@ -776,6 +776,34 @@ function offlineReadingSettings(){
  <button type="button" class="btn" id="removeOfflineDevotionals">Remove Offline Download</button></div>
  <p class="muted small" id="offlineDownloadStatus" role="status">${count?count+' devotionals saved for offline reading.':'No devotionals downloaded yet.'}</p></section>`;
 }
+// Refresh an existing opt-in offline devotional download only when the server
+// reports a newer version. Do not create a download for people who opted out.
+const WHDC_OFFLINE_VERSION_KEY='whdc-offline-public-devotionals-validator-v1';
+let offlineRefreshRunning=false;
+async function refreshOfflineDevotionalsIfChanged(){
+ if(offlineRefreshRunning||!navigator.onLine||!localStorage.getItem(WHDC_OFFLINE_KEY))return;
+ offlineRefreshRunning=true;
+ try{
+  const head=await fetch('/api/devotionals',{method:'HEAD',cache:'no-store'});
+  if(!head.ok)return;
+  const tag=head.headers.get('etag');
+  const modified=head.headers.get('last-modified');
+  const size=head.headers.get('content-length');
+  const validator=tag?'etag:'+tag:modified&&size?'modified:'+modified+':'+size:null;
+  if(!validator)return; // Do not bulk-download when the server lacks validators.
+  if(localStorage.getItem(WHDC_OFFLINE_VERSION_KEY)===validator)return;
+  const response=await fetch('/api/devotionals',{cache:'no-store'});
+  if(!response.ok)return;
+  const items=await response.json();validate(items);
+  if(!Array.isArray(items)||!items.length)return;
+  const serialized=JSON.stringify(items);
+  if(localStorage.getItem(WHDC_OFFLINE_KEY)!==serialized)localStorage.setItem(WHDC_OFFLINE_KEY,serialized);
+  localStorage.setItem(WHDC_OFFLINE_VERSION_KEY,validator);
+ }catch(e){console.warn('Offline devotional update postponed',e)}
+ finally{offlineRefreshRunning=false}
+}
+window.addEventListener('online',refreshOfflineDevotionalsIfChanged);
+window.addEventListener('load',refreshOfflineDevotionalsIfChanged);
 function wireOfflineReadingSettings(){
  const download=$('#downloadOfflineDevotionals'),remove=$('#removeOfflineDevotionals'),status=$('#offlineDownloadStatus');
  if(!download)return;
@@ -787,11 +815,12 @@ function wireOfflineReadingSettings(){
    const items=await response.json();validate(items);
    if(!items.length)throw Error('No published devotionals are available.');
    localStorage.setItem(WHDC_OFFLINE_KEY,JSON.stringify(items));
+   localStorage.removeItem(WHDC_OFFLINE_VERSION_KEY);
    status.textContent=items.length+' devotionals saved for offline reading on this device.';
   }catch(err){status.textContent='Download failed: '+err.message}
   finally{download.disabled=false}
  };
- remove.onclick=()=>{localStorage.removeItem(WHDC_OFFLINE_KEY);status.textContent='Offline download removed.'};
+ remove.onclick=()=>{localStorage.removeItem(WHDC_OFFLINE_KEY);localStorage.removeItem(WHDC_OFFLINE_VERSION_KEY);status.textContent='Offline download removed.'};
 }
 function wireOpeningSettings(){document.querySelectorAll('input[name="openingPage"]').forEach(r=>r.onchange=()=>{if(r.checked){localStorage.setItem(START_PAGE_KEY,r.value);const status=$('#openingSaved');if(status)status.textContent=`Saved! Your app will open to ${{home:"Home",today:"Today",bible:"Bible",explore:"Explore"}[r.value]||"Today"}.`}})}
 function welcomeOpeningChoice(){if(!installedApp()||localStorage.getItem(START_PAGE_KEY)||!localStorage.getItem(VISITED_KEY))return;const overlay=document.createElement('div');overlay.id='openingPrompt';overlay.className='whdc-start-overlay';overlay.innerHTML=`<section class="card whdc-start-dialog" role="dialog" aria-modal="true" aria-labelledby="openingPromptTitle"><div class="eyebrow">Welcome back</div><h2 id="openingPromptTitle">Where would you like to begin?</h2><p>Choose the page you'd like to see when you open this app. You can change it later in Settings.</p><div class="actions" style="gap:12px;flex-wrap:wrap"><button class="btn primary" id="chooseToday" type="button">Devotional of the Day</button><button class="btn" id="chooseHome" type="button">Home</button></div></section>`;document.body.appendChild(overlay);const close=choice=>{localStorage.setItem(START_PAGE_KEY,choice);overlay.remove();view=choice;history.replaceState(null,'','#'+choice);render()};$('#chooseToday').onclick=()=>close('today');$('#chooseHome').onclick=()=>close('home');$('#chooseToday').focus()}
