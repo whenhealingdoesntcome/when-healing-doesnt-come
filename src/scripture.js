@@ -16,6 +16,12 @@ function parseSingle(input){
  const suffix=m[3]?':'+start+(m[5]?'-'+(m[4]?endCh+':':'')+end:''):'';
  return {code,ch,start,endCh,end,reference:fullName+' '+ch+suffix};
 }
+// Canonical display format for the optional Further Study references.
+// Keep each passage separate so the Bible Reader can open every reference.
+export function formatFurtherStudyReferences(value){
+ const parts=String(value||'').split(/[;,\r\n]+/).map(x=>x.trim()).filter(Boolean);
+ return parts.map(part=>parseSingle(part).reference.replace(/(\d)-(\d)/g,'$1–$2')).join('; ');
+}
 export async function scriptureLookup(reference,assets,request){
  const references=String(reference||'').split(/[;\n]+/).map(s=>s.trim()).filter(Boolean);
  if(!references.length||references.length>12||String(reference).length>1000)throw Error('Enter 1 to 12 Scripture passages, separated by new lines or semicolons.');
