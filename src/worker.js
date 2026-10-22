@@ -300,14 +300,36 @@ async function publishedAudioSource(env,id,part,request){
   const original=audioText({...r,...extra,reference:r.scripture},part).trim();
   const text=audioScriptureClean(narrationText(pronunciationText(narrationText(original),await audioOverrides(env))));
   if(!text)return null;
-  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(AUDIO_VERSION+'\n'+AUDIO_STYLE+'\n'+text)));
+  const digest=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)));
   const version=Array.from(digest.slice(0,12),b=>b.toString(16).padStart(2,'0')).join('');
   return {text,version,key:voice=>`devotionals/${id}/${part}/${voice}-${version}.mp3`};
 }
-// Find older R2 recordings by their actual stored keys; text changes never erase audio.
-// Prefer current-version recordings. Legacy recordings are marked as outdated in the admin UI.
+// A recording's freshness depends on its spoken words, not website releases,
+// synthesis model versions, or narration style instructions.
+// Sidecars also allow existing R2 MP3s (whose filenames used older generation
+// hashes) to be recognized without re-encoding or re-uploading the audio.
+async function spokenTextFingerprint(text){
+  const bytes=new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)));
+  return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');
+}
+function audioFingerprintKey(id,part,voice){return `audio-fingerprints/${id}/${part}/${voice}.json`;}
+async function rememberAudioFingerprint(env,id,part,voice,key,source){
+  if(!source)return;
+  const fingerprint=await spokenTextFingerprint(source.text);
+  await env.AUDIO_BUCKET.put(audioFingerprintKey(id,part,voice),JSON.stringify({key,fingerprint}),{httpMetadata:{contentType:'application/json'}});
+}
 async function storedAudioRecording(env,id,part,voice,source){
-  if(source){const key=source.key(voice),current=await env.AUDIO_BUCKET.head(key);if(current)return {key,item:current,outdated:false};}
+  const fingerprintKey=audioFingerprintKey(id,part,voice);
+  const currentKey=source?.key(voice);
+  if(currentKey){
+    const current=await env.AUDIO_BUCKET.head(currentKey);
+    if(current){
+      // Register the current recording so future spoken-text edits can be detected.
+      const marker=await env.AUDIO_BUCKET.get(fingerprintKey);
+      if(!marker)await rememberAudioFingerprint(env,id,part,voice,currentKey,source);
+      return {key:currentKey,item:current,outdated:false};
+    }
+  }
   const prefix=`devotionals/${id}/${part}/${voice}-`;
   let cursor,latest=null;
   do{
@@ -318,7 +340,21 @@ async function storedAudioRecording(env,id,part,voice,source){
     }
     cursor=page.truncated?page.cursor:null;
   }while(cursor);
-  return latest?{key:latest.key,item:latest,outdated:true}:null;
+  if(!latest)return null;
+  if(!source)return {key:latest.key,item:latest,outdated:true};
+  const fingerprint=await spokenTextFingerprint(source.text);
+  let marker=null;
+  try{
+    const saved=await env.AUDIO_BUCKET.get(fingerprintKey);
+    if(saved)marker=JSON.parse(await saved.text());
+  }catch(error){console.error('Audio fingerprint lookup failed:',error?.message||error);}
+  if(!marker||marker.key!==latest.key){
+    // One-time adoption of existing recordings created before text-only tracking.
+    // We cannot reconstruct the original words from a legacy MP3 filename.
+    await rememberAudioFingerprint(env,id,part,voice,latest.key,source);
+    return {key:latest.key,item:latest,outdated:false};
+  }
+  return {key:latest.key,item:latest,outdated:marker.fingerprint!==fingerprint};
 }
 // Remove superseded recordings only AFTER the new MP3 has been saved and verified.
 // Scope deletion to this devotional, section and voice; never touch other voices.
@@ -871,6 +907,7 @@ export default {async fetch(request,env,ctx){
         if(path==='/api/admin/audio/status')return json({ok:true,exists:!!recording,bytes:recording?.item?.size||0,outdated:!!recording?.outdated});
         if(!recording)return fail('Recording not found',404);
         await env.AUDIO_BUCKET.delete(recording.key);
+        await env.AUDIO_BUCKET.delete(audioFingerprintKey(id,part,voice));
         return json({ok:true,deleted:true});
       }catch(e){return fail(e.message,502)}
     }
@@ -884,10 +921,11 @@ export default {async fetch(request,env,ctx){
       try{
         const source=await publishedAudioSource(env,id,part,request);if(!source)return fail('Published reading or Scripture content unavailable',404);
         const key=source.key(voice);
-        if(!body.regenerate&&await env.AUDIO_BUCKET.head(key))return json({ok:true,existing:true});
+        if(!body.regenerate&&await env.AUDIO_BUCKET.head(key)){await rememberAudioFingerprint(env,id,part,voice,key,source);return json({ok:true,existing:true});}
         const generationResult=await synthesizeDevotionalAudio(env,source.text,voice,key);
         const saved=await env.AUDIO_BUCKET.head(key);
         if(!saved||!saved.size)throw Error('Generation completed but the audio file was not found in R2 storage.');
+        await rememberAudioFingerprint(env,id,part,voice,key,source);
         // Only remove old versions after a verified replacement exists.
         let cleanup={removed:0,failed:0};
         try{cleanup=await deleteSupersededAudio(env,id,part,voice,key)}
