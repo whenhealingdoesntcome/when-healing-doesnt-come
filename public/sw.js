@@ -1,6 +1,22 @@
-const CACHE='whdc-public-shell-v15-startup-fix';
+const CACHE='whdc-public-shell-v16-no-navigation-redirects';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
+
+// iOS Safari rejects redirected Response objects returned for navigation by a
+// service worker. Recreate same-origin HTML as a fresh, non-redirected Response.
+function cleanDocumentResponse(response){
+ if(!response||!response.ok)return null;
+ const contentType=response.headers.get('content-type')||'';
+ if(!contentType.toLowerCase().includes('text/html'))return null;
+ if(response.redirected){
+  try{if(new URL(response.url).origin!==self.location.origin)return null}catch{return null}
+ }
+ const headers=new Headers();
+ headers.set('Content-Type',contentType);
+ headers.set('Cache-Control','no-store');
+ return new Response(response.body,{status:200,statusText:'OK',headers});
+}
+
 // Populate the cache opportunistically. One unavailable optional resource must not
 // prevent the worker from installing and controlling the offline app.
 self.addEventListener('install',event=>event.waitUntil((async()=>{
@@ -8,7 +24,11 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  const results=await Promise.allSettled(SHELL.map(async path=>{
   const response=await fetch(path,{cache:'reload'});
   if(!response.ok||response.type==='opaque')throw Error('Cannot cache '+path);
-  await cache.put(path,response);
+  if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
+   const document=cleanDocumentResponse(response);
+   if(!document)throw Error('Not a public HTML document: '+path);
+   await cache.put(path,document);
+  }else if(!response.redirected){await cache.put(path,response)}
  }));
  // If the landing document cannot be cached, retain the previous working SW.
  const landing=await cache.match('/index.html');
@@ -52,15 +72,17 @@ self.addEventListener('fetch',event=>{
   // or stalled. Browser Home Screen launches must not hang indefinitely.
   const page=path==='/bible-reader.html'?'/bible-reader.html':'/index.html';
   event.respondWith((async()=>{
-   const cached=await cacheLookup(page);
+   const cachedRaw=await cacheLookup(page);
+   const cached=cachedRaw?cleanDocumentResponse(cachedRaw):null;
    try{
     const response=await fastNetwork(req,1500);
-    if(response.ok){
-     if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
-      const cache=await caches.open(CACHE);await cache.put(page,response.clone());
-     }
-     return response;
+    const document=cleanDocumentResponse(response);
+    if(document){
+     const cache=await caches.open(CACHE);
+     await cache.put(page,document.clone());
+     return document;
     }
+    // Do not send a redirected or non-HTML response to a navigation request.
     return cached||response;
    }catch{return cached||new Response('This page has not been saved for offline use.',{status:503,headers:{'Content-Type':'text/plain'}})}
   })());return;
