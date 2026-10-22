@@ -136,6 +136,11 @@
       #whdc-offline-indicator{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 9px);left:12px;z-index:2600;display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid #b5c1bd;border-radius:999px;background:#fff;color:#263a35;font:600 12px/1.3 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 2px 10px #0002;pointer-events:none;max-width:calc(100vw - 88px)}
       #whdc-offline-indicator::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#a06a35;flex:none}
       #whdc-offline-indicator[hidden]{display:none!important}
+      /* Reserve a separate row for the offline badge above mobile Bible controls. */
+      @media(max-width:767px){
+        body.whdc-offline-active .site-header:has(.mobile-bible-toolbar){top:calc(env(safe-area-inset-top, 0px) + 43px)!important}
+        body.whdc-offline-active .mobile-bible-toolbar{top:calc(env(safe-area-inset-top, 0px) + 43px)!important}
+      }
       @media(min-width:768px){#whdc-offline-indicator{top:16px;left:16px}}
     `;
     document.head.appendChild(style);
@@ -146,7 +151,7 @@
     badge.textContent='Offline · Saved content only';
     badge.hidden=true;
     document.body.appendChild(badge);
-    const update=()=>{badge.hidden=navigator.onLine!==false};
+    const update=()=>{const offline=navigator.onLine===false;badge.hidden=!offline;document.body.classList.toggle('whdc-offline-active',offline)};
     window.addEventListener('online',update);
     window.addEventListener('offline',update);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)update()});
