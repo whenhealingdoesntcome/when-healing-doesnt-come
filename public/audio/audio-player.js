@@ -46,7 +46,7 @@ window.WHDCAudio=(()=>{
   audio.addEventListener('timeupdate',()=>{remember();update()});audio.addEventListener('durationchange',update);
   audio.addEventListener('play',update);audio.addEventListener('pause',()=>{remember();update()});
   audio.addEventListener('ended',()=>{stopAll();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Finished all three sections.'});
-  audio.addEventListener('error',()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Continuous playback unavailable. Try individual sections.';update()});
+  audio.addEventListener('error',()=>{if(!sequence)return;const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Continuous playback unavailable. Switching to section playback.';if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}activePart=null;activeButton=null;nextSequence()});
   audio.play().catch(()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Tap Play to start continuous audio.';update()});
   update();return true;
  }

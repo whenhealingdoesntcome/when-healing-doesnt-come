@@ -821,7 +821,7 @@ export default {async fetch(request,env,ctx){
     }catch{return fail('Notification database unavailable',503)}
   }
 
-  if((path==='/api/audio/manifest'||path==='/api/audio/file')&&request.method==='GET')return handlePublicAudio(request,env,url);
+  if((path==='/api/audio/manifest'||path==='/api/audio/file'||path==='/api/audio/continuous')&&request.method==='GET')return handlePublicAudio(request,env,url);
   if(path==='/api/audio/sample'&&['GET','HEAD'].includes(request.method)){
     const voice=url.searchParams.get('voice');if(!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid voice',400);
     const item=await env.AUDIO_BUCKET.get('voice-samples/'+voice+'.wav');if(!item)return fail('Sample has not been generated',404);
