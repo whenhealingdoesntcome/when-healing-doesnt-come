@@ -883,6 +883,7 @@ const WHDC_COMPACT_AUDIO_CSS=`
 .whdc-audio-primary-row .whdc-voice-options label{font-size:.7rem;white-space:nowrap}
 .whdc-audio-primary-row .whdc-voice-options label[for=voiceChoice]{display:none}
 .whdc-audio-primary-row #voiceChoice{flex:1 1 auto;min-width:0!important;width:0!important;max-width:none!important;padding:5px 3px!important;font-size:.73rem!important}
+@media(min-width:768px){.whdc-audio-primary-row{justify-content:flex-start!important;gap:8px!important}.whdc-audio-primary-row .whdc-voice-options{flex:0 1 auto!important;width:auto!important;gap:6px!important}.whdc-audio-primary-row #voiceChoice{flex:0 1 155px!important;width:155px!important;max-width:155px!important;padding:5px 7px!important;font-size:.8rem!important}.whdc-audio-primary-row #voiceSpeed{flex:0 0 68px!important;width:68px!important;max-width:68px!important;font-size:.8rem!important}.whdc-audio-primary-row .whdc-voice-options label[for=voiceSpeed]{font-size:.76rem}}
 .whdc-audio-primary-row #voiceSpeed{flex:0 0 60px;width:60px!important;max-width:60px!important;padding:5px 2px!important;font-size:.73rem!important}
 @media(max-width:390px){.whdc-audio-primary-row{gap:3px!important}.whdc-audio-primary-row>#listen{padding:6px 7px;font-size:.78rem}.whdc-audio-primary-row .whdc-voice-options label[for=voiceSpeed]{display:none}.whdc-audio-primary-row #voiceSpeed{flex-basis:54px;width:54px!important;max-width:54px!important}}
 `;

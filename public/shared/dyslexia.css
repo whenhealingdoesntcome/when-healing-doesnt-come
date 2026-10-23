@@ -23,3 +23,21 @@ html.whdc-dyslexia-on .reader p,html.whdc-dyslexia-on .reading-content p{
 .whdc-dyslexia-options input[type=range]{width:100%}
 
 html.whdc-dyslexia-on .reading .card p,html.whdc-dyslexia-on .reading .deep p,html.whdc-dyslexia-on .reading .whdc-main-verse,html.whdc-dyslexia-on .reading .whdc-context-text{font-family:var(--whdc-dyslexia-font)!important;line-height:var(--whdc-dyslexia-lines)!important;letter-spacing:var(--whdc-dyslexia-letters)!important;word-spacing:var(--whdc-dyslexia-words)!important;text-align:left!important}
+
+/* Keep dyslexia reading settings usable on narrow phones and at larger text sizes. */
+.whdc-dyslexia-controls{min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+.whdc-dyslexia-controls .whdc-dyslexia-toggle{max-width:100%;min-width:0;flex-wrap:wrap;line-height:1.45}
+.whdc-dyslexia-controls .whdc-dyslexia-toggle input{flex:0 0 auto;width:18px;height:18px}
+.whdc-dyslexia-options{display:grid;grid-template-columns:minmax(0,1fr);width:100%;max-width:460px;min-width:0;box-sizing:border-box}
+.whdc-dyslexia-options select,.whdc-dyslexia-options input[type=range]{display:block;min-width:0;width:100%;max-width:100%;box-sizing:border-box}
+.whdc-dyslexia-options select{white-space:nowrap;text-overflow:ellipsis;min-height:42px}
+.whdc-dyslexia-options label{min-width:0;overflow-wrap:break-word}
+@media(max-width:600px){
+ .whdc-reading-settings{min-width:0;width:100%;max-width:100%!important;box-sizing:border-box;padding:clamp(12px,4vw,20px)!important}
+ .whdc-reading-settings fieldset{min-width:0;width:100%;max-width:100%;box-sizing:border-box;margin-inline:0;padding:12px!important}
+ .whdc-dyslexia-controls legend{max-width:100%;white-space:normal;line-height:1.4;padding-inline:4px}
+ .whdc-dyslexia-controls .whdc-dyslexia-toggle{align-items:flex-start;gap:10px;font-size:.95rem}
+ .whdc-dyslexia-options{gap:8px;margin-top:14px}
+ .whdc-dyslexia-options label{margin-top:8px}
+ .whdc-dyslexia-options input[type=range]{min-height:34px;touch-action:pan-y}
+}
