@@ -415,3 +415,14 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 
 /* Recorded narration paused/interrupted: play triangle instead of speaker. */
 #quoteSelectableDevotional .whdc-icon-listen[data-paused="true"]::before{content:"";width:20px;height:20px;border-radius:0;background:currentColor;mask:none;clip-path:polygon(20% 8%,90% 50%,20% 92%)}
+
+.whdc-resource-jump{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:20px 0}
+.whdc-resource-jump a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:12px 3px;border:1px solid #aaa;border-radius:12px;text-decoration:none;color:inherit;font-size:.8rem}
+.whdc-resource-jump svg{width:26px;height:26px}
+.whdc-resources label{display:block;margin:14px 0 6px}
+.whdc-resources input,.whdc-resources select{width:100%;padding:11px;border:1px solid #aaa;border-radius:9px;background:transparent;color:inherit}
+.whdc-resource-section{scroll-margin-top:24px;margin:28px 0}
+.whdc-resource-card{width:100%;text-align:left;display:flex;flex-direction:column;gap:9px;cursor:pointer;color:inherit;font:inherit}
+.whdc-resource-card img,.whdc-resource-cover{width:100%;max-height:240px;object-fit:cover;border-radius:8px}
+.whdc-resource-article{line-height:1.8;margin:22px 0}
+@media(max-width:480px){.whdc-resource-jump{gap:5px}.whdc-resource-jump a{font-size:.7rem;padding:9px 2px}}
