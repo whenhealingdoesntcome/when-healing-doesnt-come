@@ -1,0 +1,6 @@
+.whdc-resume-prompt{position:fixed;z-index:1100;bottom:calc(78px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);width:min(92vw,440px);box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border,#b7bdb8);border-radius:14px;background:var(--card,#fff);color:var(--text,#242924);box-shadow:0 8px 28px rgba(0,0,0,.16);font-size:.92rem}
+.whdc-resume-prompt span{flex:1 1 100%;text-align:center;font-weight:600}
+.whdc-resume-prompt button{min-height:44px;padding:8px 16px;border-radius:22px;border:1px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.whdc-resume-prompt button:first-of-type{background:#A2B3A5;color:#18231d;border-color:#A2B3A5}
+.whdc-resume-prompt button:focus-visible{outline:3px solid #719c86;outline-offset:3px}
+@media(min-width:800px){.whdc-resume-prompt{bottom:24px}}
