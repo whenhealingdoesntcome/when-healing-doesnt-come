@@ -60,18 +60,7 @@
       worker?.postMessage({type:'WHDC_REFRESH_ON_OPEN'});
     }).catch(()=>{});
   };
-  let lastCacheRefresh=0;
-  const refreshDownloadedCache=()=>{
-    if(!navigator.onLine||!navigator.serviceWorker)return;
-    const now=Date.now();if(now-lastCacheRefresh<30000)return;
-    lastCacheRefresh=now;
-    navigator.serviceWorker.ready.then(reg=>{
-      const worker=navigator.serviceWorker.controller||reg.active;
-      worker?.postMessage({type:'WHDC_REFRESH_ON_OPEN'});
-    }).catch(()=>{});
-  };
   const check=async()=>{
-    refreshDownloadedCache();
     refreshDownloadedCache();
     if(checking||refreshing||!navigator.onLine)return 'error';
     checking=true;

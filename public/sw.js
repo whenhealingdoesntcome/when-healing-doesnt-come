@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v20-online-refresh';
+const CACHE='whdc-public-shell-v21-topic-nav-theme';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 
@@ -105,69 +105,6 @@ self.addEventListener('fetch',event=>{
   try{const response=await fetch(req);if(response.ok&&response.type==='basic')await cache.put(req,response.clone());return response}
   catch{return Response.error()}
  })());
-});
-
-// Refresh only the small public app shell on online launches. Downloaded Bible
-// books are kept in their separate opt-in cache and are never bulk-downloaded.
-const REFRESH_SHELL=SHELL.filter(path=>!path.startsWith('/bible/')&&path!=='/content.json');
-let shellRefreshPromise=null;
-async function replaceIfChanged(cache,path,response){
- if(!response.ok||response.redirected||response.type==='opaque')return false;
- const previous=await cache.match(path);
- const oldTag=previous?.headers.get('etag'),newTag=response.headers.get('etag');
- const oldModified=previous?.headers.get('last-modified'),newModified=response.headers.get('last-modified');
- if(previous&&oldTag&&newTag&&oldTag===newTag)return false;
- if(previous&&oldModified&&newModified&&oldModified===newModified&&previous.headers.get('content-length')===response.headers.get('content-length'))return false;
- const next=path==='/'||path==='/index.html'||path==='/bible-reader.html'?cleanDocumentResponse(response):response;
- if(!next)return false;
- // If no validators are available, compare bytes before replacing the cache.
- if(previous){const [oldBytes,newBytes]=await Promise.all([previous.clone().arrayBuffer(),next.clone().arrayBuffer()]);if(oldBytes.byteLength===newBytes.byteLength){const a=new Uint8Array(oldBytes),b=new Uint8Array(newBytes);let same=true;for(let i=0;i<a.length;i++)if(a[i]!==b[i]){same=false;break}if(same)return false}}
- await cache.put(path,next);return true;
-}
-async function refreshPublicShell(){
- if(shellRefreshPromise)return shellRefreshPromise;
- shellRefreshPromise=(async()=>{
-  const cache=await caches.open(CACHE);let changed=0;
-  await Promise.allSettled(REFRESH_SHELL.map(async path=>{
-   const response=await fetch(path,{cache:'no-store'});
-   if(await replaceIfChanged(cache,path,response))changed++;
-  }));
-  return changed;
- })();
- try{return await shellRefreshPromise}finally{shellRefreshPromise=null}
-}
-// Only inspect Bible books the reader explicitly downloaded. Conditional HEAD
-// requests avoid re-downloading 66 full books on each launch.
-let bibleRefreshPromise=null;
-async function refreshDownloadedBible(){
- if(bibleRefreshPromise)return bibleRefreshPromise;
- bibleRefreshPromise=(async()=>{
-  const cache=await caches.open('whdc-webu-offline-v1');const entries=await cache.keys();let changed=0;
-  const paths=entries.map(req=>new URL(req.url).pathname).filter(path=>/^\/bible\/[A-Z0-9]{3}\.json$/.test(path));
-  // Bound concurrent requests to avoid a burst of 66 simultaneous requests.
-  for(let i=0;i<paths.length;i+=4)await Promise.allSettled(paths.slice(i,i+4).map(async path=>{
-   const previous=await cache.match(path);if(!previous)return;
-   const head=await fetch(path,{method:'HEAD',cache:'no-store'});if(!head.ok)return;
-   const oldTag=previous.headers.get('etag'),newTag=head.headers.get('etag');
-   const oldModified=previous.headers.get('last-modified'),newModified=head.headers.get('last-modified');
-   if(oldTag&&newTag&&oldTag===newTag)return;
-   if(oldModified&&newModified&&oldModified===newModified&&previous.headers.get('content-length')===head.headers.get('content-length'))return;
-   // No validators: do not re-download the Bible automatically. Existing
-   // downloads remain available; user-initiated Download Bible can refresh.
-   if(!(oldTag&&newTag)&&!(oldModified&&newModified))return;
-   const response=await fetch(path,{cache:'no-store'});
-   if(await replaceIfChanged(cache,path,response))changed++;
-  }));
-  return changed;
- })();
- try{return await bibleRefreshPromise}finally{bibleRefreshPromise=null}
-}
-self.addEventListener('message',event=>{
- if(event.data?.type!=='WHDC_REFRESH_ON_OPEN')return;
- event.waitUntil((async()=>{
-  const [shell,bible]=await Promise.allSettled([refreshPublicShell(),refreshDownloadedBible()]);
-  event.ports?.[0]?.postMessage({ok:true,shellChanged:shell.status==='fulfilled'?shell.value:0,bibleChanged:bible.status==='fulfilled'?bible.value:0});
- })().catch(()=>event.ports?.[0]?.postMessage({ok:false})));
 });
 
 // Refresh only the small public app shell on online launches. Downloaded Bible
