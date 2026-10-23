@@ -406,3 +406,9 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 #whdcTopicClose{position:fixed;top:calc(env(safe-area-inset-top,0px) + 62px);right:12px;z-index:3100;display:grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--border,#b6c2ba);border-radius:50%;background:var(--card,#fff);color:var(--text,#273632);font-size:27px;line-height:1;box-shadow:0 2px 12px #0002;cursor:pointer}
 #whdcTopicClose:focus-visible{outline:3px solid #A2B3A5;outline-offset:3px}
 @media(min-width:768px){#whdcTopicClose{top:82px;right:24px}}
+
+/* Home: unobtrusive, accessible share action */
+.home-hero{position:relative;padding-right:60px!important}
+.whdc-home-share-icon{position:absolute;right:12px;top:12px;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line,#b9c3bc);border-radius:50%;background:var(--card,#fff);color:var(--ink,inherit);cursor:pointer}
+.whdc-home-share-icon:focus-visible{outline:3px solid #A2B3A5;outline-offset:3px}
+@media(max-width:600px){.home-hero{padding-right:58px!important}.whdc-home-share-icon{right:8px;top:8px}}
