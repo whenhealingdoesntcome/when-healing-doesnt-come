@@ -370,3 +370,6 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 @media(prefers-reduced-motion:reduce){
   #listen,#deeperListen,#scriptureListen{transition:none}
 }
+
+/* Minimal Play All and sleep timer */
+#whdcPlayAll{border:1px solid var(--border,#a2b3a5);border-radius:999px;background:transparent;color:inherit;min-height:44px;padding:8px 14px;font:inherit;cursor:pointer}#whdcPlayAll:hover,#whdcPlayAll:focus-visible{border-color:#A2B3A5;outline-offset:2px}.whdc-sleep-label{display:inline-flex;align-items:center;gap:6px;font-size:.85rem;white-space:nowrap}.whdc-sleep-label select{width:auto!important;min-height:40px;padding:6px 24px 6px 9px;border-radius:8px}.visually-hidden{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

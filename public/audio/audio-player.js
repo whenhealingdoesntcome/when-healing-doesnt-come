@@ -1,13 +1,13 @@
 // Recorded narration controller. Uses the existing R2 manifest and reader preferences.
 window.WHDCAudio=(()=>{
- let audio=null,manifest=null,currentId=null,activePart=null,activeButton=null,player=null;
+ let audio=null,manifest=null,currentId=null,activePart=null,activeButton=null,player=null,sequence=null,sleepHandle=null,sleepDeadline=0;
  const parts=['devotional','scripture','deeper'];
  const labels={devotional:'Short Devotional',scripture:'Scripture Reading',deeper:'Go Deeper'};
  const fmt=n=>{if(!Number.isFinite(n))return '0:00';n=Math.floor(n);return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`};
  function voice(){const v=localStorage.getItem('whdc-voice');return v?.startsWith('recorded:')?v.slice(9):(localStorage.getItem('whdc-recorded-voice')||'sulafat')}
  function available(part){return manifest?.sections?.[part]||{}}
  function setSpeed(rate){if(audio)audio.playbackRate=Number.isFinite(rate)&&rate>0?rate:1}
- function stop(){if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}document.querySelectorAll('[data-whdc-recorded]').forEach(b=>b.textContent=b.dataset.originalLabel||'▶ Listen');activePart=null;activeButton=null}
+ function stop(){sequence=null;if('speechSynthesis' in window)speechSynthesis.cancel();if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}document.querySelectorAll('[data-whdc-recorded]').forEach(b=>b.textContent=b.dataset.originalLabel||'▶ Listen');activePart=null;activeButton=null}
  async function load(id){stop();currentId=id;manifest=null;try{const r=await fetch('/api/audio/manifest?devotional='+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)return null;const d=await r.json();if(currentId!==id)return null;manifest=d;return d}catch{return null}}
  function decorate(){for(const part of parts){const button=document.getElementById(part==='devotional'?'listen':part==='scripture'?'scriptureListen':'deeperListen');if(!button||!Object.keys(available(part)).length)continue;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.textContent;button.title='Recorded AI narration available'}}
  function mount(button,part){
@@ -19,6 +19,18 @@ window.WHDCAudio=(()=>{
   const seek=player.querySelector('[data-seek]');seek.addEventListener('input',()=>{if(audio&&Number.isFinite(audio.duration)&&audio.duration>0)audio.currentTime=audio.duration*Number(seek.value)/1000});
  }
  function update(){if(!audio||!player)return;const duration=Number.isFinite(audio.duration)?audio.duration:0;player.querySelector('[data-elapsed]').textContent=fmt(audio.currentTime);player.querySelector('[data-duration]').textContent=fmt(duration);const seek=player.querySelector('[data-seek]');seek.value=duration?String(Math.round(audio.currentTime/duration*1000)):'0';seek.disabled=!duration;const toggle=player.querySelector('[data-action=toggle]');toggle.textContent=audio.paused?'▶':'Ⅱ';toggle.setAttribute('aria-label',audio.paused?'Play':'Pause');if(activeButton)activeButton.textContent=audio.paused?'▶ Resume audio':'Ⅱ Pause audio'}
- function play(part,button){const file=available(part)[voice()];if(!file?.url)return false;if(audio&&activePart===part){if(audio.paused)audio.play().catch(()=>stop());else audio.pause();return true}stop();if('speechSynthesis' in window)speechSynthesis.cancel();activePart=part;activeButton=button;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.dataset.originalLabel||button.textContent;audio=new Audio(file.url);audio.preload='metadata';setSpeed(Number(localStorage.getItem('whdc-voice-rate')||'1'));mount(button,part);audio.addEventListener('loadedmetadata',update);audio.addEventListener('durationchange',update);audio.addEventListener('timeupdate',update);audio.addEventListener('play',update);audio.addEventListener('pause',update);audio.addEventListener('ended',()=>{if(audio){audio.currentTime=0;update()}});audio.addEventListener('error',()=>stop());audio.play().catch(()=>stop());update();return true}
- return {load,decorate,play,stop,available,setSpeed};
+ function play(part,button,fromSequence=false){const file=available(part)[voice()];if(!file?.url)return false;if(audio&&activePart===part){if(audio.paused)audio.play().catch(()=>stop());else audio.pause();return true}if(fromSequence){if(audio){audio.pause();audio.removeAttribute('src');audio=null}if(player){player.remove();player=null}}else stop();if('speechSynthesis' in window)speechSynthesis.cancel();activePart=part;activeButton=button;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.dataset.originalLabel||button.textContent;audio=new Audio(file.url);audio.preload='metadata';setSpeed(Number(localStorage.getItem('whdc-voice-rate')||'1'));mount(button,part);audio.addEventListener('loadedmetadata',update);audio.addEventListener('durationchange',update);audio.addEventListener('timeupdate',update);audio.addEventListener('play',update);audio.addEventListener('pause',update);audio.addEventListener('ended',()=>{if(sequence){nextSequence();return}if(audio){audio.currentTime=0;update()}});audio.addEventListener('error',()=>stop());audio.play().catch(()=>stop());update();return true}
+
+ function setSleep(minutes){clearTimeout(sleepHandle);sleepHandle=null;sleepDeadline=0;if(minutes>0){sleepDeadline=Date.now()+minutes*60000;sleepHandle=setTimeout(()=>{stop();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Sleep timer finished. Audio stopped.'},minutes*60000)}}
+ function stopAll(){clearTimeout(sleepHandle);sleepHandle=null;sleepDeadline=0;stop();const b=document.getElementById('whdcPlayAll');if(b)b.textContent='▷ Play All'}
+ async function nextSequence(){if(!sequence)return;const seq=sequence;const part=seq.parts.shift();if(!part){stopAll();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Finished all three sections.';return}
+  const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Playing '+labels[part]+'.';
+  const button=document.getElementById(part==='devotional'?'listen':part==='deeper'?'deeperListen':'scriptureListen')||document.getElementById('whdcPlayAll');
+  if(available(part)[voice()]?.url&&play(part,button,true))return;
+  let content='';try{content=await seq.getText(part)}catch{}if(sequence!==seq)return;
+  if(!content){nextSequence();return}if(!('speechSynthesis' in window)){nextSequence();return}
+  const u=new SpeechSynthesisUtterance(content);u.rate=Number(localStorage.getItem('whdc-voice-rate')||'1');u.onend=()=>{if(sequence===seq)nextSequence()};u.onerror=()=>{if(sequence===seq)nextSequence()};speechSynthesis.speak(u)
+ }
+ function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
+ return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed};
 })();
