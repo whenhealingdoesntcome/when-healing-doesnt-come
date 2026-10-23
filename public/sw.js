@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v26-speaker-menu';
+const CACHE='whdc-public-shell-v27-resources-navigation';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/resources.html','/resources/resources.css','/resources/library.js','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 
@@ -24,7 +24,7 @@ self.addEventListener('install',event=>event.waitUntil((async()=>{
  const results=await Promise.allSettled(SHELL.map(async path=>{
   const response=await fetch(path,{cache:'reload'});
   if(!response.ok||response.type==='opaque')throw Error('Cannot cache '+path);
-  if(path==='/'||path==='/index.html'||path==='/bible-reader.html'){
+  if(path==='/'||path==='/index.html'||path==='/bible-reader.html'||path==='/resources.html'){
    const document=cleanDocumentResponse(response);
    if(!document)throw Error('Not a public HTML document: '+path);
    await cache.put(path,document);
@@ -70,7 +70,7 @@ self.addEventListener('fetch',event=>{
  if(req.mode==='navigate'){
   // Serve the offline shell immediately when a network connection is unavailable
   // or stalled. Browser Home Screen launches must not hang indefinitely.
-  const page=path==='/bible-reader.html'?'/bible-reader.html':'/index.html';
+  const page=path==='/bible-reader.html'?'/bible-reader.html':path==='/resources.html'?'/resources.html':'/index.html';
   event.respondWith((async()=>{
    const cachedRaw=await cacheLookup(page);
    const cached=cachedRaw?cleanDocumentResponse(cachedRaw):null;
