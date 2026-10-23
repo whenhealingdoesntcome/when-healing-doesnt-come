@@ -870,7 +870,7 @@ const RECORDED_VOICE_KEY='whdc-recorded-voice';
 function preferredAIVoice(){return localStorage.getItem(RECORDED_VOICE_KEY)||'sulafat'}
 function selectedReadingVoice(){return localStorage.getItem(VOICE_KEY)||'recorded:'+preferredAIVoice()}
 function devotionalRecordedVoices(){return ['sulafat','sadachbia'].filter(name=>!!window.WHDCAudio?.available?.('devotional')?.[name]?.url)}
-function speedOptions(){return [['0.75','Slow (0.75×)'],['0.9','Gentle (0.9×)'],['1','Normal (1×)'],['1.15','Faster (1.15×)']].map(([n,t])=>`<option value="${n}" ${audioRate()===Number(n)?'selected':''}>${t}</option>`).join('')}
+function speedOptions(){return [['0.75','0.75x'],['0.9','0.9x'],['1','1x'],['1.15','1.15x']].map(([n,t])=>`<option value="${n}" ${audioRate()===Number(n)?'selected':''}>${t}</option>`).join('')}
 function deviceVoiceOptions(){const selected=chosenVoice()?.voiceURI||'';return `<option value="">Device automatic</option>`+voiceChoices().map(v=>`<option value="${safe(v.voiceURI)}" ${selected===v.voiceURI?'selected':''}>${safe(v.name)} (${safe(v.lang)})</option>`).join('')}
 const WHDC_COMPACT_AUDIO_CSS=`
 .whdc-audio-primary-row{display:flex;flex-wrap:nowrap!important;gap:5px!important;align-items:center;min-width:0;width:100%}
