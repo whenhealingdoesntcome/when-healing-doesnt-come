@@ -201,3 +201,6 @@ body.dark .layout .reading,body.dark #reading{background:transparent!important;b
 @media(max-width:767px){
  .layout .reading,#reading{padding:16px 16px calc(90px + env(safe-area-inset-bottom,0px))!important;min-height:calc(100dvh - 150px)}
 }
+
+/* Paint the iPhone top safe area to match the Bible appearance. */
+html,body{min-height:100%;}html{background:#f7f5f0}html:has(body.dark),html[data-whdc-dark="1"]{background:#192526}

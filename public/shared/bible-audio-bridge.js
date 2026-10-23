@@ -4,9 +4,10 @@
  'use strict';
  let frame=null, previousFocus=null;
  const isBible=url=>url.origin===location.origin&&url.pathname.replace(/\/$/,'')==='/bible-reader.html';
+ function syncOverlayTheme(){const mode=localStorage.getItem('whdc-appearance');const dark=mode==='dark'||(mode!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.whdcDark=dark?'1':'0';document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#192526':'#f7f5f0');}
  function close(target){
   if(!frame)return;
-  frame.remove();frame=null;
+  frame.remove();frame=null;syncOverlayTheme();
   document.documentElement.classList.remove('whdc-bible-overlay-open');
   document.body.classList.remove('whdc-bible-overlay-open');
   document.getElementById('app')?.removeAttribute('inert');
@@ -36,7 +37,7 @@
  }
  function open(url){
   if(frame){if(frame.src!==url.href)frame.src=url.href;return}
-  previousFocus=document.activeElement;
+  previousFocus=document.activeElement;syncOverlayTheme();
   frame=document.createElement('iframe');
   frame.id='whdcBibleAudioFrame';
   frame.title='Bible Reader';
@@ -56,7 +57,7 @@
   event.preventDefault();open(url);
  },true);
  const css=document.createElement('style');
- css.textContent='#whdcBibleAudioFrame{position:fixed;inset:0;width:100%;height:100%;height:100dvh;border:0;background:var(--bg,#fff);z-index:9000}.whdc-bible-overlay-open{overflow:hidden!important}';
+ css.textContent='#whdcBibleAudioFrame{position:fixed;inset:0;width:100%;height:100%;height:100dvh;border:0;background:#192526;z-index:9000}.whdc-bible-overlay-open{overflow:hidden!important}';
  document.head.append(css);
  window.WHDCBibleAudioBridge={open:url=>open(new URL(url||'/bible-reader.html',location.href)),close};
 })();
