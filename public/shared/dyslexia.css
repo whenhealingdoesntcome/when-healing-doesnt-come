@@ -41,3 +41,40 @@ html.whdc-dyslexia-on .reading .card p,html.whdc-dyslexia-on .reading .deep p,ht
  .whdc-dyslexia-options label{margin-top:8px}
  .whdc-dyslexia-options input[type=range]{min-height:34px;touch-action:pan-y}
 }
+
+/* Mobile checkbox correction: global input { width:100% } must not apply here. */
+.whdc-reading-settings .whdc-dyslexia-controls .whdc-dyslexia-toggle {
+  display:flex !important;
+  flex-flow:row nowrap !important;
+  justify-content:flex-start !important;
+  align-items:flex-start !important;
+  column-gap:12px !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+  white-space:normal !important;
+  overflow-wrap:break-word !important;
+  text-align:left !important;
+  margin:12px 0 8px !important;
+}
+.whdc-reading-settings .whdc-dyslexia-controls .whdc-dyslexia-toggle input[type="checkbox"] {
+  appearance:auto;
+  -webkit-appearance:checkbox;
+  display:block !important;
+  flex:0 0 20px !important;
+  width:20px !important;
+  min-width:20px !important;
+  max-width:20px !important;
+  height:20px !important;
+  min-height:20px !important;
+  margin:3px 0 0 !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
+}
+@media(max-width:600px){
+  .whdc-reading-settings .whdc-dyslexia-controls .whdc-dyslexia-toggle {
+    font-size:1rem !important;
+    line-height:1.5 !important;
+  }
+}
