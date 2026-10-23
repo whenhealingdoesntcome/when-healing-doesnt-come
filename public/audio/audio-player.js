@@ -32,5 +32,5 @@ window.WHDCAudio=(()=>{
   const u=new SpeechSynthesisUtterance(content);u.rate=Number(localStorage.getItem('whdc-voice-rate')||'1');u.onend=()=>{if(sequence===seq)nextSequence()};u.onerror=()=>{if(sequence===seq)nextSequence()};speechSynthesis.speak(u)
  }
  function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
- return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed};
+ return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed,isSequencing:()=>!!sequence};
 })();
