@@ -335,3 +335,38 @@ body :is(button,a,input,select,textarea,[role=button]):focus-visible{outline:3px
 body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outline-color:#A2B3A5}
 @media(pointer:coarse){.whdc-settings-collapsible summary,.whdc-accessibility-settings .whdc-accessibility-toggle{min-height:44px}.whdc-accessibility-settings input[type=checkbox]{min-height:22px}}
 @media(max-width:600px){.whdc-accessibility-settings{min-width:0;width:100%;box-sizing:border-box}.whdc-accessibility-settings .whdc-dyslexia-toggle{min-width:0;max-width:100%;width:100%}}
+
+
+/* Minimal, accessible audio controls: quiet outline treatment in both themes. */
+#listen, #deeperListen, #scriptureListen {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:.4rem;
+  min-height:44px;
+  padding:8px 13px !important;
+  border:1px solid var(--border, #aab4ae) !important;
+  border-radius:999px !important;
+  background:transparent !important;
+  color:inherit !important;
+  box-shadow:none !important;
+  font-size:.85rem !important;
+  font-weight:600;
+  line-height:1.2;
+  letter-spacing:0;
+  transition:background-color .15s ease,border-color .15s ease;
+}
+#listen:hover, #deeperListen:hover, #scriptureListen:hover {
+  background:rgba(162,179,165,.14) !important;
+  border-color:#A2B3A5 !important;
+}
+#listen:focus-visible, #deeperListen:focus-visible, #scriptureListen:focus-visible {
+  outline:3px solid #A2B3A5 !important;
+  outline-offset:3px;
+}
+#listen:disabled, #deeperListen:disabled, #scriptureListen:disabled {
+  opacity:.5;cursor:not-allowed;
+}
+@media(prefers-reduced-motion:reduce){
+  #listen,#deeperListen,#scriptureListen{transition:none}
+}
