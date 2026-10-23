@@ -192,3 +192,12 @@ html.whdc-high-contrast body .scripture .verse{font-weight:700}
 html.whdc-simplified-reading .scripture{max-width:68ch;margin-inline:auto;line-height:1.85;text-align:left}
 body :is(button,a,input,select,textarea,[role=button]):focus-visible{outline:3px solid #657e9b;outline-offset:3px}
 body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outline-color:#A2B3A5}
+
+
+/* Edge-to-edge Bible reading surface: no inset card or boxed Scripture. */
+.layout{max-width:none!important;width:100%;padding:0!important;margin:0!important;display:block!important}
+.layout .reading,#reading{width:100%!important;max-width:none!important;min-width:0;min-height:calc(100dvh - 160px);margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:clamp(18px,3vw,36px) clamp(18px,4vw,64px) 48px!important}
+body.dark .layout .reading,body.dark #reading{background:transparent!important;border:0!important}
+@media(max-width:767px){
+ .layout .reading,#reading{padding:16px 16px calc(90px + env(safe-area-inset-bottom,0px))!important;min-height:calc(100dvh - 150px)}
+}
