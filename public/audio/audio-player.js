@@ -36,7 +36,21 @@ window.WHDCAudio=(()=>{
   if(!content){nextSequence();return}if(!('speechSynthesis' in window)){nextSequence();return}
   const u=new SpeechSynthesisUtterance(content);u.rate=Number(localStorage.getItem('whdc-voice-rate')||'1');u.onend=()=>{if(sequence===seq)nextSequence()};u.onerror=()=>{if(sequence===seq)nextSequence()};speechSynthesis.speak(u)
  }
- function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
+ function playContinuous(){
+  if(!currentId||!['devotional','deeper','scripture'].every(part=>available(part)[voice()]?.url?.includes('format=wav')))return false;
+  const chosenVoice=voice(),button=document.getElementById('whdcPlayAll');if(!button)return false;
+  activePart='devotional';activeButton=button;audio=new Audio('/api/audio/continuous?devotional='+encodeURIComponent(currentId)+'&voice='+encodeURIComponent(chosenVoice));
+  audio.preload='auto';audio.playsInline=true;audio.playbackRate=Number(localStorage.getItem('whdc-voice-rate')||'1');
+  mount(button,'devotional');
+  if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:'Play All · Devotional, Go Deeper, Scripture',artist:'When Healing Doesn’t Come'});navigator.mediaSession.setActionHandler('play',()=>audio?.play());navigator.mediaSession.setActionHandler('pause',()=>audio?.pause());navigator.mediaSession.setActionHandler('stop',stopAll)}catch{}}
+  audio.addEventListener('timeupdate',()=>{remember();update()});audio.addEventListener('durationchange',update);
+  audio.addEventListener('play',update);audio.addEventListener('pause',()=>{remember();update()});
+  audio.addEventListener('ended',()=>{stopAll();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Finished all three sections.'});
+  audio.addEventListener('error',()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Continuous playback unavailable. Try individual sections.';update()});
+  audio.play().catch(()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Tap Play to start continuous audio.';update()});
+  update();return true;
+ }
+ function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Playing all three recordings continuously.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
  window.addEventListener('pagehide',remember);document.addEventListener('visibilitychange',()=>{if(document.hidden)remember()});
  return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed,state,isSequencing:()=>!!sequence};
 })();
