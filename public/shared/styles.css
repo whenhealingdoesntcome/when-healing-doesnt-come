@@ -397,3 +397,7 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 #quoteSelectableDevotional .whdc-short-audio-menu{position:absolute;z-index:30;top:calc(100% + 4px);left:0;display:flex;flex-direction:column;gap:4px;min-width:min(280px,calc(100vw - 48px));max-width:calc(100vw - 32px);padding:8px;border:1px solid var(--border, #aaa);border-radius:12px;background:var(--card, var(--surface, #fff));box-shadow:0 8px 24px #0002}
 #quoteSelectableDevotional .whdc-short-audio-menu .btn{display:block;text-align:left;min-height:44px;width:100%;white-space:normal;font-size:.95rem;padding:10px 12px}
 #quoteSelectableDevotional .whdc-short-audio-menu .btn:focus-visible{outline:3px solid #A2B3A5;outline-offset:1px}
+
+/* Compact two-choice audio menu */
+#quoteSelectableDevotional .whdc-short-audio-menu{min-width:148px;max-width:min(190px,calc(100vw - 32px));padding:4px;gap:0;border-radius:10px}
+#quoteSelectableDevotional .whdc-short-audio-menu .btn{padding:9px 12px;font-size:.9rem;min-height:44px;white-space:nowrap}
