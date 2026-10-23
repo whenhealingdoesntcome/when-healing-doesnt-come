@@ -213,7 +213,7 @@ body.dark{
   --card:#232b34;
   --sage:#303b3a;
   --blue:#a8b7c9;
-  --taupe:#c8b68d;
+  --taupe:#A2B3A5;
   --ink:#e9e8e3;
   --line:#465362;
   --muted:#bdc6cf;
@@ -238,15 +238,15 @@ body.dark .muted,body.dark .small.muted,body.dark .help,
 body.dark .whdc-preview-label{color:#bdc6cf}
 body.dark a{color:#b9d3ed}
 body.dark a:hover{color:#e1eaf5}
-body.dark .whdc-context-verse{color:#c8b68d}
+body.dark .whdc-context-verse{color:#A2B3A5}
 body.dark .whdc-main-verse{color:#e9e8e3}
 body.dark input:not([type=checkbox]):not([type=radio]),body.dark textarea,body.dark select{
  background:#2d3742;color:#f0efec;-webkit-text-fill-color:#f0efec;border-color:#657384;
 }
 body.dark input::placeholder,body.dark textarea::placeholder{color:#c3cbd2}
-body.dark input[type=checkbox],body.dark input[type=radio]{accent-color:#b6a47a}
-body.dark .btn.primary{background:#d2bf99;color:#171c22;border-color:#d2bf99}
-body.dark .btn.primary:hover{background:#e4d2ae;color:#171c22}
+body.dark input[type=checkbox],body.dark input[type=radio]{accent-color:#A2B3A5}
+body.dark .btn.primary{background:#A2B3A5;color:#171c22;border-color:#A2B3A5}
+body.dark .btn.primary:hover{background:#A2B3A5;color:#171c22}
 body.dark button:not(.primary):not(.whdc-alert-bell),body.dark .btn:not(.primary){
  border-color:#657384;
 }
@@ -258,7 +258,57 @@ body.dark .whdc-nav .navbtn,body.dark .whdc-nav .navbtn:nth-child(even){
 }
 body.dark .whdc-nav .navbtn:hover,body.dark .whdc-nav .navbtn:focus-visible,
 body.dark .whdc-nav .navbtn[aria-current="page"]{
- background:#35404a;color:#ead6a8;
+ background:#35404a;color:#A2B3A5;
 }
-body.dark :is(button,a,input,select,textarea):focus-visible{outline-color:#d2bf99}
+body.dark :is(button,a,input,select,textarea):focus-visible{outline-color:#A2B3A5}
 body.dark .whdc-alert-panel{background:#fff!important;color:#111!important;color-scheme:light}
+
+
+/* Unified devotional section buttons: match Read Scripture in both themes. */
+#readScripture.btn, #deeper.btn, #reflectionToggle.btn {
+  background:var(--card);
+  color:var(--ink);
+  border:1px solid var(--line);
+  box-shadow:none;
+}
+#readScripture.btn:hover, #deeper.btn:hover, #reflectionToggle.btn:hover {
+  border-color:var(--blue);
+  background:var(--sage);
+}
+#readScripture.btn:focus-visible, #deeper.btn:focus-visible, #reflectionToggle.btn:focus-visible {
+  outline:2px solid var(--blue);
+  outline-offset:2px;
+}
+body.dark #readScripture.btn, body.dark #deeper.btn, body.dark #reflectionToggle.btn {
+  background:#2D3742;
+  color:#E9E8E3;
+  border-color:#657384;
+}
+body.dark #readScripture.btn:hover, body.dark #deeper.btn:hover, body.dark #reflectionToggle.btn:hover {
+  background:#35453f;
+  border-color:#A2B3A5;
+}
+/* Shared mobile bottom navigation follows the same charcoal / sage palette. */
+@media(max-width:800px){
+ body.dark .whdc-nav{
+   background:#202832!important;
+   border-top:1px solid #465362!important;
+   color:#E9E8E3!important;
+ }
+ body.dark .whdc-nav .navbtn,
+ body.dark .whdc-nav .navbtn:nth-child(even){
+   background:#202832!important;
+   color:#D4DCE3!important;
+   border-color:transparent!important;
+ }
+ body.dark .whdc-nav .navbtn:hover,
+ body.dark .whdc-nav .navbtn:focus-visible,
+ body.dark .whdc-nav .navbtn[aria-current="page"]{
+   background:#35453F!important;
+   color:#A2B3A5!important;
+ }
+ body.dark .whdc-nav .navbtn svg{
+   color:inherit!important;
+   stroke:currentColor!important;
+ }
+}

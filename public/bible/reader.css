@@ -151,9 +151,9 @@ body.dark .scripture,body.dark .scripture p,body.dark .reading h1,
 body.dark .reading h2,body.dark .reading h3{color:#e9e8e3}
 body.dark .intro,body.dark .help,body.dark .translation,
 body.dark .result-count,body.dark .loading{color:#bdc6cf}
-body.dark .scripture .verse{color:#c8b68d}
+body.dark .scripture .verse{color:#A2B3A5}
 body.dark .scripture .chapter{background:#35404a;color:#f0efec}
-body.dark .scripture .section{color:#c8b68d}
+body.dark .scripture .section{color:#A2B3A5}
 body.dark .search-line input,body.dark input,body.dark textarea,body.dark select,
 body.dark .mobile-bible-toolbar select{
  background:#2d3742!important;color:#f0efec!important;
@@ -163,8 +163,22 @@ body.dark .whdc-header-top .mobile-bible-toolbar select{
  background:#2d3742!important;color:#f0efec!important;
  -webkit-text-fill-color:#f0efec!important;border-color:#657384!important;color-scheme:dark!important;
 }
-body.dark .controls .chapter-go{background:#b6a47a;color:#171c22;border-color:#b6a47a}
+body.dark .controls .chapter-go{background:#A2B3A5;color:#171c22;border-color:#A2B3A5}
 body.dark .result-links a{color:#b9d3ed}
 body.dark .scripture mark{background:#705a32;color:#fff5df}
 body.dark .search-filters .book-filter{border-color:#657384;scrollbar-color:#a8b7c9 #2d3742}
-body.dark :is(button,a,input,select,textarea):focus-visible{outline-color:#d2bf99}
+body.dark :is(button,a,input,select,textarea):focus-visible{outline-color:#A2B3A5}
+
+
+/* Match the shared bottom navigation colors on the Bible page in dark mode. */
+@media(max-width:800px){
+ body.dark .whdc-nav{background:#202832!important;border-top:1px solid #465362!important}
+ body.dark .whdc-nav .navbtn,body.dark .whdc-nav .navbtn:nth-child(even){
+   background:#202832!important;color:#D4DCE3!important;border-color:transparent!important;
+ }
+ body.dark .whdc-nav .navbtn:hover,body.dark .whdc-nav .navbtn:focus-visible,
+ body.dark .whdc-nav .navbtn[aria-current="page"]{
+   background:#35453F!important;color:#A2B3A5!important;
+ }
+ body.dark .whdc-nav .navbtn svg{color:inherit!important;stroke:currentColor!important}
+}
