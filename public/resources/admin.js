@@ -5,7 +5,7 @@ let records=[],editing='',busy=false;
 const form=$('#editor'),notice=$('#notice'),panel=$('#resourceEditorPanel');
 const fields=['type','title','creator','description','content','url','image_url','topics','sort_order','featured','published'];
 async function api(method,body){const r=await fetch('/api/admin/resources',{method,cache:'no-store',credentials:'same-origin',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
-function mode(){const isArticle=form.elements.type.value==='article';form.querySelector('.article-only').hidden=!isArticle;form.elements.url.required=!isArticle}
+function mode(){const isArticle=form.elements.type.value==='article';form.querySelector('.article-only').hidden=!isArticle;form.elements.url.required=['website','podcast'].includes(form.elements.type.value)}
 function reset(open=true){editing='';form.reset();$('#editHeading').textContent='Add Resource';mode();panel.open=open;if(open)panel.scrollIntoView({block:'nearest'})}
 function edit(id){const r=records.find(x=>x.id===id);if(!r)return;editing=id;for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#editHeading').textContent='Edit: '+r.title;mode();panel.open=true;panel.scrollIntoView({block:'start',behavior:'smooth'})}
 function render(){const q=$('#resourceSearch').value.trim().toLowerCase(),type=$('#resourceTypeFilter').value,status=$('#resourceStatusFilter').value,sort=$('#resourceSort').value;
