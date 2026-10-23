@@ -120,7 +120,7 @@
     }
     let bar=document.getElementById('whdc-bottom-nav');
     if(!bar){bar=document.createElement('nav');bar.id='whdc-bottom-nav';bar.className='whdc-bottom-nav';bar.setAttribute('aria-label','Quick navigation');document.body.appendChild(bar)}
-    const chosen=selectedTabs().map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).concat(bottomItems[4]);
+    const topicReadingId=sessionStorage.getItem('whdc-topic-reading-session-v1');const chosen=selectedTabs().map(id=>{if(id==='explore'&&topicReadingId)return {id:'read',label:'Read',href:'/#devotional/'+encodeURIComponent(topicReadingId),icon:'book'};return customTabs.find(item=>item.id===id)}).filter(Boolean).concat(bottomItems[4]);
     bar.style.setProperty('--whdc-tab-count',String(chosen.length));
     bar.innerHTML=chosen.map(item=>{
       const active=item.id===current?' aria-current="page"':'';
@@ -128,7 +128,7 @@
       return inApp&&item.id!=='bible'?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
     }).join('');
     if(inApp)bar.querySelectorAll('button[data-nav]').forEach(button=>button.addEventListener('click',()=>{
-      const menuButton=document.querySelector('#mainMenu [data-nav="'+button.dataset.nav+'"]');
+      if(button.dataset.nav==='read'){window.dispatchEvent(new CustomEvent('whdc-return-to-reading'));return;}const menuButton=document.querySelector('#mainMenu [data-nav="'+button.dataset.nav+'"]');
       if(menuButton)menuButton.click();
       else location.assign('/#'+button.dataset.nav);
     }));

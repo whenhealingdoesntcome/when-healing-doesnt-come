@@ -401,3 +401,8 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 /* Compact two-choice audio menu */
 #quoteSelectableDevotional .whdc-short-audio-menu{min-width:148px;max-width:min(190px,calc(100vw - 32px));padding:4px;gap:0;border-radius:10px}
 #quoteSelectableDevotional .whdc-short-audio-menu .btn{padding:9px 12px;font-size:.9rem;min-height:44px;white-space:nowrap}
+
+/* Topics reading session: persistent, accessible icon-only close control. */
+#whdcTopicClose{position:fixed;top:calc(env(safe-area-inset-top,0px) + 62px);right:12px;z-index:3100;display:grid;place-items:center;width:44px;height:44px;min-width:44px;min-height:44px;padding:0;border:1px solid var(--border,#b6c2ba);border-radius:50%;background:var(--card,#fff);color:var(--text,#273632);font-size:27px;line-height:1;box-shadow:0 2px 12px #0002;cursor:pointer}
+#whdcTopicClose:focus-visible{outline:3px solid #A2B3A5;outline-offset:3px}
+@media(min-width:768px){#whdcTopicClose{top:82px;right:24px}}
