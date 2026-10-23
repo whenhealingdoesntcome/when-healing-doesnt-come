@@ -122,10 +122,13 @@
     let bar=document.getElementById('whdc-bottom-nav');
     if(!bar){bar=document.createElement('nav');bar.id='whdc-bottom-nav';bar.className='whdc-bottom-nav';bar.setAttribute('aria-label','Quick navigation');document.body.appendChild(bar)}
     const topicId=(()=>{try{return sessionStorage.getItem('whdc-topic-reading-session-v1')||''}catch{return ''}})();
-    const tabs=selectedTabs();if(topicId&&!tabs.includes('explore'))tabs.splice(Math.max(0,tabs.length-1),0,'explore');const chosen=tabs.map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).map(item=>item.id==='explore'&&topicId?{...item,id:'read',label:'Read',href:'/#read',icon:'read'}:item).concat(bottomItems[4]);
+    // A Topics reading session always gets the fourth tab, even when a reader
+    // previously customized their shortcuts. Do not append a sixth mobile tab.
+    const tabs=topicId?['home','today','bible','explore']:selectedTabs();
+    const chosen=tabs.map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).map(item=>item.id==='explore'&&topicId?{...item,id:'read',label:'Read',href:'/#read',icon:'read'}:item).concat(bottomItems[4]);
     bar.style.setProperty('--whdc-tab-count',String(chosen.length));
     bar.innerHTML=chosen.map(item=>{
-      const active=item.id===current?' aria-current="page"':'';
+      const active=(item.id==='read'?current==='read':item.id===current)?' aria-current="page"':'';
       const inner=`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[item.icon]}</svg><span>${item.label}</span>`;
       return inApp&&item.id!=='bible'?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
     }).join('');
