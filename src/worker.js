@@ -424,7 +424,20 @@ async function audioPlaybackResponse(request,env,key,cacheControl){
   return new Response(request.method==='HEAD'?null:item.body,{headers:{...headers,'content-length':String(size)}});
 }
 // Reuse the same persistent admin navigation on standalone admin tools.
-const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><nav class="whdc-tool-nav" aria-label="Admin navigation"><a href="/admin">Home</a><a href="/admin/audio">Audio Library</a><a href="/admin?submissions=1">Guest Writers</a><a href="/admin?editorNotes=1">Editors</a><a href="/admin/outline">Master Outline</a><a href="/admin/reading-plans">Reading Plans</a><a href="/cdn-cgi/access/logout">Log Out</a></nav></div></header>`;
+
+// WHDC Resources: isolated from devotional tables. Created on first request.
+async function resourcesTable(db){
+ await db.prepare(`CREATE TABLE IF NOT EXISTS whdc_resources (
+ id TEXT PRIMARY KEY, type TEXT NOT NULL, title TEXT NOT NULL, creator TEXT NOT NULL DEFAULT '',
+ description TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', url TEXT NOT NULL DEFAULT '',
+ image_url TEXT NOT NULL DEFAULT '', topics TEXT NOT NULL DEFAULT '', featured INTEGER NOT NULL DEFAULT 0,
+ published INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0,
+ updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+}
+function resourceRecord(row){return {...row,featured:!!row.featured,published:!!row.published,topics:row.topics?row.topics.split(',').map(x=>x.trim()).filter(Boolean):[]}}
+function resourceLinkValid(v){if(!v)return true;try{const u=new URL(v);return ['https:','http:'].includes(u.protocol)}catch{return false}}
+
+const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><nav class="whdc-tool-nav" aria-label="Admin navigation"><a href="/admin">Home</a><a href="/admin/audio">Audio Library</a><a href="/admin?submissions=1">Guest Writers</a><a href="/admin?editorNotes=1">Editors</a><a href="/admin/outline">Master Outline</a><a href="/admin/reading-plans">Reading Plans</a><a href="/admin/resources">Resources</a><a href="/cdn-cgi/access/logout">Log Out</a></nav></div></header>`;
 const ADMIN_TOOL_CSS = `<style>
 body.whdc-admin-tool{max-width:none!important;margin:0!important;padding:0!important;background:#f3f5f2;color:#303b3c;font:16px system-ui;line-height:1.5}
 .whdc-tool-header{position:sticky;top:0;z-index:1500;background:#fff;box-shadow:0 2px 12px #00000012}
@@ -448,6 +461,9 @@ function withAdminToolNav(html,active){
  const beforeContent=hasBody?bodyStart.replace(/(<body[^>]*>)/i,`$1${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`):bodyStart.replace('<body class="whdc-admin-tool">',`<body class="whdc-admin-tool">${ADMIN_TOOL_CSS}${nav}<main class="whdc-tool-main">`);
  return beforeContent+'</main>'+tail;
 }
+
+const RESOURCES_ADMIN_HTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Resources Admin</title><link rel="stylesheet" href="/resources/resources.css"></head><body><h1>Resources Library</h1><p>Add articles, books, websites, and podcasts. Drafts are visible only here.</p><p id="notice" role="status"></p><div id="list"></div><h2 id="editHeading">Add Resource</h2><form id="editor"><label>Type <select name="type"><option value="article">Article</option><option value="book">Book</option><option value="website">Website</option><option value="podcast">Podcast / Episode</option></select></label><label>Title <input name="title" required maxlength="180"></label><label>Author, host, or organization <input name="creator" maxlength="180"></label><label>Short description <textarea name="description" maxlength="1200" rows="3"></textarea></label><label class="article-only">Article body (plain text; blank lines create paragraphs, **text** creates bold and *text* creates italics) <textarea name="content" rows="14"></textarea></label><label>External link (required for books, websites, podcasts) <input name="url" type="url" placeholder="https://"></label><label>Image URL (optional) <input name="image_url" type="url" placeholder="https://"></label><label>Topics, comma separated <input name="topics" placeholder="Grief, Chronic Illness, Prayer"></label><label>Display order <input name="sort_order" type="number" value="0"></label><label><input type="checkbox" name="featured"> Featured</label><label><input type="checkbox" name="published"> Published</label><div class="actions"><button type="submit">Save Resource</button><button type="button" id="reset">New Resource</button><a href="/resources.html">View public library</a></div></form><script src="/resources/admin.js" defer></script></body></html>`;
+
 const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p><a href="/admin/gemini38-audio">Open Gemini 3.8 Flash TTS testing →</a></p><p>Generate new Gemini 3.8 recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Legacy voice samples are retired. Use the Gemini 3.8 testing page for new voice previews.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><section style="border:1px solid #a66;padding:14px;border-radius:9px;margin:18px 0"><h2>Start fresh with Gemini 3.8</h2><p>Delete all legacy Gemini 3.1 production MP3s, their tracking records, and legacy voice samples from R2. Existing Gemini 3.8 WAV recordings and experimental tests are preserved. This cannot be undone.</p><button id="deleteLegacyAudio" type="button">Delete Gemini 3.1 recordings</button><span id="legacyCleanupStatus" role="status"></span></section><fieldset id="audioFilters" style="border:1px solid #bbc5c4;border-radius:10px;padding:12px;margin:18px 0"><legend>Show devotionals</legend><label style="margin-right:14px"><input type="radio" name="audioFilter" value="needs" checked> Needs Audio</label><label style="margin-right:14px"><input type="radio" name="audioFilter" value="all"> All Devotionals</label><label><input type="radio" name="audioFilter" value="completed"> Completed</label><p id="audioFilterStatus" role="status" aria-live="polite">Checking all six recordings for each devotional…</p></fieldset><div id="items"></div><script>
 document.getElementById('deleteLegacyAudio').onclick=async()=>{const confirmation=prompt('Type DELETE GEMINI 3.1 AUDIO to permanently delete legacy recordings:');if(confirmation!=='DELETE GEMINI 3.1 AUDIO')return;const button=document.getElementById('deleteLegacyAudio'),note=document.getElementById('legacyCleanupStatus');button.disabled=true;note.textContent=' Deleting legacy recordings…';try{const r=await fetch('/api/admin/audio/cleanup-legacy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirm:confirmation})});const d=await r.json();if(!r.ok)throw Error(d.error||'Cleanup failed');note.textContent=' Deleted '+d.deleted+' objects; failures: '+d.failed+'. Refresh this page.';}catch(e){note.textContent=' '+e.message}finally{button.disabled=false}};
 
@@ -805,13 +821,18 @@ export default {async fetch(request,env,ctx){
     }catch{return fail('Notification database unavailable',503)}
   }
 
-  if((path==='/api/audio/manifest'||path==='/api/audio/file'||path==='/api/audio/continuous')&&request.method==='GET')return handlePublicAudio(request,env,url);
+  if((path==='/api/audio/manifest'||path==='/api/audio/file')&&request.method==='GET')return handlePublicAudio(request,env,url);
   if(path==='/api/audio/sample'&&['GET','HEAD'].includes(request.method)){
     const voice=url.searchParams.get('voice');if(!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid voice',400);
     const item=await env.AUDIO_BUCKET.get('voice-samples/'+voice+'.wav');if(!item)return fail('Sample has not been generated',404);
     return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'}});
   }
 
+
+  if(path==='/api/resources'&&request.method==='GET'){
+   try{await resourcesTable(env.DB);const {results=[]}=await env.DB.prepare('SELECT * FROM whdc_resources WHERE published=1 ORDER BY featured DESC,sort_order ASC,title COLLATE NOCASE ASC').all();return json(results.map(resourceRecord))}
+   catch(e){console.error('Resources read',e);return fail('Resources unavailable',503)}
+  }
   if(path==='/api/reading-plans'&&request.method==='GET'){
     try{
       const {results=[]}=await env.DB.prepare('SELECT id,title,description,devotional_ids FROM reading_plans WHERE published=1 ORDER BY sort_order ASC,title ASC').all();
@@ -910,6 +931,31 @@ export default {async fetch(request,env,ctx){
       return new Response(EDITOR_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     }
 
+
+    if(path==='/admin/resources'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(withAdminToolNav(RESOURCES_ADMIN_HTML,'/admin/resources'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    }
+    if(path==='/api/admin/resources'&&['GET','POST','DELETE'].includes(request.method)){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      try{
+        await resourcesTable(env.DB);
+        if(request.method==='GET'){const {results=[]}=await env.DB.prepare('SELECT * FROM whdc_resources ORDER BY sort_order ASC,title COLLATE NOCASE ASC').all();return json(results.map(resourceRecord))}
+        const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+        if(Number(request.headers.get('content-length')||0)>120000)return fail('Resource too large',413);
+        const b=await request.json();const id=String(b.id||'').trim();
+        if(!/^[a-z0-9][a-z0-9-]{0,99}$/.test(id))return fail('Invalid resource ID',400);
+        if(request.method==='DELETE'){await env.DB.prepare('DELETE FROM whdc_resources WHERE id=?').bind(id).run();return json({ok:true})}
+        const type=String(b.type||''),title=String(b.title||'').trim(),creator=String(b.creator||'').trim(),description=String(b.description||'').trim(),content=String(b.content||'').trim(),link=String(b.url||'').trim(),image=String(b.image_url||'').trim();
+        const topics=Array.isArray(b.topics)?b.topics.map(x=>String(x).trim()).filter(Boolean).join(','):String(b.topics||'').trim();
+        if(!['article','book','website','podcast'].includes(type)||!title||title.length>180||creator.length>180||description.length>1200||content.length>80000||topics.length>600||!resourceLinkValid(link)||!resourceLinkValid(image)||link.length>1500||image.length>1500)return fail('Invalid resource details',400);
+        if(type!=='article'&&!link)return fail('External resources need a link',400);
+        await env.DB.prepare(`INSERT INTO whdc_resources(id,type,title,creator,description,content,url,image_url,topics,featured,published,sort_order,updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(id) DO UPDATE SET type=excluded.type,title=excluded.title,creator=excluded.creator,description=excluded.description,content=excluded.content,url=excluded.url,image_url=excluded.image_url,topics=excluded.topics,featured=excluded.featured,published=excluded.published,sort_order=excluded.sort_order,updated_at=CURRENT_TIMESTAMP`)
+         .bind(id,type,title,creator,description,content,link,image,topics,b.featured?1:0,b.published?1:0,Number.isFinite(Number(b.sort_order))?Math.trunc(Number(b.sort_order)):0).run();
+        return json({ok:true});
+      }catch(e){console.error('Resources admin',e);return fail('Unable to save resources',503)}
+    }
     if(path==='/admin/reading-plans'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
       return new Response(withAdminToolNav(READING_PLANS_ADMIN_HTML,'/admin/reading-plans'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
@@ -938,7 +984,7 @@ export default {async fetch(request,env,ctx){
       }catch(e){console.error('Reading plan admin failed',e);return fail('Reading plans database unavailable; apply migration 0003',503)}
     }
     if(path==='/admin/preview'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return new Response(PREVIEW_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"frame-ancestors 'none'"}});}
-    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?ADMIN_HTML.replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?ADMIN_HTML.replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/admin/outline'&&request.method==='GET'&&user.role==='editor')return fail('Not available to editors',403);
     if(path==='/admin/outline'&&request.method==='GET')return new Response(OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/outline.js'&&request.method==='GET')return new Response(isAdmin(user)?OUTLINE_JS:WRITER_OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
