@@ -412,3 +412,6 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 .whdc-home-share-icon{position:absolute;right:12px;top:12px;width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line,#b9c3bc);border-radius:50%;background:var(--card,#fff);color:var(--ink,inherit);cursor:pointer}
 .whdc-home-share-icon:focus-visible{outline:3px solid #A2B3A5;outline-offset:3px}
 @media(max-width:600px){.home-hero{padding-right:58px!important}.whdc-home-share-icon{right:8px;top:8px}}
+
+/* Recorded narration paused/interrupted: play triangle instead of speaker. */
+#quoteSelectableDevotional .whdc-icon-listen[data-paused="true"]::before{content:"";width:20px;height:20px;border-radius:0;background:currentColor;mask:none;clip-path:polygon(20% 8%,90% 50%,20% 92%)}

@@ -88,6 +88,7 @@
     home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
     sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/>',
     book:'<path d="M12 7c-3-2-6-2-9-1v14c3-1 6-1 9 1 3-2 6-2 9-1V6c-3-1-6-1-9 1zm0 0v14"/>',
+    read:'<path d="M8 4h9a2 2 0 0 1 2 2v14H8a3 3 0 0 1 0-6h11M8 4a3 3 0 0 0-3 3v10a3 3 0 0 1 3-3"/><path d="m10 9 2 2 3-3"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',
     list:'<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
     calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18"/><path d="m9 16 2 2 4-4"/>',
@@ -120,7 +121,8 @@
     }
     let bar=document.getElementById('whdc-bottom-nav');
     if(!bar){bar=document.createElement('nav');bar.id='whdc-bottom-nav';bar.className='whdc-bottom-nav';bar.setAttribute('aria-label','Quick navigation');document.body.appendChild(bar)}
-    const topicReadingId=sessionStorage.getItem('whdc-topic-reading-session-v1');const chosen=selectedTabs().map(id=>{if(id==='explore'&&topicReadingId)return {id:'read',label:'Read',href:'/#devotional/'+encodeURIComponent(topicReadingId),icon:'book'};return customTabs.find(item=>item.id===id)}).filter(Boolean).concat(bottomItems[4]);
+    const topicId=(()=>{try{return sessionStorage.getItem('whdc-topic-reading-session-v1')||''}catch{return ''}})();
+    const chosen=selectedTabs().map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).map(item=>item.id==='explore'&&topicId?{...item,id:'read',label:'Read',href:'/#read',icon:'read'}:item).concat(bottomItems[4]);
     bar.style.setProperty('--whdc-tab-count',String(chosen.length));
     bar.innerHTML=chosen.map(item=>{
       const active=item.id===current?' aria-current="page"':'';
@@ -128,7 +130,8 @@
       return inApp&&item.id!=='bible'?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
     }).join('');
     if(inApp)bar.querySelectorAll('button[data-nav]').forEach(button=>button.addEventListener('click',()=>{
-      if(button.dataset.nav==='read'){window.dispatchEvent(new CustomEvent('whdc-return-to-reading'));return;}const menuButton=document.querySelector('#mainMenu [data-nav="'+button.dataset.nav+'"]');
+      if(button.dataset.nav==='read'&&typeof window.WHDCNavigate==='function'){window.WHDCNavigate('read');return}
+      const menuButton=document.querySelector('#mainMenu [data-nav="'+button.dataset.nav+'"]');
       if(menuButton)menuButton.click();
       else location.assign('/#'+button.dataset.nav);
     }));
