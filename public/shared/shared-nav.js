@@ -122,7 +122,7 @@
     let bar=document.getElementById('whdc-bottom-nav');
     if(!bar){bar=document.createElement('nav');bar.id='whdc-bottom-nav';bar.className='whdc-bottom-nav';bar.setAttribute('aria-label','Quick navigation');document.body.appendChild(bar)}
     const topicId=(()=>{try{return sessionStorage.getItem('whdc-topic-reading-session-v1')||''}catch{return ''}})();
-    const chosen=selectedTabs().map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).map(item=>item.id==='explore'&&topicId?{...item,id:'read',label:'Read',href:'/#read',icon:'read'}:item).concat(bottomItems[4]);
+    const tabs=selectedTabs();if(topicId&&!tabs.includes('explore'))tabs.splice(Math.max(0,tabs.length-1),0,'explore');const chosen=tabs.map(id=>customTabs.find(item=>item.id===id)).filter(Boolean).map(item=>item.id==='explore'&&topicId?{...item,id:'read',label:'Read',href:'/#read',icon:'read'}:item).concat(bottomItems[4]);
     bar.style.setProperty('--whdc-tab-count',String(chosen.length));
     bar.innerHTML=chosen.map(item=>{
       const active=item.id===current?' aria-current="page"':'';
