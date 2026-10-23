@@ -50,7 +50,7 @@ window.WHDCAudio=(()=>{
   audio.play().catch(()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Tap Play to start continuous audio.';update()});
   update();return true;
  }
- function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Playing all three recordings continuously.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
+ function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Audio playing.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
  window.addEventListener('pagehide',remember);document.addEventListener('visibilitychange',()=>{if(document.hidden)remember()});
  return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed,state,isSequencing:()=>!!sequence};
 })();
