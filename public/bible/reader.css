@@ -182,3 +182,13 @@ body.dark :is(button,a,input,select,textarea):focus-visible{outline-color:#A2B3A
  }
  body.dark .whdc-nav .navbtn svg{color:inherit!important;stroke:currentColor!important}
 }
+
+/* Shared reading accessibility on Bible Reader */
+html.whdc-reduce-motion *,html.whdc-reduce-motion *::before,html.whdc-reduce-motion *::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+html.whdc-high-contrast body:not(.dark){color:#171b20}html.whdc-high-contrast body.dark{color:#fff}
+html.whdc-high-contrast body.dark .scripture,html.whdc-high-contrast body.dark .scripture p{color:#fff!important}
+html.whdc-high-contrast body .scripture .verse{font-weight:700}
+html.whdc-simplified-reading .scripture{max-width:68ch;margin-inline:auto;line-height:1.85;text-align:left}
+body :is(button,a,input,select,textarea,[role=button]):focus-visible{outline:3px solid #657e9b;outline-offset:3px}
+body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outline-color:#A2B3A5}

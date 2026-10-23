@@ -312,3 +312,26 @@ body.dark #readScripture.btn:hover, body.dark #deeper.btn:hover, body.dark #refl
    stroke:currentColor!important;
  }
 }
+
+/* WHDC Accessibility preferences */
+.whdc-accessibility-settings fieldset{min-width:0;max-width:100%}
+.whdc-accessibility-settings .whdc-accessibility-toggle{display:flex!important;align-items:flex-start;justify-content:flex-start;gap:12px;min-width:0;max-width:100%;width:100%;font-weight:600;line-height:1.5;white-space:normal;overflow-wrap:anywhere;margin:10px 0 4px}
+.whdc-accessibility-settings .whdc-accessibility-toggle input[type=checkbox]{display:block!important;flex:0 0 22px!important;width:22px!important;min-width:22px!important;max-width:22px!important;height:22px!important;margin:2px 0 0!important;padding:0!important;position:static!important}
+.whdc-accessibility-settings .whdc-dyslexia-controls{min-width:0}
+.whdc-accessibility-settings .whdc-dyslexia-options{max-width:100%;min-width:0}
+.whdc-accessibility-settings .whdc-dyslexia-options select,.whdc-accessibility-settings .whdc-dyslexia-options input[type=range]{max-width:100%;min-width:0}
+html.whdc-reduce-motion *,html.whdc-reduce-motion *::before,html.whdc-reduce-motion *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+html.whdc-reduce-motion{scroll-behavior:auto!important}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto!important}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+html.whdc-high-contrast body:not(.dark){--ink:#171b20;--muted:#3b424b;--line:#555f6b;--border:#555f6b}
+html.whdc-high-contrast body.dark{--ink:#fff;--muted:#f0f1f2;--line:#9eabb9;--border:#9eabb9}
+html.whdc-high-contrast body :is(.muted,.small.muted,.help){color:var(--muted)!important}
+html.whdc-high-contrast body :is(input,textarea,select,.btn,button,fieldset){border-color:var(--line)}
+html.whdc-high-contrast body.dark :is(input,textarea,select,.btn,button){color:#fff}
+html.whdc-high-contrast body.dark a{color:#c7e0fa}
+html.whdc-simplified-reading body .devotional-content,html.whdc-simplified-reading body .devotional-body,html.whdc-simplified-reading body .go-deeper,html.whdc-simplified-reading body .reading-content{max-width:68ch;margin-inline:auto}
+html.whdc-simplified-reading body .devotional-content p,html.whdc-simplified-reading body .devotional-body p,html.whdc-simplified-reading body .go-deeper p{line-height:1.85;text-align:left;hyphens:none}
+body :is(button,a,input,select,textarea,[role=button]):focus-visible{outline:3px solid #657e9b;outline-offset:3px}
+body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outline-color:#A2B3A5}
+@media(pointer:coarse){.whdc-settings-collapsible summary,.whdc-accessibility-settings .whdc-accessibility-toggle{min-height:44px}.whdc-accessibility-settings input[type=checkbox]{min-height:22px}}
+@media(max-width:600px){.whdc-accessibility-settings{min-width:0;width:100%;box-sizing:border-box}.whdc-accessibility-settings .whdc-dyslexia-toggle{min-width:0;max-width:100%;width:100%}}
