@@ -211,15 +211,13 @@ async function googleAccessToken(env){
   const result=await response.json();if(!result.access_token)throw Error('Google OAuth response missing token');return result.access_token;
 }
 async function generateAudioSample(env,voice){
-  throw Error('Legacy Gemini 3.1 voice samples are retired. Use Gemini 3.8 Audio Testing.');
   if(!env.AUDIO_BUCKET)throw Error('Missing AUDIO_BUCKET R2 binding');
-  const token=await googleAccessToken(env);
-  const response=await fetch('https://texttospeech.googleapis.com/v1/text:synthesize',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(geminiAudioRequest(narrationText(AUDIO_SAMPLE),voice))});
-  if(!response.ok)throw Error('Google synthesis failed (HTTP '+response.status+')');
-  const data=await response.json();if(typeof data.audioContent!=='string')throw Error('Google did not return audio');
-  const binary=atob(data.audioContent),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
-  await env.AUDIO_BUCKET.put('pilot/gemini31-'+voice+'.mp3',bytes,{httpMetadata:{contentType:'audio/mpeg'},customMetadata:{voice:AUDIO_VOICES[voice]}});
-  return {voice,bytes:bytes.length};
+  if(!Object.hasOwn(AUDIO_VOICES,voice))throw Error('Invalid voice');
+  const key='voice-samples/'+voice+'.wav';
+  if(await env.AUDIO_BUCKET.head(key))return {voice,alreadyExists:true};
+  // These one-time samples use the same model and narration style as the app's recordings.
+  const result=await gemini38Synthesize(env,narrationText(AUDIO_SAMPLE),voice,key,{production:true});
+  return {voice,...result};
 }
 // Published devotional recordings are generated only by the administrator.
 const AUDIO_PARTS=new Set(['devotional','deeper','scripture']);
@@ -459,11 +457,11 @@ const sampleRoot=document.getElementById('savedSampleRows'),sampleStatus=documen
 for(const voice of ['sulafat','sadachbia']){
  const row=document.createElement('div');row.style.cssText='margin:12px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap';
  const label=document.createElement('strong');label.textContent=voice==='sulafat'?'Sulafat (female)':'Sadachbia (male)';
- const button=document.createElement('button');button.textContent='Generate sample once';
+ const button=document.createElement('button');button.textContent='Generate '+(voice==='sulafat'?'female':'male')+' sample once';
  const player=document.createElement('audio');player.controls=true;player.preload='none';player.style.maxWidth='100%';
  const url='/api/audio/sample?voice='+voice;
  async function refresh(){try{const r=await fetch(url,{method:'HEAD',cache:'no-store'});if(r.ok){button.hidden=true;player.src=url;sampleStatus.textContent='Saved voice sample available.'}else{button.hidden=false;player.removeAttribute('src')}}catch{button.hidden=false}}
- button.onclick=async()=>{button.disabled=true;sampleStatus.textContent='Generating '+voice+' sample…';try{const r=await fetch('/api/admin/audio-test/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({voice})});const result=await r.json();if(!r.ok)throw Error(result.error||'Sample generation failed');await refresh();sampleStatus.textContent='Sample saved in R2. You will not need to generate it again.'}catch(e){sampleStatus.textContent=e.message}finally{button.disabled=false}};
+ button.onclick=async()=>{button.disabled=true;sampleStatus.textContent='Generating '+voice+' sample…';try{const r=await fetch('/api/admin/audio-test/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({voice})});const result=await r.json();if(!r.ok)throw Error(result.error||'Sample generation failed');await refresh();sampleStatus.textContent='Voice sample saved in R2. You will not need to generate it again.'}catch(e){sampleStatus.textContent=e.message}finally{button.disabled=false}};
  row.append(label,button,player);sampleRoot.append(row);refresh();
 }
 const pronunciationList=document.getElementById('pronunciationList');
@@ -805,8 +803,8 @@ export default {async fetch(request,env,ctx){
   if((path==='/api/audio/manifest'||path==='/api/audio/file')&&request.method==='GET')return handlePublicAudio(request,env,url);
   if(path==='/api/audio/sample'&&['GET','HEAD'].includes(request.method)){
     const voice=url.searchParams.get('voice');if(!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid voice',400);
-    const item=await env.AUDIO_BUCKET.get('pilot/gemini31-'+voice+'.mp3');if(!item)return fail('Sample has not been generated',404);
-    return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/mpeg','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'}});
+    const item=await env.AUDIO_BUCKET.get('voice-samples/'+voice+'.wav');if(!item)return fail('Sample has not been generated',404);
+    return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'public, max-age=3600','x-content-type-options':'nosniff'}});
   }
 
   if(path==='/api/reading-plans'&&request.method==='GET'){
@@ -1132,7 +1130,7 @@ export default {async fetch(request,env,ctx){
       if(!isAdmin(user))return fail('Administrator only',403);
       const voice=url.searchParams.get('voice');if(!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid voice',400);
       if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
-      const item=await env.AUDIO_BUCKET.get('pilot/gemini31-'+voice+'.mp3');if(!item)return fail('Generate this voice first',404);
+      const item=await env.AUDIO_BUCKET.get('voice-samples/'+voice+'.wav');if(!item)return fail('Generate this voice first',404);
       return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/api/admin/audio/library'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return handleAdminAudio(request,env,url)}
