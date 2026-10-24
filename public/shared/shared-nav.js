@@ -9,14 +9,14 @@
     {id:'history',label:'History',href:'/#history'},
     {id:'support',label:'Donate',href:'/#support'},
     {id:'contact',label:'Contact',href:'/#contact'},
-    {id:'bible',label:'Bible',href:'/bible-reader.html'},
+    {id:'bible',label:'Bible',href:'/#bible'},
     {id:'settings',label:'Settings',href:'/#settings'}
   ];
   // Desktop dropdown has a shorter menu; mobile dropdown retains its original links.
   const desktopItems=[
     {id:'home',label:'Home',href:'/#home'},
     {id:'today',label:'Today',href:'/#today'},
-    {id:'bible',label:'Bible',href:'/bible-reader.html'},
+    {id:'bible',label:'Bible',href:'/#bible'},
     {id:'explore',label:'Explore',href:'/#explore'},
     {id:'support',label:'Donate',href:'/#support'},
     {id:'contact',label:'Contact',href:'/#contact'},
@@ -41,7 +41,7 @@
     }
     const make=(item,extra)=>{
       const active=item.id===current?' aria-current="page"':'';
-      if(inApp && item.id!=='bible')return `<button type="button" class="navbtn ${extra}" data-nav="${item.id}"${active}>${item.label.toUpperCase()}</button>`;
+      if(inApp)return `<button type="button" class="navbtn ${extra}" data-nav="${item.id}"${active}>${item.label.toUpperCase()}</button>`;
       return `<a class="navbtn ${extra}" data-nav="${item.id}" href="${item.href}"${active}>${item.label.toUpperCase()}</a>`;
     };
     element.innerHTML=desktopItems.map(item=>item.id==='explore'?`<div class="whdc-desktop-menu-only whdc-explore-dropdown"><button type="button" class="navbtn whdc-explore-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="whdcExploreDropdown">EXPLORE <span aria-hidden="true">▾</span></button><div id="whdcExploreDropdown" class="whdc-explore-dropdown-list" hidden>${exploreItems.map(entry=>make(entry,'whdc-explore-link')).join('')}</div></div>`:make(item,'whdc-desktop-menu-only')).join('')+
@@ -79,7 +79,7 @@
   const bottomItems=[
     {id:'home',label:'Home',href:'/#home',icon:'home'},
     {id:'today',label:'Today',href:'/#today',icon:'sun'},
-    {id:'bible',label:'Bible',href:'/bible-reader.html',icon:'book'},
+    {id:'bible',label:'Bible',href:'/#bible',icon:'book'},
     {id:'explore',label:'Explore',href:'/#explore',icon:'search'},
     {id:'settings',label:'Settings',href:'/#settings',icon:'settings'}
   ];
@@ -88,7 +88,7 @@
   const customTabs=[
     {id:'home',label:'Home',href:'/#home',icon:'home'},
     {id:'today',label:'Today',href:'/#today',icon:'sun'},
-    {id:'bible',label:'Bible',href:'/bible-reader.html',icon:'book'},
+    {id:'bible',label:'Bible',href:'/#bible',icon:'book'},
     {id:'explore',label:'Explore',href:'/#explore',icon:'search'},
     {id:'topics',label:'Topics',href:'/#topics',icon:'list'},
     {id:'plans',label:'Reading Plans',href:'/#plans',icon:'calendar'},
@@ -157,7 +157,7 @@
     bar.innerHTML=chosen.map(item=>{
       const active=(item.id==='read'?current==='read':item.id===current)?' aria-current="page"':'';
       const inner=`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[item.icon]}</svg><span>${item.label}</span>`;
-      return inApp&&item.id!=='bible'?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
+      return inApp?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
     }).join('');
     if(inApp)bar.querySelectorAll('button[data-nav]').forEach(button=>button.addEventListener('click',()=>{
       if(button.dataset.nav==='read'&&typeof window.WHDCNavigate==='function'){window.WHDCNavigate('read');return}

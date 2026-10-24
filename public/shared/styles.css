@@ -534,3 +534,18 @@ main.wrap > .home-hero{margin-left:auto;margin-right:auto;width:100%;}
     text-decoration:none!important;border-radius:6px!important;
   }
 }
+
+/* Embedded Bible: the site's own header and bottom navigation remain authoritative. */
+.whdc-embedded-bible{width:100%;max-width:1200px;margin:auto}
+.whdc-embedded-bible iframe{display:block;width:100%;height:calc(100dvh - 145px);min-height:650px;border:0;background:transparent}
+@media(max-width:800px){.whdc-embedded-bible iframe{height:calc(100dvh - 150px);min-height:550px}}
+@media(min-width:900px){
+.whdc-resources .whdc-resource-section>.grid{grid-template-columns:repeat(3,minmax(0,260px))!important;justify-content:start!important}
+.whdc-resources .whdc-resource-section .whdc-resource-card{width:260px!important;height:390px!important;max-height:390px!important;box-sizing:border-box;overflow:hidden}
+.whdc-resources .whdc-resource-card strong{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.whdc-resources .whdc-resource-card .whdc-resource-description{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+}
+.whdc-resource-card img{object-fit:cover}
+.whdc-resource-article table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+.whdc-resource-article td,.whdc-resource-article th{border:1px solid currentColor;padding:8px 12px}
+.whdc-resource-article img{max-width:100%}
