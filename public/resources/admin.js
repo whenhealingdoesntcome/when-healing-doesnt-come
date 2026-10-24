@@ -1,15 +1,15 @@
 if(new URLSearchParams(location.search).has('embedded')){document.documentElement.classList.add('whdc-embedded-resource-admin')}
 (()=>{'use strict';
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activeStatus='all',localPreviewUrl=null;
+let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activeStatus='all',localPreviewUrl=null,previewGeneration=0;
 const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
 const fields=['type','title','creator','description','content','url','image_url','topics','sort_order','featured','published'];
 async function api(method,body){const r=await fetch('/api/admin/resources',{method,cache:'no-store',credentials:'same-origin',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
 function mode(){form.querySelector('.article-only').hidden=form.elements.type.value!=='article';form.elements.url.required=['website','podcast'].includes(form.elements.type.value)}
-function preview(url){const img=$('#imagePreview');img.hidden=!url;img.src=url||'';$('#removeResourceImage').hidden=!url}
-function releaseLocalPreview(){if(localPreviewUrl){URL.revokeObjectURL(localPreviewUrl);localPreviewUrl=null}}
-function localPreview(file){releaseLocalPreview();localPreviewUrl=URL.createObjectURL(file);preview(localPreviewUrl)}
-$('#imagePreview').addEventListener('error',()=>{if(localPreviewUrl)return;$('#imagePreview').hidden=true;$('#uploadStatus').textContent='The stored picture could not be loaded. Choose a new image to replace it.'});
+function preview(url){const img=$('#imagePreview');img.hidden=!url;if(url)img.src=url;else img.removeAttribute('src');$('#removeResourceImage').hidden=!url}
+function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
+async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
+$('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
 function show(){previousFocus=document.activeElement;modal.hidden=false;document.body.style.overflow='hidden';form.elements.title.focus()}
 function close(){modal.hidden=true;document.body.style.overflow='';previousFocus?.focus()}
 function reset(){releaseLocalPreview();editing='';form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');mode();show()}
@@ -21,11 +21,18 @@ $('#list').querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>edit(b.datas
 function updateBulk(){const shown=filtered();$('#bulkBar').hidden=!selected.size;$('#selectedCount').textContent=selected.size+' selected';$('#selectAll').checked=!!shown.length&&shown.every(r=>selected.has(r.id));$('#selectAll').indeterminate=shown.some(r=>selected.has(r.id))&&!$('#selectAll').checked}
 async function refresh(){const data=await api('GET');if(!Array.isArray(data))throw Error('Resource list returned an unexpected response');records=data;selected=new Set([...selected].filter(id=>records.some(r=>r.id===id)));render()}
 async function upload(){const file=$('#resourceImageFile').files[0];if(!file)return;if(!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)||file.size>5000000){$('#uploadStatus').textContent='Use JPG, PNG, WebP or GIF under 5 MB.';$('#resourceImageFile').value='';return}
-localPreview(file);busy=true;$('#uploadStatus').textContent='Uploading picture…';
-try{const data=new FormData();data.append('image',file);const res=await fetch('/api/admin/resource-image',{method:'POST',body:data,credentials:'same-origin',cache:'no-store'});const result=await res.json().catch(()=>({}));if(!res.ok||!result.url)throw Error(result.error||'Upload failed (HTTP '+res.status+').');
-const verify=await fetch(result.url,{credentials:'same-origin',cache:'no-store'});if(!verify.ok)throw Error('Upload completed, but the picture URL returned HTTP '+verify.status+'. The picture was not attached.');const type=verify.headers.get('content-type')||'';if(!type.startsWith('image/'))throw Error('The uploaded picture URL did not return an image.');
-form.elements.image_url.value=result.url;$('#uploadStatus').textContent='Picture uploaded and verified. Save the resource to keep it.';
-}catch(e){$('#uploadStatus').textContent='Image upload problem: '+e.message+' Your previous saved picture has not been changed.';$('#resourceImageFile').value='';releaseLocalPreview();preview(form.elements.image_url.value)}
+busy=true;$('#uploadStatus').textContent='Preparing picture…';
+try{await localPreview(file);$('#uploadStatus').textContent='Picture selected. Uploading to Cloudflare…';
+const data=new FormData();data.append('image',file);
+const res=await fetch('/api/admin/resource-image',{method:'POST',body:data,credentials:'same-origin',cache:'no-store'});const result=await res.json().catch(()=>({}));
+if(!res.ok||!result.url)throw Error(result.error||'Upload failed (HTTP '+res.status+').');
+const imageUrl=new URL(result.url,location.origin);
+if(imageUrl.origin!==location.origin||!imageUrl.pathname.startsWith('/api/resource-image/'))throw Error('The upload returned an unexpected image address.');
+const verify=await fetch(imageUrl.href,{credentials:'same-origin',cache:'no-store'});
+if(!verify.ok)throw Error('The uploaded image cannot be retrieved (HTTP '+verify.status+').');
+if(!(verify.headers.get('content-type')||'').startsWith('image/'))throw Error('The image address did not return an image.');
+form.elements.image_url.value=imageUrl.pathname;$('#uploadStatus').textContent='Picture uploaded and verified. Save the resource to keep it.';
+}catch(e){$('#uploadStatus').textContent='Upload failed: '+e.message+' The preview will remain visible, but this new picture has NOT been saved.';$('#resourceImageFile').value='';}
 finally{busy=false}}
 async function save(published){if(busy)return;if(!form.reportValidity())return;const b=Object.fromEntries(fields.map(k=>[k,form.elements[k]?.type==='checkbox'?form.elements[k].checked:form.elements[k]?.value||'']));b.topics=b.topics.split(',').map(x=>x.trim()).filter(Boolean);b.published=published;b.id=editing||b.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90);if(!b.id){notice.textContent='Please enter a valid title';return}busy=true;try{await api('POST',b);editing=b.id;$('#editHeading').textContent='Edit: '+b.title;form.elements.published.checked=published;notice.textContent=(published?'Published ':'Saved draft: ')+b.title;await refresh()}catch(err){notice.textContent=err.message}finally{busy=false}}
 async function bulk(action){const ids=[...selected];if(!ids.length||busy)return;if(action==='delete'&&!confirm('Permanently delete '+ids.length+' selected resources? This cannot be undone.'))return;busy=true;notice.textContent='Updating '+ids.length+' resources…';let done=0;try{for(const id of ids){const r=records.find(x=>x.id===id);if(!r)continue;if(action==='delete')await api('DELETE',{id});else{const b={...r,topics:Array.isArray(r.topics)?r.topics:[],published:action==='publish'?true:action==='draft'?false:!!r.published,featured:action==='feature'?true:action==='unfeature'?false:!!r.featured};await api('POST',b)}done++}selected.clear();await refresh();notice.textContent=done+' resources updated.'}catch(e){notice.textContent=done+' updated before error: '+e.message;await refresh()}finally{busy=false}}
