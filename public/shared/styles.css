@@ -549,3 +549,11 @@ main.wrap > .home-hero{margin-left:auto;margin-right:auto;width:100%;}
 .whdc-resource-article table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
 .whdc-resource-article td,.whdc-resource-article th{border:1px solid currentColor;padding:8px 12px}
 .whdc-resource-article img{max-width:100%}
+
+/* Home page: Meet the Creator. The original image remains unchanged; the browser clips it into a circle. */
+.whdc-meet-creator{display:flex;align-items:center;gap:clamp(18px,4vw,38px);max-width:850px;margin:2.5rem auto;padding:clamp(18px,3vw,30px);border-radius:18px;background:var(--card,rgba(127,127,127,.06));}
+.whdc-creator-photo{width:144px;height:144px;flex:0 0 144px;object-fit:cover;object-position:center;border-radius:50%;display:block;background:transparent;}
+.whdc-creator-copy{min-width:0;flex:1;}
+.whdc-creator-copy h2{margin:0 0 .6rem;}
+.whdc-creator-copy p{margin:0 0 1rem;line-height:1.55;}
+@media(max-width:560px){.whdc-meet-creator{gap:14px;padding:18px;}.whdc-creator-photo{width:96px;height:96px;flex-basis:96px;}.whdc-creator-copy h2{font-size:1.2rem;}}
