@@ -500,9 +500,9 @@ body>header,.whdc-tool-header{display:none!important}
    a similarly sized opaque, independently scrolling dialog. */
 body.resource-editor-open{background:transparent!important;min-height:100dvh!important;overflow:hidden!important}
 body.resource-editor-open > :not(#resourceModal):not(script):not(style){visibility:hidden!important}
-#resourceModal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:clamp(12px,3vh,28px);background:transparent!important;overflow:hidden}
+#resourceModal{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;box-sizing:border-box;padding:24px;background:rgba(29,39,37,.62)!important;overflow:hidden}
 
-#resourceModal .dialog{box-sizing:border-box;width:min(850px,95vw);height:auto;max-height:90dvh;overflow-y:auto;overflow-x:hidden;padding:24px;background:#fff!important;opacity:1!important;color:#293d39;border:0;border-radius:12px;box-shadow:0 20px 65px #0005;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#resourceModal .dialog{box-sizing:border-box;width:min(720px,calc(100vw - 48px));height:min(740px,calc(100dvh - 48px));max-height:calc(100dvh - 48px);overflow-y:auto;overflow-x:hidden;padding:26px;background:#fff!important;opacity:1!important;color:#293d39;border:0;border-radius:12px;box-shadow:0 20px 65px #0005;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 #resourceModal .dialog-head{position:sticky;top:-12px;z-index:3;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;margin-bottom:12px;border-bottom:1px solid #d8e0d9}
 #resourceModal h2{font-size:1.25rem;margin:0}
 #resourceModal label{display:block;margin:10px 0 6px;color:#354946;font-weight:600}
@@ -512,7 +512,7 @@ body.resource-editor-open > :not(#resourceModal):not(script):not(style){visibili
 #imagePreview{max-width:220px;max-height:150px;object-fit:contain;border-radius:8px}
 #imagePreview[hidden]{display:none}
 #uploadStatus{font-size:.88rem;color:#65736c}
-@media(max-width:600px){#resourceModal{padding:10px;align-items:center}#resourceModal .dialog{width:100%;border-radius:12px;padding:16px;max-height:calc(100dvh - 20px);height:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}#resourceModal .whdc-rich-toolbar{gap:4px;padding:5px}#resourceModal .whdc-rich-toolbar .whdc-format-button{font-size:12px!important;padding:4px 7px!important}#resourceModal textarea{font-size:16px} #list .item{flex-wrap:wrap}#list .resource-actions{margin-left:30px}}
+@media(max-width:600px){#resourceModal{padding:12px;align-items:center}#resourceModal .dialog{width:calc(100vw - 24px);border-radius:14px;padding:18px;max-height:calc(100dvh - 48px);height:min(680px,calc(100dvh - 48px));overscroll-behavior:contain;-webkit-overflow-scrolling:touch}#resourceModal .whdc-rich-toolbar{gap:4px;padding:5px}#resourceModal .whdc-rich-toolbar .whdc-format-button{font-size:12px!important;padding:4px 7px!important}#resourceModal textarea{font-size:16px} #list .item{flex-wrap:wrap}#list .resource-actions{margin-left:30px}}
 
 .resource-heading{justify-content:flex-start!important;margin:0 0 12px!important}
 #newResource{background:transparent!important;color:#376761!important;border:1px solid #8ca79a!important;box-shadow:none!important;padding:8px 14px!important}

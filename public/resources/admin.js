@@ -65,7 +65,7 @@ function floatEditorFrame(){
   const savedStyle=frame.getAttribute('style');
   const oldOverflow=doc.body.style.overflow;
   doc.body.appendChild(frame);
-  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'rgba(24,36,33,.58)'});
+  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'#f5f5f2'});
   doc.body.style.overflow='hidden';
   floatingFrame={frame,marker,savedStyle,oldOverflow,doc};
  }catch(err){console.warn('Could not expand resource editor outside its frame',err)}
