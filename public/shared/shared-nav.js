@@ -16,11 +16,20 @@
   const desktopItems=[
     {id:'home',label:'Home',href:'/#home'},
     {id:'today',label:'Today',href:'/#today'},
-    {id:'topics',label:'Topics',href:'/#topics'},
+    {id:'bible',label:'Bible',href:'/bible-reader.html'},
     {id:'explore',label:'Explore',href:'/#explore'},
     {id:'support',label:'Donate',href:'/#support'},
-    {id:'bible',label:'Bible',href:'/bible-reader.html'},
+    {id:'contact',label:'Contact',href:'/#contact'},
     {id:'settings',label:'Settings',href:'/#settings'}
+  ];
+  const exploreItems=[
+    {id:'topics',label:'Browse by Topic'},
+    {id:'resources',label:'Resources'},
+    {id:'plans',label:'Reading Plans'},
+    {id:'journal',label:'My Journal'},
+    {id:'study-guide',label:'Bible Study'},
+    {id:'saved',label:'Saved Devotionals'},
+    {id:'history',label:'Reading Log'}
   ];
   function render(element, current, inApp){
     if(!element)return;
@@ -35,8 +44,19 @@
       if(inApp && item.id!=='bible')return `<button type="button" class="navbtn ${extra}" data-nav="${item.id}"${active}>${item.label.toUpperCase()}</button>`;
       return `<a class="navbtn ${extra}" data-nav="${item.id}" href="${item.href}"${active}>${item.label.toUpperCase()}</a>`;
     };
-    element.innerHTML=desktopItems.map(item=>make(item,'whdc-desktop-menu-only')).join('')+
+    element.innerHTML=desktopItems.map(item=>item.id==='explore'?`<div class="whdc-desktop-menu-only whdc-explore-dropdown"><button type="button" class="navbtn whdc-explore-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="whdcExploreDropdown">Explore <span aria-hidden="true">▾</span></button><div id="whdcExploreDropdown" class="whdc-explore-dropdown-list" hidden>${exploreItems.map(entry=>make(entry,'whdc-explore-link')).join('')}</div></div>`:make(item,'whdc-desktop-menu-only')).join('')+
       items.map(item=>make(item,'whdc-mobile-menu-only')).join('');
+    window.__whdcNavMenuAbort?.abort();window.__whdcNavMenuAbort=new AbortController();
+    const trigger=element.querySelector('.whdc-explore-trigger');
+    const dropdown=element.querySelector('#whdcExploreDropdown');
+    if(trigger&&dropdown){
+      const close=()=>{dropdown.hidden=true;trigger.setAttribute('aria-expanded','false')};
+      trigger.addEventListener('click',()=>{const open=dropdown.hidden;dropdown.hidden=!open;trigger.setAttribute('aria-expanded',String(open))});
+      dropdown.addEventListener('click',e=>{if(e.target.closest('[data-nav]'))close()});
+      document.addEventListener('pointerdown',e=>{if(!trigger.closest('.whdc-explore-dropdown')?.contains(e.target))close()},{signal:window.__whdcNavMenuAbort?.signal});
+      trigger.addEventListener('keydown',e=>{if(e.key==='Escape'){close();trigger.focus()}});
+    }
+
   }
   function setup(menuId,toggleId,current){
     const menu=document.getElementById(menuId),toggle=document.getElementById(toggleId);
