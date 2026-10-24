@@ -26,12 +26,12 @@ try{await localPreview(file);$('#uploadStatus').textContent='Picture selected. U
 const data=new FormData();data.append('image',file);
 const res=await fetch('/api/admin/resource-image',{method:'POST',body:data,credentials:'same-origin',cache:'no-store'});const result=await res.json().catch(()=>({}));
 if(!res.ok||!result.url)throw Error(result.error||'Upload failed (HTTP '+res.status+').');
-const imageUrl=new URL(result.url,location.origin);
-if(imageUrl.origin!==location.origin||!imageUrl.pathname.startsWith('/api/resource-image/'))throw Error('The upload returned an unexpected image address.');
+const imageUrl=new URL(result.preview_url||result.url,location.origin);
+if(imageUrl.origin!==location.origin||!/^\/(api\/resource-image|admin\/resources\/image)\//.test(imageUrl.pathname))throw Error('The upload returned an unexpected image address.');
 const verify=await fetch(imageUrl.href,{credentials:'same-origin',cache:'no-store'});
 if(!verify.ok)throw Error('The uploaded image cannot be retrieved (HTTP '+verify.status+').');
 if(!(verify.headers.get('content-type')||'').startsWith('image/'))throw Error('The image address did not return an image.');
-form.elements.image_url.value=imageUrl.pathname;$('#uploadStatus').textContent='Picture uploaded and verified. Save the resource to keep it.';
+form.elements.image_url.value=result.url;$('#uploadStatus').textContent='Picture uploaded and verified. Save the resource to keep it.';
 }catch(e){$('#uploadStatus').textContent='Upload failed: '+e.message+' The preview will remain visible, but this new picture has NOT been saved.';$('#resourceImageFile').value='';}
 finally{busy=false}}
 async function save(published){if(busy)return;if(!form.reportValidity())return;const b=Object.fromEntries(fields.map(k=>[k,form.elements[k]?.type==='checkbox'?form.elements[k].checked:form.elements[k]?.value||'']));b.topics=b.topics.split(',').map(x=>x.trim()).filter(Boolean);b.published=published;b.id=editing||b.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90);if(!b.id){notice.textContent='Please enter a valid title';return}busy=true;try{await api('POST',b);editing=b.id;$('#editHeading').textContent='Edit: '+b.title;form.elements.published.checked=published;notice.textContent=(published?'Published ':'Saved draft: ')+b.title;await refresh()}catch(err){notice.textContent=err.message}finally{busy=false}}

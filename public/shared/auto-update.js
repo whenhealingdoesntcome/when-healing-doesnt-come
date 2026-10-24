@@ -2,6 +2,11 @@
 (()=>{
   'use strict';
   if(!/^https?:$/.test(location.protocol))return;
+  const whdcDesktopBrowser=!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(whdcDesktopBrowser&&'serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.filter(r=>new URL(r.scope).origin===location.origin&&new URL(r.scope).pathname==='/').map(r=>r.unregister()))).catch(()=>{});
+    if('caches' in window)caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('whdc-public-shell-')).map(k=>caches.delete(k)))).catch(()=>{});
+  }
   const sources=location.pathname==='/bible-reader.html'
     ? ['/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/shared/styles.css','/bible/reader.css']
     : ['/index.html','/devotionals/app.js','/shared/styles.css','/content.json','/audio/audio-player.js'];
@@ -52,7 +57,7 @@
   };
   let lastCacheRefresh=0;
   const refreshDownloadedCache=()=>{
-    if(!navigator.onLine||!navigator.serviceWorker)return;
+    if(whdcDesktopBrowser||!navigator.onLine||!navigator.serviceWorker)return;
     const now=Date.now();if(now-lastCacheRefresh<30000)return;
     lastCacheRefresh=now;
     navigator.serviceWorker.ready.then(reg=>{
@@ -73,7 +78,7 @@
         baseline.set(path,value);
       }
       if(changed)refresh();
-      if(navigator.serviceWorker){
+      if(!whdcDesktopBrowser&&navigator.serviceWorker){
         const registration=await navigator.serviceWorker.getRegistration('/');
         if(registration)await registration.update();
       }
@@ -82,7 +87,7 @@
     finally{checking=false;}
   };
   window.WHDCCheckForUpdates=check;
-  if(navigator.serviceWorker){
+  if(!whdcDesktopBrowser&&navigator.serviceWorker){
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(oldController)refresh();
       oldController=true;

@@ -1132,8 +1132,9 @@ async function start(){if(new URLSearchParams(location.search).has('whdcPreview'
  loadCustomReadingPlans();
  }catch(err){$('#app').innerHTML='<main class="wrap"><h1>Content unavailable offline</h1><p>Connect to the internet once to finish saving the app for offline use, then reopen it.</p></main>';return}if(!localStorage.getItem(APPEARANCE_KEY)&&localStorage.getItem('whdc-dark')==='1')localStorage.setItem(APPEARANCE_KEY,'dark');if(!localStorage.getItem(READING_SIZE_KEY)&&localStorage.getItem('whdc-large')==='1')localStorage.setItem(READING_SIZE_KEY,'120');applyReadingPreferences();const visited=localStorage.getItem(VISITED_KEY)==='1';const hash=location.hash.slice(1);const saved=localStorage.getItem(START_PAGE_KEY);const valid=['home','today','explore','topics','saved','history','plans','plan-detail','support','contact','settings'];const openMatch=/^devotional\/(.+)$/.exec(hash);let restoredId=null;if(openMatch){try{const id=decodeURIComponent(openMatch[1]);if(data.some(d=>d.id===id))restoredId=id}catch{}}view=restoredId?'today':valid.includes(hash)?hash:openingPage();if(view==='bible'){location.replace('/bible-reader.html');return}currentId=restoredId||dailyPick(data)?.id;if(openMatch&&!restoredId)history.replaceState(null,'','#'+view);displayedPickDate=pickDate();render();checkNewAnnouncementOnArrival();if(visited)welcomeOpeningChoice();localStorage.setItem(VISITED_KEY,'1')}start().then(()=>loadCustomReadingPlans());
 
-// Cache only the public reading app shell; admin and role APIs are never cached.
-if('serviceWorker' in navigator&&location.protocol==='https:'){
+// Only mobile browsers use offline app caching.
+const whdcDesktopBrowser=!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+if(!whdcDesktopBrowser&&'serviceWorker' in navigator&&location.protocol==='https:'){
  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(console.warn));
 }
 
