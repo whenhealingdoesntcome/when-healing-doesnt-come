@@ -966,6 +966,15 @@ export default {async fetch(request,env,ctx){
   if(path==='/api/devotionals'&&request.method==='GET'){
     try{return json(await list(env,false))}catch{return fail('Database unavailable',503)}
   }
+  // Public resource images must be served BEFORE the authenticated admin route guard.
+    if((path.startsWith('/api/resource-image/')||path.startsWith('/admin/resources/image/'))&&request.method==='GET'){
+      const key=path.slice(path.startsWith('/admin/resources/image/')?'/admin/resources/image/'.length:'/api/resource-image/'.length);
+      if(!/^[a-f0-9-]{36}\.(jpg|png|webp|gif)$/.test(key))return fail('Invalid image',400);
+      const obj=await env.AUDIO_BUCKET.get('resource-images/'+key);
+      if(!obj)return fail('Image not found in R2 storage',404);
+      return new Response(obj.body,{headers:{'content-type':obj.httpMetadata?.contentType||'application/octet-stream','cache-control':'public,max-age=31536000,immutable','x-content-type-options':'nosniff'}});
+    }
+
   if(path==='/admin'||path.startsWith('/admin/')||path==='/editor'||path==='/editor/client.js'||path.startsWith('/api/admin/')){
     let user;
     try{user=await identity(request,env)}catch{return fail('Writer database migration required. See MULTI-WRITER-SETUP.md.',503)}
@@ -980,13 +989,6 @@ export default {async fetch(request,env,ctx){
     }
 
 
-    if((path.startsWith('/api/resource-image/')||path.startsWith('/admin/resources/image/'))&&request.method==='GET'){
-      const key=path.slice(path.startsWith('/admin/resources/image/')?'/admin/resources/image/'.length:'/api/resource-image/'.length);
-      if(!/^[a-f0-9-]{36}\.(jpg|png|webp|gif)$/.test(key))return fail('Invalid image',400);
-      const obj=await env.AUDIO_BUCKET.get('resource-images/'+key);
-      if(!obj)return fail('Image not found in R2 storage',404);
-      return new Response(obj.body,{headers:{'content-type':obj.httpMetadata?.contentType||'application/octet-stream','cache-control':'public,max-age=31536000,immutable','x-content-type-options':'nosniff'}});
-    }
     if(path==='/api/admin/resource-image'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
       const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
