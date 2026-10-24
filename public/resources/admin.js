@@ -1,8 +1,32 @@
 if(new URLSearchParams(location.search).has('embedded')){document.documentElement.classList.add('whdc-embedded-resource-admin')}
 (()=>{'use strict';
+function enablePopupFormatting(root){
+ const fields=root.querySelectorAll('textarea[name="short"],textarea[name="deeper"],textarea[name="reflection"],textarea[name="content"],textarea[name="description"],textarea[name="note"],textarea[name="notes"],textarea[name="review_note"],textarea[name="admin_feedback"],textarea[name="editor_notes"],textarea[name="writer_notes"]');
+ fields.forEach(el=>{
+  if(el.dataset.richReady||el.readOnly||el.disabled)return;el.dataset.richReady='1';
+  const toolbar=document.createElement('div');toolbar.className='actions whdc-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
+  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Preview','preview']];
+  const preview=document.createElement('div');preview.className='whdc-rich-preview';preview.hidden=true;
+  const escapeHtml=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const inline=s=>escapeHtml(s).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(_,label,url)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+'</a>').replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+  const updatePreview=()=>{let html='',list='';const close=()=>{if(list){html+='</'+list+'>';list=''}};for(const line of el.value.split('\n')){const h=line.match(/^#{1,3}\s+(.+)/),bul=line.match(/^\s*[-*]\s+(.+)/),num=line.match(/^\s*\d+\.\s+(.+)/);if(h){close();html+='<h3>'+inline(h[1])+'</h3>'}else if(bul||num){const tag=bul?'ul':'ol';if(list!==tag){close();html+='<'+tag+'>';list=tag}html+='<li>'+inline((bul||num)[1])+'</li>'}else{close();html+=line.trim()?'<p>'+inline(line)+'</p>':'<div style="height:.6em"></div>'}}close();preview.innerHTML=html||'<p>Nothing to preview yet.</p>'};
+  const apply=action=>{
+   if(action==='preview'){preview.hidden=!preview.hidden;if(!preview.hidden)updatePreview();return}
+   let a=el.selectionStart,b=el.selectionEnd,selected=el.value.slice(a,b),replacement='';
+   if(action==='bold'||action==='italic'){const mark=action==='bold'?'**':'*';replacement=mark+(selected||'text')+mark}
+   else if(action==='link'){const url=window.prompt('Link URL (https://):');if(!url)return;try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))throw Error()}catch{window.alert('Enter a valid http or https URL.');return}replacement='['+(selected||'link text')+']('+url+')'}
+   else{a=el.value.lastIndexOf('\n',Math.max(0,a-1))+1;b=el.value.indexOf('\n',b);if(b<0)b=el.value.length;replacement=el.value.slice(a,b).split('\n').map((line,i)=>action==='heading'?'## '+line:action==='bullets'?'- '+line:(i+1)+'. '+line).join('\n')}
+   el.setRangeText(replacement,a,b,'end');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus();if(!preview.hidden)updatePreview()
+  };
+  for(const [label,action] of controls){const button=document.createElement('button');button.type='button';button.className='btn';button.textContent=label;button.title=action;button.setAttribute('aria-label',action+' formatting');button.addEventListener('mousedown',e=>e.preventDefault());button.addEventListener('click',()=>apply(action));toolbar.append(button)}
+  el.before(toolbar);el.after(preview);el.addEventListener('input',()=>{if(!preview.hidden)updatePreview()});el.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();apply(e.key.toLowerCase()==='b'?'bold':'italic')}});
+ });
+}
+
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activeStatus='all',localPreviewUrl=null,previewGeneration=0;
 const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
+if(modal)enablePopupFormatting(modal);
 const fields=['type','title','creator','description','content','url','image_url','topics','sort_order','featured','published'];
 async function api(method,body){const r=await fetch('/api/admin/resources',{method,cache:'no-store',credentials:'same-origin',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
 function mode(){form.querySelector('.article-only').hidden=form.elements.type.value!=='article';form.elements.url.required=['website','podcast'].includes(form.elements.type.value)}

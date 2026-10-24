@@ -445,3 +445,6 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 /* Center book captions beneath each cover; keep the bookshelf left aligned. */
 .whdc-book-grid .whdc-book-tile{text-align:center;align-items:stretch}
 .whdc-book-grid .whdc-book-tile strong,.whdc-book-grid .whdc-book-author{text-align:center;display:block;width:100%}
+
+/* Rich text controls for WHDC writing and resource editors */
+.whdc-rich-toolbar{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0 5px}.whdc-rich-toolbar button{font:inherit;font-size:.84rem;padding:6px 10px;border:1px solid #9baea3;border-radius:6px;cursor:pointer}.whdc-rich-preview{border:1px solid #9baea3;border-radius:8px;padding:14px;margin:8px 0 16px;line-height:1.65;overflow-wrap:anywhere}.whdc-rich-preview[hidden]{display:none}.whdc-rich-preview p{margin:0 0 .7em}
