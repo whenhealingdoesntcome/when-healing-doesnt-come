@@ -1,3 +1,13 @@
+function whdcTableRow(line){
+ if(!/^\s*\|/.test(line)||! /\|\s*$/.test(line))return null;
+ return line.trim().slice(1,-1).split(/(?<!\\)\|/).map(s=>s.trim().replace(/\\\|/g,'|'));
+}
+function whdcTableSeparator(line){const cells=whdcTableRow(line);return !!cells&&cells.length>1&&cells.every(s=>/^:?-{3,}:?$/.test(s));}
+function whdcRenderTable(lines,inline){const heads=whdcTableRow(lines[0]);if(!heads||!whdcTableSeparator(lines[1]))return '';
+ const cells=(values,tag)=>'<tr>'+heads.map((_,i)=>'<'+tag+'>'+inline(values[i]||'')+'</'+tag+'>').join('')+'</tr>';
+ return '<div class="whdc-table-scroll" tabindex="0" role="region" aria-label="Scrollable article table"><table class="whdc-article-table"><thead>'+cells(heads,'th')+'</thead><tbody>'+lines.slice(2).map(line=>cells(whdcTableRow(line)||[],'td')).join('')+'</tbody></table></div>';
+}
+if(!document.querySelector('link[data-whdc-resource-table-style]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/resources/resources.css?v=20261024-resource-tables';style.dataset.whdcResourceTableStyle='1';document.head.append(style)}
 if(new URLSearchParams(location.search).has('embedded')){document.documentElement.classList.add('whdc-embedded-resource-admin')}
 (()=>{'use strict';
 function enablePopupFormatting(root){
@@ -5,15 +15,30 @@ function enablePopupFormatting(root){
  fields.forEach(el=>{
   if(el.dataset.richReady||el.readOnly||el.disabled)return;el.dataset.richReady='1';
   const toolbar=document.createElement('div');toolbar.className='actions whdc-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
-  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Preview','preview']];
+  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Table','table'],['+ Row','add-row'],['+ Column','add-column'],['− Row','remove-row'],['− Column','remove-column'],['Preview','preview']];
   const preview=document.createElement('div');preview.className='whdc-rich-preview';preview.hidden=true;
   const escapeHtml=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const inline=s=>escapeHtml(s).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(_,label,url)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+'</a>').replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
-  const updatePreview=()=>{let html='',list='';const close=()=>{if(list){html+='</'+list+'>';list=''}};for(const line of el.value.split('\n')){const h=line.match(/^#{1,3}\s+(.+)/),bul=line.match(/^\s*[-*]\s+(.+)/),num=line.match(/^\s*\d+\.\s+(.+)/);if(h){close();html+='<h3>'+inline(h[1])+'</h3>'}else if(bul||num){const tag=bul?'ul':'ol';if(list!==tag){close();html+='<'+tag+'>';list=tag}html+='<li>'+inline((bul||num)[1])+'</li>'}else{close();html+=line.trim()?'<p>'+inline(line)+'</p>':'<div style="height:.6em"></div>'}}close();preview.innerHTML=html||'<p>Nothing to preview yet.</p>'};
+  const updatePreview=()=>{let html='',list='';const close=()=>{if(list){html+='</'+list+'>';list=''}};const lines=el.value.split('\n');for(let i=0;i<lines.length;i++){const line=lines[i];if(i+1<lines.length&&whdcTableRow(line)&&whdcTableSeparator(lines[i+1])){close();const rows=[line,lines[++i]];while(i+1<lines.length&&whdcTableRow(lines[i+1]))rows.push(lines[++i]);html+=whdcRenderTable(rows,inline);continue}const h=line.match(/^#{1,3}\s+(.+)/),bul=line.match(/^\s*[-*]\s+(.+)/),num=line.match(/^\s*\d+\.\s+(.+)/);if(h){close();html+='<h3>'+inline(h[1])+'</h3>'}else if(bul||num){const tag=bul?'ul':'ol';if(list!==tag){close();html+='<'+tag+'>';list=tag}html+='<li>'+inline((bul||num)[1])+'</li>'}else{close();html+=line.trim()?'<p>'+inline(line)+'</p>':'<div style="height:.6em"></div>'}}close();preview.innerHTML=html||'<p>Nothing to preview yet.</p>'};
   const apply=action=>{
    if(action==='preview'){preview.hidden=!preview.hidden;if(!preview.hidden)updatePreview();return}
    let a=el.selectionStart,b=el.selectionEnd,selected=el.value.slice(a,b),replacement='';
-   if(action==='bold'||action==='italic'){const mark=action==='bold'?'**':'*';replacement=mark+(selected||'text')+mark}
+   if(action==='table'){replacement='| Column 1 | Column 2 |\n|---|---|\n| Text | Text |';}
+   else if(['add-row','add-column','remove-row','remove-column'].includes(action)){
+    const lines=el.value.split('\n');const lineIndex=el.value.slice(0,a).split('\n').length-1;let start=lineIndex;
+    while(start>=0&&!whdcTableSeparator(lines[start]))start--;
+    if(start<1){window.alert('Place your cursor inside a Markdown table first.');return}
+    start--;let end=start+2;while(end<lines.length&&whdcTableRow(lines[end]))end++;
+    if(lineIndex<start||lineIndex>=end){window.alert('Place your cursor inside a Markdown table first.');return}
+    const rows=lines.slice(start,end).map(whdcTableRow);const width=rows[0].length;
+    if(action==='add-row')rows.push(Array(width).fill(''));
+    if(action==='remove-row'){if(rows.length<=3){window.alert('Keep at least one data row.');return}rows.splice(Math.max(2,lineIndex-start),1)}
+    if(action==='add-column')rows.forEach((r,i)=>r.push(i===1?'---':i===0?'New column':''));
+    if(action==='remove-column'){if(width<=2){window.alert('Keep at least two columns.');return}rows.forEach(r=>r.pop())}
+    const replacementRows=rows.map(r=>'| '+r.join(' | ')+' |').join('\n');
+    a=lines.slice(0,start).join('\n').length+(start?1:0);b=a+lines.slice(start,end).join('\n').length;replacement=replacementRows;
+   }
+   else if(action==='bold'||action==='italic'){const mark=action==='bold'?'**':'*';replacement=mark+(selected||'text')+mark}
    else if(action==='link'){const url=window.prompt('Link URL (https://):');if(!url)return;try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))throw Error()}catch{window.alert('Enter a valid http or https URL.');return}replacement='['+(selected||'link text')+']('+url+')'}
    else{a=el.value.lastIndexOf('\n',Math.max(0,a-1))+1;b=el.value.indexOf('\n',b);if(b<0)b=el.value.length;replacement=el.value.slice(a,b).split('\n').map((line,i)=>action==='heading'?'## '+line:action==='bullets'?'- '+line:(i+1)+'. '+line).join('\n')}
    el.setRangeText(replacement,a,b,'end');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus();if(!preview.hidden)updatePreview()
