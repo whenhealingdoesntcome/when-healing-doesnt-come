@@ -12,6 +12,8 @@ async function mount(target){if(!target)return;
   const root=document.createElement('div');root.id='whdcBibleRoot';root.append(template.content);
   root.classList.toggle('dark',document.body.classList.contains('dark'));target.replaceChildren(root);
   if(!loaded){for(const src of scripts)await script(src);loaded=true}
+  // The reader initializes asynchronously. Report a stalled reader rather than showing a permanent spinner.
+  setTimeout(()=>{const reading=root.querySelector('#reading');if(root.isConnected&&reading&&/Loading Scripture|Opening Scripture/.test(reading.textContent||'')){reading.innerHTML='<p role="alert">Scripture did not finish loading. <a href="/bible-reader.html">Open the standalone Bible Reader</a>.</p>';console.error('WHDC Bible reader initialization stalled');}},12000);
  })().catch(e=>{target.innerHTML='<p role="alert">Unable to load Bible Reader. <a href="/bible-reader.html">Open the standalone reader</a>.</p>';console.error(e)}).finally(()=>loading=null);
  await loading;
 }
