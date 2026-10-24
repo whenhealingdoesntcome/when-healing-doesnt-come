@@ -268,3 +268,8 @@ html, body{min-height:100%;}html{background:#f7f5f0}#whdcBibleRoot:has(body.dark
 #whdcBibleRoot.dark #bibleSearchPanel button[type=submit]:hover{background:#c0cec3!important;color:#17201e!important}
 #whdcBibleRoot .whdc-settings-popover[open]{position:fixed!important;z-index:120!important}
 @media(min-width:801px){#whdcBibleRoot .mobile-bible-toolbar{position:sticky!important;top:var(--whdc-shared-header-height,0px)!important}}
+
+/* Integrated toolbar: flush to shared navigation, breathing room before Scripture. */
+#whdcBibleRoot .mobile-bible-toolbar{margin-top:0!important;margin-bottom:18px!important;top:var(--whdc-shared-header-height,0px)!important}
+#whdcBibleMount{margin-top:0!important;padding-top:0!important}
+#whdcBibleRoot .layout>#reading{padding-top:22px!important}
