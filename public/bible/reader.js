@@ -78,7 +78,7 @@ if(mobileBook&&mobileChapter){
  if(readerOptions&&settingsGear){
   readerOptions.classList.add('whdc-settings-popover');
   readerOptions.open=false;
-  document.body.appendChild(readerOptions);
+  document.getElementById('whdcBibleRoot')?.appendChild(readerOptions) || document.body.appendChild(readerOptions);
   readerOptions.insertAdjacentHTML('afterbegin','<button type="button" class="whdc-settings-close" aria-label="Close reader settings">×</button><p class="whdc-settings-title">Bible Reader Settings</p>');
   const closeSettings=()=>{readerOptions.open=false;settingsGear.setAttribute('aria-expanded','false');};
   const positionSettings=()=>{const rect=settingsGear.getBoundingClientRect();const top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-140));document.documentElement.style.setProperty('--whdc-settings-top',top+'px');readerOptions.style.zoom='1';const available=Math.max(100,window.innerHeight-top-12);const needed=readerOptions.scrollHeight;if(needed>available)readerOptions.style.zoom=String(Math.max(.65,available/needed));};
