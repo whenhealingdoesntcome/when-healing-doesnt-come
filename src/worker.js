@@ -483,8 +483,8 @@ body>header,.whdc-tool-header{display:none!important}
 #bulkBar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:12px 0;padding:10px 12px;border:1px solid #d6e1da;border-radius:8px;background:#f3f7f4}
 #bulkBar[hidden]{display:none}
 #bulkBar .danger{color:#9b3d36}
-#list{border-top:1px solid #d8e0d9;margin-top:14px}
-#list .item{display:flex;align-items:center;gap:12px;padding:13px 10px;border-bottom:1px solid #d8e0d9;background:transparent!important;color:inherit!important}
+#list{display:block!important;gap:0!important;border-top:1px solid #d8e0d9;margin-top:14px}
+#list .item{display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:nowrap;gap:12px;margin:0!important;padding:13px 10px;border:0!important;border-bottom:1px solid #d8e0d9!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;color:inherit!important}
 #list .item:nth-child(even){background:#f8faf8!important}
 #list .resource-check{width:18px;height:18px;flex:none;accent-color:#496f69}
 #list .resource-main{flex:1;min-width:0}
