@@ -204,3 +204,9 @@ body.dark .layout .reading,body.dark #reading{background:transparent!important;b
 
 /* Paint the iPhone top safe area to match the Bible appearance. */
 html,body{min-height:100%;}html{background:#f7f5f0}html:has(body.dark),html[data-whdc-dark="1"]{background:#192526}
+
+/* Bible Reader follows the shared WHDC appearance palette. */
+body.dark{background:#20282b;color:#f0eee8;color-scheme:dark}
+body.dark .site-header,body.dark .controls,body.dark .reading,body.dark .bible-search form{background:#2a3335!important;color:#f0eee8!important;border-color:#4d5959!important}
+body.dark .mobile-reader-options,body.dark .search-line input{background:#2a3335!important;color:#f0eee8!important;border-color:#4d5959!important}
+body.dark .intro,body.dark .help,body.dark .translation,body.dark footer{color:#c0c9c8}
