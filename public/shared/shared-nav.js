@@ -44,14 +44,21 @@
       if(inApp && item.id!=='bible')return `<button type="button" class="navbtn ${extra}" data-nav="${item.id}"${active}>${item.label.toUpperCase()}</button>`;
       return `<a class="navbtn ${extra}" data-nav="${item.id}" href="${item.href}"${active}>${item.label.toUpperCase()}</a>`;
     };
-    element.innerHTML=desktopItems.map(item=>item.id==='explore'?`<div class="whdc-desktop-menu-only whdc-explore-dropdown"><button type="button" class="navbtn whdc-explore-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="whdcExploreDropdown">Explore <span aria-hidden="true">▾</span></button><div id="whdcExploreDropdown" class="whdc-explore-dropdown-list" hidden>${exploreItems.map(entry=>make(entry,'whdc-explore-link')).join('')}</div></div>`:make(item,'whdc-desktop-menu-only')).join('')+
+    element.innerHTML=desktopItems.map(item=>item.id==='explore'?`<div class="whdc-desktop-menu-only whdc-explore-dropdown"><button type="button" class="navbtn whdc-explore-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="whdcExploreDropdown">EXPLORE <span aria-hidden="true">▾</span></button><div id="whdcExploreDropdown" class="whdc-explore-dropdown-list" hidden>${exploreItems.map(entry=>make(entry,'whdc-explore-link')).join('')}</div></div>`:make(item,'whdc-desktop-menu-only')).join('')+
       items.map(item=>make(item,'whdc-mobile-menu-only')).join('');
     window.__whdcNavMenuAbort?.abort();window.__whdcNavMenuAbort=new AbortController();
     const trigger=element.querySelector('.whdc-explore-trigger');
     const dropdown=element.querySelector('#whdcExploreDropdown');
     if(trigger&&dropdown){
       const close=()=>{dropdown.hidden=true;trigger.setAttribute('aria-expanded','false')};
+      const openMenu=()=>{dropdown.hidden=false;trigger.setAttribute('aria-expanded','true')};
       trigger.addEventListener('click',()=>{const open=dropdown.hidden;dropdown.hidden=!open;trigger.setAttribute('aria-expanded',String(open))});
+      const wrapper=trigger.closest('.whdc-explore-dropdown');
+      // Hover opens on desktop; keyboard focus and click remain available.
+      wrapper.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')openMenu()});
+      wrapper.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')close()});
+      wrapper.addEventListener('focusout',e=>{if(!wrapper.contains(e.relatedTarget))close()});
+      trigger.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();openMenu();dropdown.querySelector('[data-nav]')?.focus()}});
       dropdown.addEventListener('click',e=>{if(e.target.closest('[data-nav]'))close()});
       document.addEventListener('pointerdown',e=>{if(!trigger.closest('.whdc-explore-dropdown')?.contains(e.target))close()},{signal:window.__whdcNavMenuAbort?.signal});
       trigger.addEventListener('keydown',e=>{if(e.key==='Escape'){close();trigger.focus()}});
