@@ -316,3 +316,32 @@ body:has(#whdcBibleRoot) #whdcStudyToggle{display:none!important}
     top: max(54px, env(safe-area-inset-top, 0px)) !important;
   }
 }
+
+/* Compact Bible settings popover on phones only. */
+@media (max-width: 800px) {
+  #whdcBibleRoot .whdc-settings-popover[open] {
+    width: min(310px, calc(100vw - 28px)) !important;
+    max-width: calc(100vw - 28px) !important;
+    max-height: min(65dvh, 470px) !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    line-height: 1.35 !important;
+    overflow-y: auto !important;
+  }
+  #whdcBibleRoot .whdc-settings-popover[open] .whdc-settings-title {
+    margin: 2px 0 8px !important;
+    font-size: 15px !important;
+  }
+  #whdcBibleRoot .whdc-settings-popover[open] .whdc-settings-close {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 20px !important;
+  }
+  #whdcBibleRoot .whdc-settings-popover[open] select,
+  #whdcBibleRoot .whdc-settings-popover[open] input,
+  #whdcBibleRoot .whdc-settings-popover[open] button:not(.whdc-settings-close) {
+    max-width: 100% !important;
+    font-size: 14px !important;
+  }
+}
