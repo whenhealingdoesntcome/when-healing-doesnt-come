@@ -14,8 +14,8 @@ function enablePopupFormatting(root){
  const fields=root.querySelectorAll('textarea[name="short"],textarea[name="deeper"],textarea[name="reflection"],textarea[name="content"],textarea[name="description"],textarea[name="note"],textarea[name="notes"],textarea[name="review_note"],textarea[name="admin_feedback"],textarea[name="editor_notes"],textarea[name="writer_notes"]');
  fields.forEach(el=>{
   if(el.dataset.richReady||el.readOnly||el.disabled)return;el.dataset.richReady='1';
-  const toolbar=document.createElement('div');toolbar.className='actions whdc-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
-  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Table','table'],['+ Row','add-row'],['+ Column','add-column'],['− Row','remove-row'],['− Column','remove-column'],['Preview','preview']];
+  const toolbar=document.createElement('div');toolbar.className='whdc-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
+  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Table','table'],['+ Row','add-row'],['+ Col','add-column'],['− Row','remove-row'],['− Col','remove-column'],['Preview','preview']];
   const preview=document.createElement('div');preview.className='whdc-rich-preview';preview.hidden=true;
   const escapeHtml=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const inline=s=>escapeHtml(s).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(_,label,url)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+'</a>').replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
@@ -43,7 +43,7 @@ function enablePopupFormatting(root){
    else{a=el.value.lastIndexOf('\n',Math.max(0,a-1))+1;b=el.value.indexOf('\n',b);if(b<0)b=el.value.length;replacement=el.value.slice(a,b).split('\n').map((line,i)=>action==='heading'?'## '+line:action==='bullets'?'- '+line:(i+1)+'. '+line).join('\n')}
    el.setRangeText(replacement,a,b,'end');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus();if(!preview.hidden)updatePreview()
   };
-  for(const [label,action] of controls){const button=document.createElement('button');button.type='button';button.className='btn';button.textContent=label;button.title=action;button.setAttribute('aria-label',action+' formatting');button.addEventListener('mousedown',e=>e.preventDefault());button.addEventListener('click',()=>apply(action));toolbar.append(button)}
+  for(const [label,action] of controls){const button=document.createElement('button');button.type='button';button.className='whdc-format-button';button.textContent=label;button.title=action;button.setAttribute('aria-label',action+' formatting');button.addEventListener('mousedown',e=>e.preventDefault());button.addEventListener('click',()=>apply(action));toolbar.append(button)}
   el.before(toolbar);el.after(preview);el.addEventListener('input',()=>{if(!preview.hidden)updatePreview()});el.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();apply(e.key.toLowerCase()==='b'?'bold':'italic')}});
  });
 }
@@ -51,6 +51,29 @@ function enablePopupFormatting(root){
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activeStatus='all',localPreviewUrl=null,previewGeneration=0;
 const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
+// The resources dashboard is embedded in an iframe. Temporarily move that iframe
+// to the parent document so the editor overlays the visible page, not just the tab.
+let floatingFrame=null;
+function floatEditorFrame(){
+ try{
+  if(window.parent===window||!window.frameElement)return;
+  const frame=window.frameElement,doc=window.parent.document;
+  const marker=doc.createComment('resource editor frame position');
+  frame.parentNode.insertBefore(marker,frame);
+  const savedStyle=frame.getAttribute('style');
+  const oldOverflow=doc.body.style.overflow;
+  doc.body.appendChild(frame);
+  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'transparent'});
+  doc.body.style.overflow='hidden';
+  floatingFrame={frame,marker,savedStyle,oldOverflow,doc};
+ }catch(err){console.warn('Could not expand resource editor outside its frame',err)}
+}
+function restoreEditorFrame(){
+ if(!floatingFrame)return;
+ const {frame,marker,savedStyle,oldOverflow,doc}=floatingFrame;
+ try{marker.parentNode.insertBefore(frame,marker);marker.remove();if(savedStyle===null)frame.removeAttribute('style');else frame.setAttribute('style',savedStyle);doc.body.style.overflow=oldOverflow}catch(err){console.warn('Could not restore resource dashboard frame',err)}
+ floatingFrame=null;
+}
 if(modal)enablePopupFormatting(modal);
 const fields=['type','title','creator','description','content','url','image_url','topics','sort_order','featured','published'];
 async function api(method,body){const r=await fetch('/api/admin/resources',{method,cache:'no-store',credentials:'same-origin',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
@@ -59,8 +82,8 @@ function preview(url){const img=$('#imagePreview');img.hidden=!url;if(url)img.sr
 function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
 async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
 $('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
-function show(){previousFocus=document.activeElement;modal.hidden=false;document.body.style.overflow='hidden';form.elements.title.focus()}
-function close(){modal.hidden=true;document.body.style.overflow='';previousFocus?.focus()}
+function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.style.overflow='hidden';form.elements.title.focus()}
+function close(){modal.hidden=true;document.body.style.overflow='';restoreEditorFrame();previousFocus?.focus()}
 function reset(){releaseLocalPreview();editing='';form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');mode();show()}
 function edit(id){releaseLocalPreview();const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);mode();show()}
 function filtered(){const q=$('#resourceSearch').value.trim().toLowerCase(),type=$('#resourceTypeFilter').value,status=activeStatus,sort=$('#resourceSort').value;const shown=records.filter(r=>(type==='all'||r.type===type)&&(status==='all'||(status==='published')===!!r.published)&&(!q||[r.title,r.creator,r.description,...(Array.isArray(r.topics)?r.topics:[])].join(' ').toLowerCase().includes(q)));shown.sort((a,b)=>sort==='order'?(Number(a.sort_order||0)-Number(b.sort_order||0))||String(a.title).localeCompare(String(b.title)):sort==='type'?String(a.type).localeCompare(String(b.type))||String(a.title).localeCompare(String(b.title)):sort==='title-desc'?String(b.title).localeCompare(String(a.title)):String(a.title).localeCompare(String(b.title)));return shown}
