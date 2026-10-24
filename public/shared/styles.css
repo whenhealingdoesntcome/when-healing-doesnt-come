@@ -461,3 +461,14 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
   header #mainMenu .whdc-explore-dropdown-list .navbtn{display:block;text-align:left;width:100%;padding:7px 5px!important}
 }
 @media(min-width:768px) and (max-width:899px){header #mainMenu .whdc-desktop-menu-only{display:none!important}header #mainMenu .whdc-mobile-menu-only{display:block!important}}
+
+/* Fix desktop header: keep main links on one horizontal line. */
+@media (min-width:900px){
+  body #app > header > .top.whdc-header-top{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:space-between!important;width:min(calc(100% - 36px),1400px)!important;max-width:1400px!important}
+  body #app > header #mainMenu.whdc-nav{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;justify-content:flex-end!important;gap:clamp(10px,1.35vw,22px)!important;position:static!important;width:auto!important;min-width:0!important}
+  body #app > header #mainMenu > .whdc-desktop-menu-only{display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;width:auto!important;margin:0!important}
+  body #app > header #mainMenu > .whdc-mobile-menu-only{display:none!important}
+  body #app > header #mainMenu .whdc-explore-dropdown-list[hidden]{display:none!important}
+  body #app > header #mainMenu .whdc-explore-dropdown-list:not([hidden]){display:flex!important;flex-direction:column!important;align-items:stretch!important}
+  body #app > header #mainMenu .whdc-explore-dropdown-list .whdc-explore-link{display:block!important;width:100%!important;text-align:left!important}
+}
