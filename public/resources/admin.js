@@ -57,29 +57,41 @@ const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
 // to the parent document so the editor overlays the visible page, not just the tab.
 // Do not reparent the live iframe: moving an iframe reloads its document on
 // mobile Safari, losing the editor while leaving the dashboard backdrop visible.
-let floatingFrame=null;
-function floatEditorFrame(){
+// Render the editor in a dedicated overlay iframe in the parent document.
+// Never resize or reparent the dashboard iframe: doing so breaks iOS Safari.
+const editorParams=new URLSearchParams(location.search);
+const isEditorWindow=editorParams.get('resourceEditor')==='1';
+let editorOverlay=null;
+function openEditorWindow(id){
+ if(isEditorWindow||window.parent===window)return false;
  try{
-  if(window.parent===window||!window.frameElement)return;
-  const frame=window.frameElement,doc=window.parent.document;
-  const savedStyle=frame.getAttribute('style');
-  const oldOverflow=doc.body.style.overflow;
-  // Keep the iframe attached to its original DOM parent so its JS survives.
-  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'#fff'});
-  doc.body.style.overflow='hidden';
-  floatingFrame={frame,savedStyle,oldOverflow,doc};
- }catch(err){console.warn('Could not expand resource editor iframe',err)}
+  const doc=window.parent.document;
+  const overlay=doc.createElement('div');
+  overlay.setAttribute('data-whdc-resource-overlay','');
+  Object.assign(overlay.style,{position:'fixed',inset:'0',zIndex:'2147483646',background:'rgba(24,30,29,.4)',display:'flex',alignItems:'center',justifyContent:'center'});
+  const frame=doc.createElement('iframe');
+  const url=new URL(location.href);
+  url.searchParams.set('resourceEditor','1');
+  if(id)url.searchParams.set('resourceEditId',id);
+  else url.searchParams.delete('resourceEditId');
+  frame.src=url.href;
+  frame.title='Resource editor';
+  Object.assign(frame.style,{position:'absolute',inset:'0',width:'100%',height:'100%',border:'0',background:'transparent'});
+  overlay.appendChild(frame);
+  doc.body.appendChild(overlay);
+  editorOverlay=overlay;
+  return true;
+ }catch(err){console.warn('Unable to open editor in parent document',err);return false}
 }
-function restoreEditorFrame(){
- if(!floatingFrame)return;
- const {frame,savedStyle,oldOverflow,doc}=floatingFrame;
- try{
-  if(savedStyle===null)frame.removeAttribute('style');
-  else frame.setAttribute('style',savedStyle);
-  doc.body.style.overflow=oldOverflow;
- }catch(err){console.warn('Could not restore resource editor iframe',err)}
- floatingFrame=null;
+function closeEditorWindow(){
+ try{if(isEditorWindow){const overlay=window.frameElement?.closest('[data-whdc-resource-overlay]');overlay?.remove();window.parent.document.querySelectorAll('iframe').forEach(f=>{if(f!==window.frameElement)f.contentWindow?.postMessage({whdcResourceEditor:'saved'},'*')})}else editorOverlay?.remove()}catch(e){}
+ editorOverlay=null;
 }
+window.addEventListener('message',event=>{
+ if(event.origin!==location.origin)return;
+ if(event.data?.whdcResourceEditor==='close'){editorOverlay?.remove();editorOverlay=null;refresh().catch(()=>{})}
+ if(event.data?.whdcResourceEditor==='saved'){refresh().catch(()=>{})}
+});
 if(modal)enablePopupFormatting(modal);
 const fields=['type','title','creator','description','content','url','image_url','topics','sort_order','featured','published'];
 async function api(method,body){const r=await fetch('/api/admin/resources',{method,cache:'no-store',credentials:'same-origin',headers:{'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
@@ -88,8 +100,8 @@ function preview(url){const img=$('#imagePreview');img.hidden=!url;if(url)img.sr
 function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
 async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
 $('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
-function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';if(!matchMedia('(max-width: 600px)').matches)form.elements.title.focus()}
-function close(){modal.hidden=true;document.body.classList.remove('resource-editor-open');document.body.style.overflow='';restoreEditorFrame();previousFocus?.focus()}
+function show(){if(!isEditorWindow&&openEditorWindow(editing))return;previousFocus=document.activeElement;modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';if(!matchMedia('(max-width: 600px)').matches)form.elements.title.focus()}
+function close(){modal.hidden=true;document.body.classList.remove('resource-editor-open');document.body.style.overflow='';closeEditorWindow();previousFocus?.focus()}
 function reset(){releaseLocalPreview();editing='';form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');mode();show()}
 function edit(id){releaseLocalPreview();const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);mode();show()}
 function filtered(){const q=$('#resourceSearch').value.trim().toLowerCase(),type=$('#resourceTypeFilter').value,status=activeStatus,sort=$('#resourceSort').value;const shown=records.filter(r=>(type==='all'||r.type===type)&&(status==='all'||(status==='published')===!!r.published)&&(!q||[r.title,r.creator,r.description,...(Array.isArray(r.topics)?r.topics:[])].join(' ').toLowerCase().includes(q)));shown.sort((a,b)=>sort==='order'?(Number(a.sort_order||0)-Number(b.sort_order||0))||String(a.title).localeCompare(String(b.title)):sort==='type'?String(a.type).localeCompare(String(b.type))||String(a.title).localeCompare(String(b.title)):sort==='title-desc'?String(b.title).localeCompare(String(a.title)):String(a.title).localeCompare(String(b.title)));return shown}
@@ -112,10 +124,13 @@ if(!(verify.headers.get('content-type')||'').startsWith('image/'))throw Error('T
 form.elements.image_url.value=result.url;$('#uploadStatus').textContent='Picture uploaded and verified. Save the resource to keep it.';
 }catch(e){$('#uploadStatus').textContent='Upload failed: '+e.message+' The preview will remain visible, but this new picture has NOT been saved.';$('#resourceImageFile').value='';}
 finally{busy=false}}
-async function save(published){if(busy)return;if(!form.reportValidity())return;const b=Object.fromEntries(fields.map(k=>[k,form.elements[k]?.type==='checkbox'?form.elements[k].checked:form.elements[k]?.value||'']));b.topics=b.topics.split(',').map(x=>x.trim()).filter(Boolean);b.published=published;b.id=editing||b.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90);if(!b.id){notice.textContent='Please enter a valid title';return}busy=true;try{await api('POST',b);editing=b.id;$('#editHeading').textContent='Edit: '+b.title;form.elements.published.checked=published;notice.textContent=(published?'Published ':'Saved draft: ')+b.title;await refresh()}catch(err){notice.textContent=err.message}finally{busy=false}}
+async function save(published){if(busy)return;if(!form.reportValidity())return;const b=Object.fromEntries(fields.map(k=>[k,form.elements[k]?.type==='checkbox'?form.elements[k].checked:form.elements[k]?.value||'']));b.topics=b.topics.split(',').map(x=>x.trim()).filter(Boolean);b.published=published;b.id=editing||b.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,90);if(!b.id){notice.textContent='Please enter a valid title';return}busy=true;try{await api('POST',b);editing=b.id;$('#editHeading').textContent='Edit: '+b.title;form.elements.published.checked=published;notice.textContent=(published?'Published ':'Saved draft: ')+b.title;await refresh();if(isEditorWindow)window.parent.document.querySelectorAll('iframe').forEach(f=>{if(f!==window.frameElement)f.contentWindow?.postMessage({whdcResourceEditor:'saved'},'*')})}catch(err){notice.textContent=err.message}finally{busy=false}}
 async function bulk(action){const ids=[...selected];if(!ids.length||busy)return;if(action==='delete'&&!confirm('Permanently delete '+ids.length+' selected resources? This cannot be undone.'))return;busy=true;notice.textContent='Updating '+ids.length+' resources…';let done=0;try{for(const id of ids){const r=records.find(x=>x.id===id);if(!r)continue;if(action==='delete')await api('DELETE',{id});else{const b={...r,topics:Array.isArray(r.topics)?r.topics:[],published:action==='publish'?true:action==='draft'?false:!!r.published,featured:action==='feature'?true:action==='unfeature'?false:!!r.featured};await api('POST',b)}done++}selected.clear();await refresh();notice.textContent=done+' resources updated.'}catch(e){notice.textContent=done+' updated before error: '+e.message;await refresh()}finally{busy=false}}
 $('#savePublishTop')?.addEventListener('click',()=>$('#savePublish').click());$('#previewResourceTop')?.addEventListener('click',()=>{const b=[...modal.querySelectorAll('.whdc-rich-toolbar .whdc-format-button')].find(x=>x.textContent.trim()==='Preview');if(b)b.click();else form.elements.content?.focus()});$('#newResource').onclick=reset;$('#closeResourceEditor').onclick=close;$('#closeResourceEditorBottom').onclick=close;modal.addEventListener('click',e=>{if(e.target===modal)close()});document.addEventListener('keydown',e=>{if(modal.hidden)return;if(e.key==='Escape')close();if(e.key==='Tab'){const controls=[...modal.querySelectorAll('button,input,select,textarea')].filter(el=>!el.hidden&&!el.disabled&&el.offsetParent!==null);if(!controls.length)return;const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}});
 form.elements.type.onchange=mode;form.onsubmit=e=>{e.preventDefault();save(false)};$('#savePublish').onclick=()=>save(true);$('#resourceImageFile').onchange=upload;$('#removeResourceImage').onclick=()=>{releaseLocalPreview();form.elements.image_url.value='';$('#resourceImageFile').value='';preview('');$('#uploadStatus').textContent='Picture removed. Save to apply.'};
 $('#selectAll').onchange=e=>{for(const r of filtered())e.target.checked?selected.add(r.id):selected.delete(r.id);render()};$('#clearSelection').onclick=()=>{selected.clear();render()};for(const [id,action] of [['bulkPublish','publish'],['bulkDraft','draft'],['bulkFeature','feature'],['bulkUnfeature','unfeature'],['bulkDelete','delete']])$('#'+id).onclick=()=>bulk(action);for(const tab of document.querySelectorAll('[data-status-tab]'))tab.addEventListener('click',()=>{activeStatus=tab.dataset.statusTab;render()});for(const id of ['resourceSearch','resourceTypeFilter','resourceSort'])$('#'+id).addEventListener(id==='resourceSearch'?'input':'change',render);
-mode();preview('');render();refresh().catch(e=>{notice.textContent='Unable to load resources: '+e.message+'. Check your connection and reload this dashboard.';});
+mode();preview('');render();
+refresh().then(()=>{
+ if(isEditorWindow){const id=editorParams.get('resourceEditId');if(id)edit(id);else reset();}
+}).catch(e=>{notice.textContent='Unable to load resources: '+e.message+'. Check your connection and reload this dashboard.';if(isEditorWindow&&!editorParams.get('resourceEditId'))reset()});
 })();
