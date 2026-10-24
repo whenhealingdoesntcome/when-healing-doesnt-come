@@ -65,7 +65,7 @@ function floatEditorFrame(){
   const savedStyle=frame.getAttribute('style');
   const oldOverflow=doc.body.style.overflow;
   doc.body.appendChild(frame);
-  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'transparent'});
+  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'rgba(24,36,33,.58)'});
   doc.body.style.overflow='hidden';
   floatingFrame={frame,marker,savedStyle,oldOverflow,doc};
  }catch(err){console.warn('Could not expand resource editor outside its frame',err)}
@@ -84,8 +84,8 @@ function preview(url){const img=$('#imagePreview');img.hidden=!url;if(url)img.sr
 function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
 async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
 $('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
-function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.style.overflow='hidden';form.elements.title.focus()}
-function close(){modal.hidden=true;document.body.style.overflow='';restoreEditorFrame();previousFocus?.focus()}
+function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';form.elements.title.focus()}
+function close(){modal.hidden=true;document.body.classList.remove('resource-editor-open');document.body.style.overflow='';restoreEditorFrame();previousFocus?.focus()}
 function reset(){releaseLocalPreview();editing='';form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');mode();show()}
 function edit(id){releaseLocalPreview();const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);mode();show()}
 function filtered(){const q=$('#resourceSearch').value.trim().toLowerCase(),type=$('#resourceTypeFilter').value,status=activeStatus,sort=$('#resourceSort').value;const shown=records.filter(r=>(type==='all'||r.type===type)&&(status==='all'||(status==='published')===!!r.published)&&(!q||[r.title,r.creator,r.description,...(Array.isArray(r.topics)?r.topics:[])].join(' ').toLowerCase().includes(q)));shown.sort((a,b)=>sort==='order'?(Number(a.sort_order||0)-Number(b.sort_order||0))||String(a.title).localeCompare(String(b.title)):sort==='type'?String(a.type).localeCompare(String(b.type))||String(a.title).localeCompare(String(b.title)):sort==='title-desc'?String(b.title).localeCompare(String(a.title)):String(a.title).localeCompare(String(b.title)));return shown}
