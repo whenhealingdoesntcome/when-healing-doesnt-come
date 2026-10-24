@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v31-bible-layout';
+const CACHE='whdc-public-shell-v32-mobile-diagnostic';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/resources.html','/resources/resources.css','/resources/library.js','/bible-reader.html','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 

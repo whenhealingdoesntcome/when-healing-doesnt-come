@@ -1,7 +1,7 @@
 /* WHDC native PWA Bible section. No iframe. */
 (()=>{'use strict';
 let saved=null, loaded=false, loading=null;
-const scripts=['/bible/reader.js?v=20261024-bible-layout-v5','/bible/scripture-study.js?v=20261024-bible-layout-v5','/bible/study-notes.js?v=20261024-bible-layout-v5','/bible/verse-study.js?v=20261024-bible-layout-v5'];
+const scripts=['/bible/reader.js?v=20261024-mobile-diagnostic-v14','/bible/scripture-study.js?v=20261024-mobile-diagnostic-v14','/bible/study-notes.js?v=20261024-mobile-diagnostic-v14','/bible/verse-study.js?v=20261024-mobile-diagnostic-v14'];
 function script(src){return new Promise((resolve,reject)=>{const e=document.createElement('script');e.src=src;e.onload=resolve;e.onerror=reject;document.body.append(e)})}
 function setupSettings(root){
  const gear=root.querySelector('#mobileReaderSettings');
@@ -33,23 +33,61 @@ function setupToolbar(root){
  update();requestAnimationFrame(update);
  if(!root.__toolbarBound){root.__toolbarBound=true;window.addEventListener('resize',update);window.addEventListener('scroll',update,{passive:true});}
 }
-async function mount(target){if(!target)return;
- if(saved){saved.classList.toggle('dark',document.body.classList.contains('dark'));target.replaceChildren(saved);setupToolbar(saved);setupSettings(saved);saved=null;return}
- if(loading){await loading;if(saved){target.replaceChildren(saved);setupToolbar(saved);setupSettings(saved);saved=null}return}
- loading=(async()=>{
-  const r=await fetch('/bible/component-template.html?v=20261024-bible-layout-v5',{cache:'no-cache'});if(!r.ok)throw Error('Bible interface unavailable');
-  const template=document.createElement('template');template.innerHTML=await r.text();
-  const root=document.createElement('div');root.id='whdcBibleRoot';root.append(template.content);
-  root.classList.toggle('dark',document.body.classList.contains('dark'));target.replaceChildren(root);setupToolbar(root);setupSettings(root);
-  if(!loaded){for(const src of scripts)await script(src);loaded=true}
-  // Surface failures on iOS instead of leaving an indefinite loading message.
-  const reading=root.querySelector('#reading');
-  if(reading){setTimeout(()=>{if(root.isConnected && /Loading Scripture|Opening Scripture/.test(reading.textContent||'')){reading.innerHTML='<p role="alert">The Bible Reader could not finish loading on this device. <a href="/bible-reader.html">Open the Bible Reader</a>.</p>';console.error('Bible initialization timed out');}},10000)}
-  // The reader initializes asynchronously. Report a stalled reader rather than showing a permanent spinner.
-  setTimeout(()=>{const reading=root.querySelector('#reading');if(root.isConnected&&reading&&/Loading Scripture|Opening Scripture/.test(reading.textContent||'')){reading.innerHTML='<p role="alert">Scripture did not finish loading. <a href="/bible-reader.html">Open the standalone Bible Reader</a>.</p>';console.error('WHDC Bible reader initialization stalled');}},12000);
- })().catch(e=>{target.innerHTML='<p role="alert">Unable to load Bible Reader. <a href="/bible-reader.html">Open the standalone reader</a>.</p>';console.error(e)}).finally(()=>loading=null);
- await loading;
+let activeTarget=null, pendingRoot=null, mountGeneration=0;
+function showError(target, message){
+ if(!target?.isConnected)return;
+ const p=document.createElement('p');p.setAttribute('role','alert');
+ p.textContent='Bible Reader could not load: '+message+'. ';
+ const a=document.createElement('a');a.href='/bible-reader.html';a.textContent='Open the standalone Bible Reader';p.append(a);
+ target.replaceChildren(p);
 }
-function beforeRender(){const root=document.getElementById('whdcBibleRoot');if(root){saved=root;root.remove()}}
+async function mount(target){
+ if(!target)return;
+ activeTarget=target;
+ const generation=++mountGeneration;
+ if(saved){
+  const root=saved;saved=null;target.replaceChildren(root);
+  root.classList.toggle('dark',document.body.classList.contains('dark'));
+  setupToolbar(root);setupSettings(root);return;
+ }
+ if(loading){
+  try{await loading}catch(e){showError(target,e.message||'initialization error')}
+  if(activeTarget===target&&target.isConnected&&pendingRoot){
+   target.replaceChildren(pendingRoot);setupToolbar(pendingRoot);setupSettings(pendingRoot);pendingRoot=null;
+  }
+  return;
+ }
+ const timeout=(ms)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('timed out after '+Math.round(ms/1000)+' seconds')),ms));
+ loading=(async()=>{
+  const response=await Promise.race([fetch('/bible/component-template.html?v=20261024-mobile-diagnostic-v14',{cache:'no-store'}),timeout(12000)]);
+  if(!response.ok)throw new Error('interface request HTTP '+response.status);
+  const html=await response.text();
+  if(!html.includes('id="reading"'))throw new Error('Bible interface missing Scripture container');
+  const template=document.createElement('template');template.innerHTML=html;
+  const root=document.createElement('div');root.id='whdcBibleRoot';root.append(template.content);
+  root.classList.toggle('dark',document.body.classList.contains('dark'));
+  const destination=activeTarget;
+  if(destination?.isConnected){destination.replaceChildren(root);setupToolbar(root);setupSettings(root)}
+  else pendingRoot=root;
+  if(!loaded){
+   for(const src of scripts){
+    await Promise.race([script(src),timeout(12000)]).catch(e=>{throw new Error('script '+src.split('?')[0]+': '+e.message)});
+   }
+   loaded=true;
+  }
+  // Detect an initialization stall even when the reader's own error handler never runs.
+  setTimeout(()=>{
+   if(!root.isConnected)return;
+   const reading=root.querySelector('#reading');
+   if(reading && /Loading Scripture|Opening Scripture/i.test(reading.textContent||'')){
+    reading.innerHTML='<p role="alert">Bible Scripture initialization did not finish. <a href="/bible-reader.html">Open the standalone Bible Reader</a>.</p>';
+   }
+  },12000);
+ })();
+ try{await loading}
+ catch(e){console.error('WHDC Bible component failed:',e);showError(activeTarget,e.message||'unknown error')}
+ finally{loading=null}
+}
+function beforeRender(){const root=document.getElementById('whdcBibleRoot');if(root){saved=root;root.remove()}activeTarget=null}
 window.WHDCBibleComponent={mount,beforeRender};
 })();
