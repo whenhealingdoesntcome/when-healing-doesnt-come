@@ -202,3 +202,36 @@ html, body{min-height:100%;}html{background:#f7f5f0}#whdcBibleRoot:has(body.dark
 #whdcBibleRoot.dark .intro, #whdcBibleRoot.dark .help, #whdcBibleRoot.dark .translation, #whdcBibleRoot.dark footer{color:#c0c9c8}
 
 #whdcBibleRoot{width:100%;min-width:0}#whdcBibleRoot .layout{max-width:100%}
+
+/* PWA desktop layout correction: keep navigation/tools in their own column.
+   The legacy edge-to-edge rule above forced .layout to display:block. */
+@media (min-width:801px){
+  #whdcBibleRoot .layout{
+    display:grid!important;
+    grid-template-columns:minmax(235px,285px) minmax(0,1fr)!important;
+    align-items:start!important;
+    gap:clamp(20px,3vw,44px)!important;
+    width:100%!important;
+    max-width:1440px!important;
+    margin:0 auto!important;
+    padding:20px clamp(16px,3vw,48px)!important;
+  }
+  #whdcBibleRoot .layout > .controls{
+    display:block;
+    position:sticky;
+    top:20px;
+    grid-column:1;
+    min-width:0;
+    width:100%;
+    z-index:2;
+  }
+  #whdcBibleRoot .layout > #reading{
+    grid-column:2;
+    grid-row:1;
+    min-width:0!important;
+    width:100%!important;
+    position:relative;
+    padding:20px clamp(12px,2vw,32px) 48px!important;
+    overflow-wrap:break-word;
+  }
+}
