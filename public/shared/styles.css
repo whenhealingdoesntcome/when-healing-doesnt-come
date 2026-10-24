@@ -441,3 +441,7 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
 .whdc-book-dialog h2{margin:0 30px 6px 0}
 .whdc-book-body{line-height:1.7;margin:18px 0}
 @media(max-width:420px){.whdc-book-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Center book captions beneath each cover; keep the bookshelf left aligned. */
+.whdc-book-grid .whdc-book-tile{text-align:center;align-items:stretch}
+.whdc-book-grid .whdc-book-tile strong,.whdc-book-grid .whdc-book-author{text-align:center;display:block;width:100%}
