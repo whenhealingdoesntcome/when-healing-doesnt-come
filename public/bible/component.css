@@ -273,3 +273,27 @@ html, body{min-height:100%;}html{background:#f7f5f0}#whdcBibleRoot:has(body.dark
 #whdcBibleRoot .mobile-bible-toolbar{margin-top:0!important;margin-bottom:18px!important;top:var(--whdc-shared-header-height,0px)!important}
 #whdcBibleMount{margin-top:0!important;padding-top:0!important}
 #whdcBibleRoot .layout>#reading{padding-top:22px!important}
+
+/* WHDC integrated Bible: full-width sticky toolbar flush against shared navigation. */
+body:has(#whdcBibleRoot) main:has(#whdcBibleMount){padding-top:0!important}
+body:has(#whdcBibleRoot) #whdcBibleMount{margin-top:0!important;padding-top:0!important}
+#whdcBibleRoot .mobile-bible-toolbar{
+ display:grid!important;
+ position:sticky!important;
+ top:var(--whdc-shared-header-height,0px)!important;
+ margin:0 calc(50% - 50vw) 0!important;
+ width:100vw!important;
+ max-width:none!important;
+ z-index:105!important;
+ box-sizing:border-box!important;
+}
+#whdcBibleRoot .layout{margin-top:20px!important}
+#whdcBibleRoot .mobile-chapter-label{position:static!important;display:block!important;width:auto!important;height:auto!important;clip:auto!important;overflow:visible!important;white-space:normal!important;margin:0 0 3px!important;font-size:12px!important;line-height:1.2!important}
+/* Study is accessible through the toolbar; suppress its redundant floating button. */
+body:has(#whdcBibleRoot) #whdcStudyToggle{display:none!important}
+/* Settings must be visible even when the old desktop sidebar is hidden. */
+#whdcBibleRoot .whdc-settings-popover[open]{display:block!important;position:fixed!important;z-index:125!important;width:min(390px,calc(100vw - 24px))!important;overflow-y:auto!important;padding:16px!important;border:1px solid #a9b9b3!important;border-radius:12px!important;background:#fffefa!important;color:#263d36!important;box-shadow:0 10px 35px #0003!important;box-sizing:border-box!important}
+#whdcBibleRoot.dark .whdc-settings-popover[open]{background:#202832!important;color:#f0efec!important;border-color:#465362!important}
+#whdcBibleRoot .whdc-settings-popover[open] summary{display:none!important}
+#whdcBibleRoot .whdc-settings-popover .whdc-settings-close{float:right;width:36px;height:36px;padding:0;border:0;background:transparent;color:inherit;font-size:24px}
+#whdcBibleRoot .whdc-settings-popover .whdc-settings-title{font-weight:700;margin:4px 0 16px}

@@ -72,27 +72,6 @@ if(mobileBook&&mobileChapter){
   if(open)$('bibleSearch').focus({preventScroll:true});
  });
  document.addEventListener('keydown',event=>{if(event.key==='Escape'){const panel=$('bibleSearchPanel');if(panel?.classList.contains('whdc-mobile-search-open')){panel.classList.remove('whdc-mobile-search-open');panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');$('mobileSearchToggle')?.focus({preventScroll:true});}}});
- // Move the reader options out of the sidebar so the gear opens a floating panel.
- const readerOptions=$('mobileReaderOptions');
- const settingsGear=$('mobileReaderSettings');
- if(readerOptions&&settingsGear){
-  readerOptions.classList.add('whdc-settings-popover');
-  readerOptions.open=false;
-  document.getElementById('whdcBibleRoot')?.appendChild(readerOptions) || document.body.appendChild(readerOptions);
-  readerOptions.insertAdjacentHTML('afterbegin','<button type="button" class="whdc-settings-close" aria-label="Close reader settings">×</button><p class="whdc-settings-title">Bible Reader Settings</p>');
-  const closeSettings=()=>{readerOptions.open=false;settingsGear.setAttribute('aria-expanded','false');};
-  const positionSettings=()=>{const rect=settingsGear.getBoundingClientRect();const top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-140));document.documentElement.style.setProperty('--whdc-settings-top',top+'px');readerOptions.style.zoom='1';const available=Math.max(100,window.innerHeight-top-12);const needed=readerOptions.scrollHeight;if(needed>available)readerOptions.style.zoom=String(Math.max(.65,available/needed));};
-  settingsGear.addEventListener('click',event=>{
-   event.preventDefault();event.stopPropagation();
-   const shouldOpen=!readerOptions.open;
-   if(shouldOpen){positionSettings();const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');}
-   readerOptions.open=shouldOpen;if(shouldOpen)requestAnimationFrame(positionSettings);settingsGear.setAttribute('aria-expanded',String(shouldOpen));
-  });
-  readerOptions.querySelector('.whdc-settings-close').addEventListener('click',closeSettings);
-  document.addEventListener('pointerdown',event=>{if(readerOptions.open&&!readerOptions.contains(event.target)&&!settingsGear.contains(event.target))closeSettings();});
-  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&readerOptions.open){closeSettings();settingsGear.focus({preventScroll:true});}});
-  window.addEventListener('resize',()=>{if(readerOptions.open)positionSettings();});
- }
 }$('font').value=recall('font')||19;function font(){document.documentElement.style.setProperty('--scripture-size',$('font').value+'px');$('fontValue').textContent=$('font').value;store('font',$('font').value)}$('font').addEventListener('input',font);font();const whdcTheme=()=>{const choice=localStorage.getItem('whdc-appearance');return choice==='dark'||(choice!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)};const applyBibleTheme=()=>{const dark=whdcTheme();(document.getElementById('whdcBibleRoot')||document.body).classList.toggle('dark',dark);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#20282b':'#f7f5f0');document.documentElement.style.backgroundColor=dark?'#20282b':'#f7f5f0'};applyBibleTheme();window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',applyBibleTheme);window.addEventListener('pageshow',applyBibleTheme);window.addEventListener('storage',e=>{if(e.key==='whdc-appearance')applyBibleTheme()});$('download').addEventListener('click',download);$('remove').addEventListener('click',remove);
 const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',async e=>{e.preventDefault();await runBibleSearch($('bibleSearch').value);const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs')||params.get('references');if(searchParam){const combinedReferences=searchParam.replace(/\r?\n+/g,'; ');$('bibleSearch').value=combinedReferences;syncClear();await runBibleSearch(combinedReferences)}await status();}catch(e){console.error('Bible initialization failed',e);const reading=$('reading');if(reading)reading.innerHTML='<p class="error">Unable to load Bible navigation. Please connect to the internet once to prepare the reader. <a href="/bible-reader.html">Open standalone Bible Reader</a>.</p>';}}
 init();})();
