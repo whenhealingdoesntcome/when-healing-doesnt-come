@@ -472,3 +472,10 @@ body.dark :is(button,a,input,select,textarea,[role=button]):focus-visible{outlin
   body #app > header #mainMenu .whdc-explore-dropdown-list:not([hidden]){display:flex!important;flex-direction:column!important;align-items:stretch!important}
   body #app > header #mainMenu .whdc-explore-dropdown-list .whdc-explore-link{display:block!important;width:100%!important;text-align:left!important}
 }
+
+/* Center the home introduction block, keeping its text alignment unchanged. */
+main.wrap > .home-hero{margin-left:auto;margin-right:auto;width:100%;}
+/* Display a visible label next to the home share icon. */
+.home-hero .whdc-home-share-icon{width:auto;min-width:88px;height:44px;padding:0 12px;display:flex;align-items:center;justify-content:center;gap:7px;border-radius:999px;font-size:.9rem;font-weight:600;white-space:nowrap;}
+.home-hero{padding-right:110px!important;}
+@media(max-width:600px){.home-hero{padding-right:104px!important;}.home-hero .whdc-home-share-icon{right:8px;top:8px;}}
