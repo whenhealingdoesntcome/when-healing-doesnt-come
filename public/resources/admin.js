@@ -55,25 +55,29 @@ let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activ
 const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
 // The resources dashboard is embedded in an iframe. Temporarily move that iframe
 // to the parent document so the editor overlays the visible page, not just the tab.
+// Do not reparent the live iframe: moving an iframe reloads its document on
+// mobile Safari, losing the editor while leaving the dashboard backdrop visible.
 let floatingFrame=null;
 function floatEditorFrame(){
  try{
   if(window.parent===window||!window.frameElement)return;
   const frame=window.frameElement,doc=window.parent.document;
-  const marker=doc.createComment('resource editor frame position');
-  frame.parentNode.insertBefore(marker,frame);
   const savedStyle=frame.getAttribute('style');
   const oldOverflow=doc.body.style.overflow;
-  doc.body.appendChild(frame);
-  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'#f5f5f2'});
+  // Keep the iframe attached to its original DOM parent so its JS survives.
+  Object.assign(frame.style,{position:'fixed',inset:'0',top:'0',left:'0',width:'100vw',height:'100dvh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483000',display:'block',background:'#fff'});
   doc.body.style.overflow='hidden';
-  floatingFrame={frame,marker,savedStyle,oldOverflow,doc};
- }catch(err){console.warn('Could not expand resource editor outside its frame',err)}
+  floatingFrame={frame,savedStyle,oldOverflow,doc};
+ }catch(err){console.warn('Could not expand resource editor iframe',err)}
 }
 function restoreEditorFrame(){
  if(!floatingFrame)return;
- const {frame,marker,savedStyle,oldOverflow,doc}=floatingFrame;
- try{marker.parentNode.insertBefore(frame,marker);marker.remove();if(savedStyle===null)frame.removeAttribute('style');else frame.setAttribute('style',savedStyle);doc.body.style.overflow=oldOverflow}catch(err){console.warn('Could not restore resource dashboard frame',err)}
+ const {frame,savedStyle,oldOverflow,doc}=floatingFrame;
+ try{
+  if(savedStyle===null)frame.removeAttribute('style');
+  else frame.setAttribute('style',savedStyle);
+  doc.body.style.overflow=oldOverflow;
+ }catch(err){console.warn('Could not restore resource editor iframe',err)}
  floatingFrame=null;
 }
 if(modal)enablePopupFormatting(modal);
@@ -84,7 +88,7 @@ function preview(url){const img=$('#imagePreview');img.hidden=!url;if(url)img.sr
 function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
 async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
 $('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
-function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';form.elements.title.focus()}
+function show(){previousFocus=document.activeElement;floatEditorFrame();modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';if(!matchMedia('(max-width: 600px)').matches)form.elements.title.focus()}
 function close(){modal.hidden=true;document.body.classList.remove('resource-editor-open');document.body.style.overflow='';restoreEditorFrame();previousFocus?.focus()}
 function reset(){releaseLocalPreview();editing='';form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');mode();show()}
 function edit(id){releaseLocalPreview();const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);mode();show()}
