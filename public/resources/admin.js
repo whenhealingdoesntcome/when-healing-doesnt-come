@@ -7,7 +7,7 @@ function whdcRenderTable(lines,inline){const heads=whdcTableRow(lines[0]);if(!he
  const cells=(values,tag)=>'<tr>'+heads.map((_,i)=>'<'+tag+'>'+inline(values[i]||'')+'</'+tag+'>').join('')+'</tr>';
  return '<div class="whdc-table-scroll" tabindex="0" role="region" aria-label="Scrollable article table"><table class="whdc-article-table"><thead>'+cells(heads,'th')+'</thead><tbody>'+lines.slice(2).map(line=>cells(whdcTableRow(line)||[],'td')).join('')+'</tbody></table></div>';
 }
-if(!document.querySelector('link[data-whdc-resource-table-style]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/resources/resources.css?v=20261024-resource-tables';style.dataset.whdcResourceTableStyle='1';document.head.append(style)}
+if(!document.querySelector('link[data-whdc-resource-table-style]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/resources/resources.css?v=20261024-resource-mobile-fix';style.dataset.whdcResourceTableStyle='1';document.head.append(style)}
 if(new URLSearchParams(location.search).has('embedded')){document.documentElement.classList.add('whdc-embedded-resource-admin')}
 (()=>{'use strict';
 function enablePopupFormatting(root){
@@ -15,7 +15,8 @@ function enablePopupFormatting(root){
  fields.forEach(el=>{
   if(el.dataset.richReady||el.readOnly||el.disabled)return;el.dataset.richReady='1';
   const toolbar=document.createElement('div');toolbar.className='whdc-rich-toolbar';toolbar.setAttribute('role','toolbar');toolbar.setAttribute('aria-label','Text formatting');
-  const controls=[['B','bold'],['I','italic'],['Heading','heading'],['• List','bullets'],['1. List','numbers'],['Link','link'],['Table','table'],['+ Row','add-row'],['+ Col','add-column'],['− Row','remove-row'],['− Col','remove-column'],['Preview','preview']];
+  const controls=[['B','bold'],['I','italic'],['H2','heading'],['•','bullets'],['1.','numbers'],['Link','link'],['Table','table'],['Preview','preview']];
+  const tableControls=[['+ Row','add-row'],['+ Column','add-column'],['Remove row','remove-row'],['Remove column','remove-column']];
   const preview=document.createElement('div');preview.className='whdc-rich-preview';preview.hidden=true;
   const escapeHtml=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const inline=s=>escapeHtml(s).replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,(_,label,url)=>'<a target="_blank" rel="noopener noreferrer" href="'+url+'">'+label+'</a>').replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
@@ -43,7 +44,8 @@ function enablePopupFormatting(root){
    else{a=el.value.lastIndexOf('\n',Math.max(0,a-1))+1;b=el.value.indexOf('\n',b);if(b<0)b=el.value.length;replacement=el.value.slice(a,b).split('\n').map((line,i)=>action==='heading'?'## '+line:action==='bullets'?'- '+line:(i+1)+'. '+line).join('\n')}
    el.setRangeText(replacement,a,b,'end');el.dispatchEvent(new Event('input',{bubbles:true}));el.focus();if(!preview.hidden)updatePreview()
   };
-  for(const [label,action] of controls){const button=document.createElement('button');button.type='button';button.className='whdc-format-button';button.textContent=label;button.title=action;button.setAttribute('aria-label',action+' formatting');button.addEventListener('mousedown',e=>e.preventDefault());button.addEventListener('click',()=>apply(action));toolbar.append(button)}
+  for(const [label,action] of controls){const button=document.createElement('button');button.type='button';button.className='whdc-format-button';button.textContent=label;button.title=action==='bullets'?'Bulleted list':action==='numbers'?'Numbered list':action==='heading'?'Heading':action;button.setAttribute('aria-label',button.title);button.addEventListener('mousedown',e=>e.preventDefault());button.addEventListener('click',()=>apply(action));toolbar.append(button)}
+  const menu=document.createElement('details');menu.className='whdc-table-tools';const summary=document.createElement('summary');summary.textContent='Edit table';menu.append(summary);const menuButtons=document.createElement('div');menuButtons.className='whdc-table-actions';for(const [label,action] of tableControls){const button=document.createElement('button');button.type='button';button.className='whdc-format-button';button.textContent=label;button.addEventListener('click',()=>apply(action));menuButtons.append(button)}menu.append(menuButtons);toolbar.append(menu);
   el.before(toolbar);el.after(preview);el.addEventListener('input',()=>{if(!preview.hidden)updatePreview()});el.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();apply(e.key.toLowerCase()==='b'?'bold':'italic')}});
  });
 }

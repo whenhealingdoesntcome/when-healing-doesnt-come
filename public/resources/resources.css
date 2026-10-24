@@ -19,3 +19,15 @@ body.dark .resource-jump a{background:#243536;border-color:#526562}
 
 /* Resource article Markdown table display, including editor preview */
 .whdc-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;margin:1.1em 0;border:1px solid #bdcbc5;border-radius:9px} .whdc-article-table{border-collapse:collapse;width:100%;min-width:460px;text-align:left;font:inherit} .whdc-article-table th,.whdc-article-table td{border:1px solid #c7d2cd;padding:11px 13px;vertical-align:top;overflow-wrap:break-word} .whdc-article-table th{background:#edf2ee;font-weight:700} .whdc-article-table tbody tr:nth-child(even){background:#f7f9f7} .dark .whdc-table-scroll,body.dark .whdc-table-scroll{border-color:#5b746c}.dark .whdc-article-table th,body.dark .whdc-article-table th{background:#344c48}.dark .whdc-article-table td,.dark .whdc-article-table th,body.dark .whdc-article-table td,body.dark .whdc-article-table th{border-color:#536960}.dark .whdc-article-table tbody tr:nth-child(even),body.dark .whdc-article-table tbody tr:nth-child(even){background:#2c4140}.whdc-rich-preview{padding:12px 0;max-width:100%;overflow-wrap:anywhere}.whdc-rich-toolbar{display:flex;flex-wrap:wrap;gap:5px}.whdc-rich-toolbar button{min-height:36px}
+
+/* Published article table layout, including narrow phones. */
+.article-body{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.article-body .whdc-table-scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.article-body .whdc-article-table{width:100%;min-width:480px;table-layout:fixed}
+.article-body .whdc-article-table th,.article-body .whdc-article-table td{overflow-wrap:anywhere;white-space:normal}
+.whdc-table-tools{flex:0 0 auto;position:relative;align-self:center;font-size:.8rem}
+.whdc-table-tools summary{cursor:pointer;list-style:none;padding:7px 9px;border:1px solid #c1d1c6;border-radius:7px;background:#fff;color:#314e49;font-weight:600;white-space:nowrap}
+.whdc-table-tools summary::-webkit-details-marker{display:none}
+.whdc-table-tools summary::after{content:' ▾'}
+.whdc-table-actions{display:flex;flex-wrap:wrap;gap:5px;padding:7px 0}
+@media(max-width:600px){.whdc-rich-toolbar{gap:4px!important;padding:5px!important;margin:5px 0 8px!important}.whdc-table-actions{max-width:100%}}
