@@ -1,5 +1,5 @@
-const CACHE='whdc-public-shell-v27-resources-navigation';
-const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/resources.html','/resources/resources.css','/resources/library.js','/bible-reader.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
+const CACHE='whdc-public-shell-v28-bible-integration';
+const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/manifest.webmanifest','/images/header-logo.png','/images/icons/favicon.png','/images/icons/icon-192.png','/images/icons/icon-512.png','/images/icons/apple-touch-icon.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/resources.html','/resources/resources.css','/resources/library.js','/bible-reader.html','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible-reader.html','/bible/reader.js','/bible/reader.css'];
 
 // iOS Safari rejects redirected Response objects returned for navigation by a
@@ -85,6 +85,14 @@ self.addEventListener('fetch',event=>{
     // Do not send a redirected or non-HTML response to a navigation request.
     return cached||response;
    }catch{return cached||new Response('This page has not been saved for offline use.',{status:503,headers:{'Content-Type':'text/plain'}})}
+  })());return;
+ }
+ // Bible integration code must update together. Keep Scripture downloads untouched.
+ if(['/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/verse-study.js'].includes(path)){
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE);
+   try{const response=await fastNetwork(req,4000);if(response.ok&&response.type==='basic'){await cache.put(req,response.clone());return response}}catch{}
+   return await cache.match(req)||Response.error();
   })());return;
  }
  if(SHELL.includes(path)){
