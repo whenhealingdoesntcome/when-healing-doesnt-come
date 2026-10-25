@@ -472,10 +472,23 @@ function withSharedDashboardNav(html, active) {
  const marker = '<main class="wrap">';
  const split = ADMIN_HTML.indexOf(marker);
  if (split < 0) throw new Error('Dashboard shell not found');
- const header = SHARED_ADMIN_HEADER.replace(
+ // ADMIN_HTML is the canonical rendered dashboard, including the notification
+ // bell and its styles. Reuse that markup rather than creating another header.
+ const dashboardHeaderMatch = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
+ const bellMatch = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
+ if (!dashboardHeaderMatch || !bellMatch) throw new Error('Dashboard navigation or alerts not found');
+ let header = dashboardHeaderMatch[0].replace(
    `href="${active}"`, `href="${active}" aria-current="page"`
  );
- const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
+ header = header.replace('</div></header>', bellMatch[0] + '</div></header>');
+ const shell = ADMIN_HTML.slice(0, split).replace(dashboardHeaderMatch[0], header);
+ // Use the same bell behavior on all admin pages, including unread counts.
+ const alertScriptMatch = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
+ if (!alertScriptMatch) throw new Error('Dashboard alert script not found');
+ const alertScript = alertScriptMatch[0].replace(
+   "hero=document.querySelector('.whdc-admin-hero')",
+   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
+ );
  const styleClose = html.indexOf('</style>');
  if (styleClose < 0) throw new Error('Admin tool stylesheet not found');
  const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
@@ -519,7 +532,7 @@ function withSharedDashboardNav(html, active) {
 .whdc-dashboard-tool-main h1{margin-top:0}
 @media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
 ${scopedCss}</style>`;
- return shell + css + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
+ return shell + css + '<main class="whdc-dashboard-tool-main">' + content + '</main>' + alertScript + '</body></html>';
 }
 
 const RESOURCES_ADMIN_HTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Resources Admin</title><link rel="stylesheet" href="/resources/resources.css"><style>
