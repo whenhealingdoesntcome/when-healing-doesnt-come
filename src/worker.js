@@ -1,5 +1,5 @@
 import { SHARED_ADMIN_HEADER } from './admin/shared-header.js';
-import { SHARED_ADMIN_STYLES } from './admin/shared-styles.js';
+import { SHARED_ADMIN_NAV_CSS } from './admin/shared-admin-nav-css.js';
 const ANNOUNCEMENT_ADMIN_JS="(()=>{\n const form=document.getElementById('announcementForm');if(!form)return;\n const title=document.getElementById('announcementTitle'),body=document.getElementById('announcementBody'),visible=document.getElementById('announcementVisible'),status=document.getElementById('announcementStatus');\n const formatSelection=(marker)=>{const start=body.selectionStart,end=body.selectionEnd,old=body.value,selected=old.slice(start,end);if(!selected){body.focus();return;}const replacement=marker+selected+marker;if(old.length+marker.length*2>4000){status.textContent='Announcement exceeds 4,000 characters.';return;}body.value=old.slice(0,start)+replacement+old.slice(end);body.focus();body.setSelectionRange(start+marker.length,end+marker.length);body.dispatchEvent(new Event('input',{bubbles:true}));};\n for(const [id,marker] of [['announcementBold','**'],['announcementItalic','*']]){const btn=document.getElementById(id);if(btn)btn.addEventListener('click',()=>formatSelection(marker));}\n body.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();formatSelection(e.key.toLowerCase()==='b'?'**':'*');}});\n const summary=document.getElementById('announcementSummary'),publish=document.getElementById('announcementPublish'),save=document.getElementById('announcementSave'),hide=document.getElementById('announcementHide');\n async function request(opts){const response=await fetch('/api/admin/announcement',{credentials:'same-origin',cache:'no-store',...opts});const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result;}\n function updateSummary(){summary.textContent=(title.value.trim()||\"What's New\")+' \u00b7 '+(visible.checked?'Visible on Home':'Hidden from Home');}\n async function send(mode){const button=mode==='publish'?publish:mode==='hide'?hide:save;button.disabled=true;status.textContent='Saving\u2026';try{const result=await request({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:title.value,body:body.value,visible:mode==='hide'?false:visible.checked,publishNew:mode==='publish'})});visible.checked=!!result.visible;updateSummary();status.textContent=mode==='publish'?'New announcement published. Readers who have not seen it will be directed to Home.':mode==='hide'?'Announcement hidden. Welcome is at the top of Home.':'Changes saved. Existing readers will not be redirected again.';}catch(e){status.textContent='Save failed: '+e.message;}finally{button.disabled=false;}}\n (async()=>{try{const item=await request();title.value=item.title||\"What's New\";body.value=item.body||'';visible.checked=!!item.visible;updateSummary();status.textContent='Current saved announcement loaded.';}catch(e){status.textContent='Could not load announcement: '+e.message;}})();\n title.addEventListener('input',updateSummary);visible.addEventListener('change',updateSummary);\n form.addEventListener('submit',e=>{e.preventDefault();send('save')});\n publish.addEventListener('click',()=>{if(!form.reportValidity())return;if(!confirm('Publish this as a NEW announcement and direct readers to Home once?'))return;visible.checked=true;send('publish')});\n hide.addEventListener('click',()=>send('hide'));\n})();";
 import {scriptureLookup,formatFurtherStudyReferences} from './scripture.js';
 import {handlePublicAudio,handleAdminAudio} from './audio/api.js';
@@ -466,6 +466,33 @@ function withAdminToolNav(html,active){
 }
 
 
+// Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
+// Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
+function withSharedDashboardNav(html, active) {
+ const nav = SHARED_ADMIN_HEADER.replace(`href="${active}"`, `href="${active}" aria-current="page"`);
+ const css = `<link rel="stylesheet" href="/shared/styles.css"><style>${SHARED_ADMIN_NAV_CSS}
+body.whdc-dashboard-tool{margin:0;max-width:none;padding:0;background:#f3f5f2;color:#303b3c;font:16px system-ui;line-height:1.5}
+body.whdc-dashboard-tool>header{background:#fff;box-shadow:0 2px 12px #00000012}
+body.whdc-dashboard-tool>.whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
+body.whdc-dashboard-tool>.whdc-dashboard-tool-main h1{margin-top:0}
+@media(max-width:720px){body.whdc-dashboard-tool>.whdc-dashboard-tool-main{padding:20px 16px 50px}}
+</style>`;
+ // Legacy page templates have head tags omitted. Close the head before opening body.
+ let page = html.replace(/<html lang="en">/i, '<html lang="en"><head>');
+ page = page.replace(/<body[^>]*>/i, ''); // Remove legacy inline body sizing.
+ page = page.replace('<a href="/admin">← Admin Dashboard</a>', '');
+ page = page.replace('<a href="/admin">← Admin dashboard</a>', '');
+ const styleEnd = page.indexOf('</style>');
+ if (styleEnd < 0) throw new Error('Admin tool page style element missing');
+ const insertion = styleEnd + '</style>'.length;
+ page = page.slice(0, insertion) + css + '</head><body class="whdc-dashboard-tool">' +
+   nav + '<main class="whdc-dashboard-tool-main">' + page.slice(insertion);
+ const scriptAt = page.indexOf('<script>');
+ if (scriptAt < 0) throw new Error('Admin tool page script missing');
+ page = page.slice(0, scriptAt) + '</main>' + page.slice(scriptAt);
+ return page.includes('</html>') ? page.replace('</html>', '</body></html>') : page + '</body></html>';
+}
+
 const RESOURCES_ADMIN_HTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Resources Admin</title><link rel="stylesheet" href="/resources/resources.css"><style>
 
 /* Match the Devotional Library workspace: typography, buttons, tabs, rows and modal. */
@@ -829,7 +856,7 @@ async function pushDailyReminders(env){
 }
 
 
-const READING_PLANS_ADMIN_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reading Plans | WHDC Admin</title><link rel="stylesheet" href="/shared/styles.css"><style>${SHARED_ADMIN_STYLES}.whdc-reading-plans-main{max-width:900px;margin:24px auto;padding:0 20px;line-height:1.5}input,textarea,select,button{font:inherit}input,textarea,select{width:100%;box-sizing:border-box;padding:10px;margin:4px 0 12px}button{padding:10px 16px;margin:4px;cursor:pointer}section{background:white;border:1px solid #ddd;border-radius:12px;padding:20px;margin:16px 0}label{display:block;font-weight:600}.muted{color:#58636a}#items button{font-size:14px}#devotions{height:240px}a{color:#315b5c}</style></head><body>${SHARED_ADMIN_HEADER}<main class="whdc-reading-plans-main"><h1>Reading Plans</h1><p>Create guided plans from published devotionals. Existing devotional series are generated automatically in the reader app. This dashboard manages additional custom plans.</p><section><h2 id="editorTitle">Create a plan</h2><form id="form"><label>Plan ID (lowercase letters, numbers, hyphens)<input id="id" required pattern="[a-z0-9][a-z0-9-]*" maxlength="80" placeholder="finding-hope"></label><label>Title<input id="title" required maxlength="120"></label><label>Description<textarea id="description" maxlength="600" rows="3"></textarea></label><label>Choose devotionals in reading order (Ctrl/Command-click to select multiple)<select id="devotions" multiple required></select></label><label>Sort order<input id="sort" type="number" value="0"></label><label><input type="checkbox" id="published" style="width:auto" checked> Published (visible to readers)</label><p id="status" role="status"></p><button type="submit">Save plan</button><button type="button" id="reset">New plan</button></form></section><section><h2>Custom plans</h2><div id="items">Loading…</div></section><script>
+const READING_PLANS_ADMIN_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Reading Plans | WHDC Admin</title><style>body{font:16px system-ui;color:#303b3c;background:#f3f5f2;max-width:900px;margin:auto;padding:24px;line-height:1.5}input,textarea,select,button{font:inherit}input,textarea,select{width:100%;box-sizing:border-box;padding:10px;margin:4px 0 12px}button{padding:10px 16px;margin:4px;cursor:pointer}section{background:white;border:1px solid #ddd;border-radius:12px;padding:20px;margin:16px 0}label{display:block;font-weight:600}.muted{color:#58636a}#items button{font-size:14px}#devotions{height:240px}a{color:#315b5c}</style><a href="/admin">← Admin dashboard</a><h1>Reading Plans</h1><p>Create guided plans from published devotionals. Existing devotional series are generated automatically in the reader app. This dashboard manages additional custom plans.</p><section><h2 id="editorTitle">Create a plan</h2><form id="form"><label>Plan ID (lowercase letters, numbers, hyphens)<input id="id" required pattern="[a-z0-9][a-z0-9-]*" maxlength="80" placeholder="finding-hope"></label><label>Title<input id="title" required maxlength="120"></label><label>Description<textarea id="description" maxlength="600" rows="3"></textarea></label><label>Choose devotionals in reading order (Ctrl/Command-click to select multiple)<select id="devotions" multiple required></select></label><label>Sort order<input id="sort" type="number" value="0"></label><label><input type="checkbox" id="published" style="width:auto" checked> Published (visible to readers)</label><p id="status" role="status"></p><button type="submit">Save plan</button><button type="button" id="reset">New plan</button></form></section><section><h2>Custom plans</h2><div id="items">Loading…</div></section><script>
 const $=id=>document.getElementById(id);let plans=[];
 async function api(url,opts){const r=await fetch(url,{credentials:'same-origin',cache:'no-store',...opts});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
 const payload=(method,body)=>({method,headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -839,7 +866,7 @@ async function refresh(){plans=await api('/api/admin/reading-plans');$('items').
 $('reset').onclick=clear;
 $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotions').selectedOptions,x=>x.value);if(!ids.length){$('status').textContent='Choose at least one devotional.';return}try{await api('/api/admin/reading-plans',payload('POST',{id:$('id').value,title:$('title').value,description:$('description').value,devotional_ids:ids,published:$('published').checked,sort_order:Number($('sort').value)||0}));$('status').textContent='Plan saved.';clear();await refresh()}catch(e){$('status').textContent=e.message}};
 (async()=>{try{const ds=await api('/api/admin/devotionals');for(const d of ds.filter(x=>x.status==='published').sort((a,b)=>Number(a.day)-Number(b.day))){const o=document.createElement('option');o.value=d.id;o.textContent='Day '+d.day+': '+d.title;$('devotions').append(o)}await refresh()}catch(e){$('status').textContent=e.message}})();
-</script></main></body></html>`;
+</script></html>`;
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
@@ -1057,7 +1084,7 @@ export default {async fetch(request,env,ctx){
     }
     if(path==='/admin/reading-plans'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(withAdminToolNav(READING_PLANS_ADMIN_HTML,'/admin/reading-plans'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+      return new Response(withSharedDashboardNav(READING_PLANS_ADMIN_HTML,'/admin/reading-plans'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/api/admin/reading-plans'&&['GET','POST','DELETE'].includes(request.method)){
       if(!isAdmin(user))return fail('Administrator only',403);
@@ -1091,7 +1118,7 @@ export default {async fetch(request,env,ctx){
     if(path==='/admin/client.js'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_JS:isAdmin(user)?ADMIN_JS:WRITER_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if((path==='/admin/audio-library'||path==='/admin/audio')&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(withAdminToolNav(AUDIO_LIBRARY_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self' data:; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+      return new Response(withSharedDashboardNav(AUDIO_LIBRARY_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self' data:; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
     }
     if(path==='/api/admin/audio/pronunciations'&&['GET','POST','DELETE'].includes(request.method)){
       if(!isAdmin(user))return fail('Administrator only',403);
