@@ -12,7 +12,10 @@
     "run_worker_first": [
       "/api/*",
       "/admin",
-      "/admin/*"
+      "/admin/*",
+      "/",
+      "/index.html",
+      "/manifest.webmanifest"
     ]
   },
   "r2_buckets": [
