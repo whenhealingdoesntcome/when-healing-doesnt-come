@@ -1,10 +1,13 @@
+import { SHARED_ADMIN_HEADER } from './shared-header.js';
+import { SHARED_ADMIN_STYLES } from './shared-styles.js';
 // Server-rendered Audio Library. No browser-side fetch or JavaScript required.
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const PARTS = ['devotional','scripture','deeper'];
 const VOICES = ['sulafat','sadachbia'];
 const name = {devotional:'Devotional',scripture:'Scripture Reading',deeper:'Go Deeper',sulafat:'Sulafat · Female',sadachbia:'Sadachbia · Male'};
 function page(body) {
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Audio Library | WHDC</title><link rel="stylesheet" href="/styles.css"><style>main{max-width:960px;margin:2rem auto;padding:0 1rem}.whdc-audio-entry{margin:1rem 0;padding:1.25rem;border:1px solid #bbc5c4;border-radius:12px}.whdc-audio-entry h2{margin-top:0}.whdc-audio-entry ul{line-height:2}.whdc-audio-entry a{overflow-wrap:anywhere}.whdc-audio-entry small{opacity:.7}</style></head><body><main><p><a href="/admin">← Back to Admin Dashboard</a></p><h1>Audio Library</h1><p>Existing recordings stored in Cloudflare R2. This is a read-only library; no recordings are changed.</p>${body}</main></body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Audio Library | WHDC</title><link rel="stylesheet" href="/shared/styles.css"><style>${SHARED_ADMIN_STYLES}
+.whdc-audio-main{max-width:960px;margin:2rem auto;padding:0 1rem}.whdc-audio-entry{margin:1rem 0;padding:1.25rem;border:1px solid #bbc5c4;border-radius:12px}.whdc-audio-entry h2{margin-top:0}.whdc-audio-entry ul{line-height:2}.whdc-audio-entry a{overflow-wrap:anywhere}.whdc-audio-entry small{opacity:.7}</style></head><body>${SHARED_ADMIN_HEADER}<main class="whdc-audio-main"><h1>Audio Library</h1><p>Existing recordings stored in Cloudflare R2. This is a read-only library; no recordings are changed.</p>${body}</main></body></html>`;
 }
 export async function renderAudioLibrary(env) {
  if (!env.AUDIO_BUCKET) return page('<p role="alert">Audio storage is not configured. Check the AUDIO_BUCKET Worker binding.</p>');
