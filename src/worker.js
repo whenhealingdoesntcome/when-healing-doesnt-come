@@ -486,15 +486,15 @@ function outlineWithDashboardNav() {
  const shellEnd = ADMIN_HTML.indexOf('<main class="wrap">');
  if (mainStart < 0 || mainEnd < 0 || shellEnd < 0) return OUTLINE_HTML;
 
- const outlineStyle = OUTLINE_HTML.match(/<style>([\\s\\S]*?)<\\/style>/i);
+ const outlineStyle = OUTLINE_HTML.match(/<style>([\s\S]*?)<\/style>/i);
  if (!outlineStyle) return OUTLINE_HTML;
  // Outline-only selectors. The shared header CSS comes exclusively from
  // the dashboard's head, so there is no second navigation implementation.
  const outlineCss = outlineStyle[1].split('__SHARED_ADMIN_STYLES__')[0];
- const dashboardHeader = ADMIN_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ const dashboardHeader = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
  if (!dashboardHeader) return OUTLINE_HTML;
- const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\\s\\S]*?<\\/div><\\/div><\\/div>/);
- const alertScript = ADMIN_HTML.match(/<script>\\(function\\(\\)\\{[\\s\\S]*?<\\/script>/);
+ const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
+ const alertScript = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
  if (!bell || !alertScript) return OUTLINE_HTML;
 
  let header = adminHeaderForPath('/admin/outline');
