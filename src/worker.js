@@ -471,7 +471,7 @@ function withAdminToolNav(html,active){
 function withSharedDashboardNav(html, active) {
  const nav = SHARED_ADMIN_HEADER.replace(`href="${active}"`, `href="${active}" aria-current="page"`);
  const css = `<link rel="stylesheet" href="/shared/styles.css"><style>${SHARED_ADMIN_NAV_CSS}
-body.whdc-dashboard-tool{margin:0;max-width:none;padding:0;background:#f3f5f2;color:#303b3c;font:16px system-ui;line-height:1.5}
+body.whdc-dashboard-tool{margin:0;max-width:none;padding:0;background:#f3f5f2;color:#303b3c;font:17px/1.65 system-ui,-apple-system,Segoe UI,sans-serif}
 body.whdc-dashboard-tool>header{background:#fff;box-shadow:0 2px 12px #00000012}
 body.whdc-dashboard-tool>.whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
 body.whdc-dashboard-tool>.whdc-dashboard-tool-main h1{margin-top:0}
