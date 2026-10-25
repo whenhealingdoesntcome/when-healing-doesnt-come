@@ -479,28 +479,34 @@ function adminDashboardForSection(params) {
 }
 
 function outlineWithDashboardNav() {
- // Master Outline has its own embedded legacy nav rules. Remove those rules
- // and use the same header and stylesheet as the main admin dashboard.
- let html = OUTLINE_HTML;
- const oldHeader = html.match(/<header>[\s\S]*?<\/header>/i);
- const dashboardStyles = ADMIN_HTML.match(/<style>[\s\S]*?<\/style>/i);
- if (!oldHeader || !dashboardStyles) return html;
- // Strip only the old navigation CSS, preserving outline-specific styles.
- html = html.replace(/\n\.whdc-header-top\{position:relative;[\s\S]*?(?=<\/style>)/, '\n');
+ // Use the dashboard's actual document head and header, not a reconstructed
+ // approximation. Only the outline's main content and local styles differ.
+ const mainStart = OUTLINE_HTML.indexOf('<main>');
+ const mainEnd = OUTLINE_HTML.indexOf('</body>', mainStart);
+ const shellEnd = ADMIN_HTML.indexOf('<main class="wrap">');
+ if (mainStart < 0 || mainEnd < 0 || shellEnd < 0) return OUTLINE_HTML;
+
+ const outlineStyle = OUTLINE_HTML.match(/<style>([\\s\\S]*?)<\\/style>/i);
+ if (!outlineStyle) return OUTLINE_HTML;
+ // Outline-only selectors. The shared header CSS comes exclusively from
+ // the dashboard's head, so there is no second navigation implementation.
+ const outlineCss = outlineStyle[1].split('__SHARED_ADMIN_STYLES__')[0];
+ const dashboardHeader = ADMIN_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ if (!dashboardHeader) return OUTLINE_HTML;
+ const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\\s\\S]*?<\\/div><\\/div><\\/div>/);
+ const alertScript = ADMIN_HTML.match(/<script>\\(function\\(\\)\\{[\\s\\S]*?<\\/script>/);
+ if (!bell || !alertScript) return OUTLINE_HTML;
+
  let header = adminHeaderForPath('/admin/outline');
- const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
- if (bell) header = header.replace('</div></header>', bell[0] + '</div></header>');
- html = html.replace(oldHeader[0], header);
- // Shared styles come last, so outline-specific CSS cannot override the nav.
- html = html.replace('</head>', dashboardStyles[0] + '</head>');
- const alertScript = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
- if (alertScript && bell) {
-   html = html.replace('</body>', alertScript[0].replace(
-     "hero=document.querySelector('.whdc-admin-hero')",
-     "hero=document.querySelector('.whdc-admin-hero')||headerTop"
-   ) + '</body>');
- }
- return html;
+ // Match the dashboard's bell markup and placement behavior.
+ header = header.replace('</div></header>', bell[0] + '</div></header>');
+ let shell = ADMIN_HTML.slice(0, shellEnd).replace(dashboardHeader[0], header);
+ shell = shell.replace('</head>', '<style>' + outlineCss + '</style></head>');
+ const script = alertScript[0].replace(
+   "hero=document.querySelector('.whdc-admin-hero')",
+   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
+ );
+ return shell + OUTLINE_HTML.slice(mainStart, mainEnd) + script + '</body></html>';
 }
 
 function withSharedDashboardNav(html, active) {
