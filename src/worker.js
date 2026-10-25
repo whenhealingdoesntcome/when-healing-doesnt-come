@@ -467,6 +467,35 @@ function withAdminToolNav(html,active){
 
 // Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
 // Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
+// Use the same active-page state on dashboard subviews as on standalone admin pages.
+function adminDashboardForSection(params) {
+ const active = params.has('submissions') ? '/admin?submissions=1'
+   : params.has('editorNotes') ? '/admin?editorNotes=1' : '/admin';
+ const original = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
+ if (!original) throw new Error('Admin header missing');
+ const bell = original[0].match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
+ if (!bell) throw new Error('Admin alert bell missing');
+ const header = adminHeaderForPath(active).replace('</div></header>', bell[0] + '</div></header>');
+ return ADMIN_HTML.replace(original[0], header);
+}
+
+// Outline keeps its existing content CSS and JS, but no longer has a separate header/CSS system.
+function outlineWithDashboardNav() {
+ const dashboard = adminDashboardForSection(new URLSearchParams());
+ const dashboardHeader = dashboard.match(/<header>[\s\S]*?<\/header>/i);
+ const outlineHeader = OUTLINE_HTML.match(/<header>[\s\S]*?<\/header>/i);
+ const dashboardStyles = dashboard.match(/<style>[\s\S]*?<\/style>/i);
+ const alertScript = dashboard.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
+ if (!dashboardHeader || !outlineHeader || !dashboardStyles || !alertScript) throw new Error('Shared admin navigation missing');
+ let html = OUTLINE_HTML.replace(outlineHeader[0], adminHeaderForPath('/admin/outline').replace('</div></header>', dashboardHeader[0].match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/)[0] + '</div></header>'));
+ // Remove the legacy outline navigation rules while retaining all outline-specific layout rules.
+ html = html.replace(/\.whdc-header-top\{position:relative;[\s\S]*?(?=\/\* Admin navigation: persistent links)/, '');
+ html = html.replace(/\/\* Admin navigation: persistent links[\s\S]*?(?=<\/style>)/, '');
+ html = html.replace('</head>', dashboardStyles[0] + '</head>');
+ html = html.replace('</body>', alertScript[0].replace("hero=document.querySelector('.whdc-admin-hero')", "hero=document.querySelector('.whdc-admin-hero')||headerTop") + '</body>');
+ return html;
+}
+
 function withSharedDashboardNav(html, active) {
  // Render the exact dashboard head/header. Keep tool-specific styles inside main.
  const marker = '<main class="wrap">';
@@ -1152,9 +1181,9 @@ export default {async fetch(request,env,ctx){
       }catch(e){console.error('Reading plan admin failed',e);return fail('Reading plans database unavailable; apply migration 0003',503)}
     }
     if(path==='/admin/preview'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return new Response(PREVIEW_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"frame-ancestors 'none'"}});}
-    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?ADMIN_HTML.replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?adminDashboardForSection(url.searchParams).replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/admin/outline'&&request.method==='GET'&&user.role==='editor')return fail('Not available to editors',403);
-    if(path==='/admin/outline'&&request.method==='GET')return new Response(OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+    if(path==='/admin/outline'&&request.method==='GET')return new Response(isAdmin(user)?outlineWithDashboardNav():OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/outline.js'&&request.method==='GET')return new Response(isAdmin(user)?OUTLINE_JS:WRITER_OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/announcement.js'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return new Response(ANNOUNCEMENT_ADMIN_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});}
     if(path==='/admin/client.js'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_JS:isAdmin(user)?ADMIN_JS:WRITER_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});

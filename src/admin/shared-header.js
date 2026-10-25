@@ -2,6 +2,6 @@ export const SHARED_ADMIN_HEADER = "<header><div class=\"wrap top whdc-header-to
 
 // One navigation renderer for every administrator page.
 export function adminHeaderForPath(path = '/admin') {
- const href = path === '/admin' || path === '/admin/audio' || path === '/admin/outline' || path === '/admin/reading-plans' ? path : '/admin';
+ const href = ['/admin', '/admin/audio', '/admin?submissions=1', '/admin?editorNotes=1', '/admin/outline', '/admin/reading-plans'].includes(path) ? path : '/admin';
  return SHARED_ADMIN_HEADER.replace(`href="${href}"`, `href="${href}" aria-current="page"`);
 }
