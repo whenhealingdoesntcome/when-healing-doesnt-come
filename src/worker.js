@@ -636,7 +636,7 @@ body>header,.whdc-tool-header{display:none!important}
 </style></head><body><div class="resource-heading"><button type="button" id="newResource">+ New</button></div><p id="notice" role="status" aria-live="polite"></p><div class="resource-tools"><label>Search <input id="resourceSearch" type="search" placeholder="Title, author, topic"></label><label>Type <select id="resourceTypeFilter"><option value="all">All Types</option><option value="article">Articles</option><option value="book">Books</option><option value="video">Videos</option><option value="website">Websites</option><option value="podcast">Podcasts</option></select></label><label>Sort <select id="resourceSort"><option value="title">Title A–Z</option><option value="title-desc">Title Z–A</option><option value="type">Resource Type</option><option value="order">Display Order</option></select></label></div><div class="resource-status-tabs" role="tablist" aria-label="Resource publication status"><button type="button" class="active" id="resourceTabDraft" role="tab" aria-selected="true" data-status-tab="draft">Drafts <span id="draftCount"></span></button><button type="button" id="resourceTabPublished" role="tab" aria-selected="false" data-status-tab="published">Published <span id="publishedCount"></span></button><button type="button" id="resourceTabAll" role="tab" aria-selected="false" data-status-tab="all">All <span id="allCount"></span></button></div><p id="resourceCount" aria-live="polite"></p><label style="display:flex;align-items:center;gap:8px"><input id="selectAll" type="checkbox"> Select all visible resources</label><div id="bulkBar" hidden><strong id="selectedCount">0 selected</strong><button id="bulkPublish" type="button">Publish</button><button id="bulkDraft" type="button">Move to Draft</button><button id="bulkFeature" type="button">Feature</button><button id="bulkUnfeature" type="button">Unfeature</button><button id="bulkDelete" class="danger" type="button">Delete</button><button id="clearSelection" type="button">Clear</button></div><div id="list"></div>
 <div id="resourceModal" hidden role="dialog" aria-modal="true" aria-labelledby="editHeading"><div class="dialog"><div class="dialog-head"><h2 id="editHeading">New Resource</h2><button type="button" id="deleteResourceTop" hidden style="background:#a12b2b;color:#fff;border-color:#a12b2b;margin-left:auto;margin-right:10px;padding:8px 12px;border-radius:7px">Delete Resource</button><button type="button" id="closeResourceEditor" aria-label="Close editor">✕</button></div><form id="editor"><label>Type <select name="type"><option value="article">Article</option><option value="book">Book</option><option value="video">Video (YouTube)</option><option value="website">Website</option><option value="podcast">Podcast / Episode</option></select></label><label>Title <input name="title" required maxlength="180"></label><label>Author, host, or organization <input name="creator" maxlength="180"></label><label>Short description <textarea name="description" maxlength="1200" rows="3"></textarea></label><label class="article-only">Article body (plain text; blank lines create paragraphs) <textarea name="content" rows="12"></textarea></label><label>External link (optional for books and articles) <input name="url" type="url" placeholder="https://"></label><label>Resource picture <input id="resourceImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label><div><img id="imagePreview" hidden alt="Resource picture preview"><button id="removeResourceImage" type="button">Remove picture</button><p id="uploadStatus" aria-live="polite">JPG, PNG, WebP or GIF, up to 5 MB.</p></div><input name="image_url" type="hidden"><div class="crop-controls"><strong>Card image crop (desktop card image: 220 × 105)</strong><p>Preview shows the same image proportions as the published desktop card. Adjust which part of the picture is visible in resource cards. The original image is not changed.</p><label>Horizontal position <input name="image_position_x" type="range" min="0" max="100" value="50"><output id="cropXValue">50%</output></label><label>Vertical position <input name="image_position_y" type="range" min="0" max="100" value="50"><output id="cropYValue">50%</output></label><button type="button" id="resetImageCrop">Center image</button></div><label>Topics, comma separated <input name="topics" placeholder="Grief, Chronic Illness, Prayer"></label><label>Display order <input name="sort_order" type="number" value="0"></label><label><input type="checkbox" name="featured"> Featured</label><label><input type="checkbox" name="published"> Published</label><div class="actions"><button type="submit" id="saveDraft">Save Draft</button><button type="button" id="savePublish">Save &amp; Publish</button><button type="button" id="deleteResource" hidden style="background:#a12b2b;color:#fff;border-color:#a12b2b">Delete Resource</button><button type="button" id="closeResourceEditorBottom">Close</button></div></form></div></div><script src="/admin/resources/client.js?v=20261025-delete-resource-modal-v4" defer></script></body></html>`;
 
-const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p><a href="/admin/gemini38-audio">Open Gemini 3.8 Flash TTS testing →</a></p><p>Generate new Gemini 3.8 recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Legacy voice samples are retired. Use the Gemini 3.8 testing page for new voice previews.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><section style="border:1px solid #a66;padding:14px;border-radius:9px;margin:18px 0"><h2>Start fresh with Gemini 3.8</h2><p>Delete all legacy Gemini 3.1 production MP3s, their tracking records, and legacy voice samples from R2. Existing Gemini 3.8 WAV recordings and experimental tests are preserved. This cannot be undone.</p><button id="deleteLegacyAudio" type="button">Delete Gemini 3.1 recordings</button><span id="legacyCleanupStatus" role="status"></span></section><fieldset id="audioFilters" style="border:1px solid #bbc5c4;border-radius:10px;padding:12px;margin:18px 0"><legend>Show devotionals</legend><label style="margin-right:14px"><input type="radio" name="audioFilter" value="needs" checked> Needs Audio</label><label style="margin-right:14px"><input type="radio" name="audioFilter" value="all"> All Devotionals</label><label><input type="radio" name="audioFilter" value="completed"> Completed</label><p id="audioFilterStatus" role="status" aria-live="polite">Checking all six recordings for each devotional…</p></fieldset><div id="items"></div><script>
+const AUDIO_LIBRARY_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Audio Library</title><meta name="theme-color" content="#e3e9df"><style>html{box-sizing:border-box}*,*:before,*:after{box-sizing:inherit}body{overflow-wrap:anywhere}button,input,select{min-height:44px;font-size:16px}input,select{max-width:100%}audio{max-width:100%}@media(max-width:720px){body{margin:0!important;padding:16px!important}button{margin:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere}}</style><body style="font:16px system-ui;max-width:860px;margin:2rem auto;padding:1rem;line-height:1.5"><a href="/admin">← Admin Dashboard</a><h1>Devotional Audio Library</h1><p>Generate new Gemini 3.8 recordings for published devotionals. Only saved recordings are available to readers; recordings automatically become outdated when their source text changes.</p><p id="status" role="status">Loading devotionals…</p><section id="savedVoiceSamples" style="padding:16px;border:1px solid #ccc;border-radius:12px;margin:18px 0"><h2>One-time AI voice samples</h2><p>Legacy voice samples are retired. Use the Gemini 3.8 testing page for new voice previews.</p><div id="savedSampleRows"></div><p id="savedSampleStatus" role="status"></p></section><section style="border:1px solid #a66;padding:14px;border-radius:9px;margin:18px 0"><h2>Start fresh with Gemini 3.8</h2><p>Delete all legacy Gemini 3.1 production MP3s, their tracking records, and legacy voice samples from R2. Existing Gemini 3.8 WAV recordings and experimental tests are preserved. This cannot be undone.</p><button id="deleteLegacyAudio" type="button">Delete Gemini 3.1 recordings</button><span id="legacyCleanupStatus" role="status"></span></section><fieldset id="audioFilters" style="border:1px solid #bbc5c4;border-radius:10px;padding:12px;margin:18px 0"><legend>Show devotionals</legend><label style="margin-right:14px"><input type="radio" name="audioFilter" value="needs" checked> Needs Audio</label><label style="margin-right:14px"><input type="radio" name="audioFilter" value="all"> All Devotionals</label><label><input type="radio" name="audioFilter" value="completed"> Completed</label><p id="audioFilterStatus" role="status" aria-live="polite">Checking all six recordings for each devotional…</p></fieldset><div id="items"></div><script>
 document.getElementById('deleteLegacyAudio').onclick=async()=>{const confirmation=prompt('Type DELETE GEMINI 3.1 AUDIO to permanently delete legacy recordings:');if(confirmation!=='DELETE GEMINI 3.1 AUDIO')return;const button=document.getElementById('deleteLegacyAudio'),note=document.getElementById('legacyCleanupStatus');button.disabled=true;note.textContent=' Deleting legacy recordings…';try{const r=await fetch('/api/admin/audio/cleanup-legacy',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({confirm:confirmation})});const d=await r.json();if(!r.ok)throw Error(d.error||'Cleanup failed');note.textContent=' Deleted '+d.deleted+' objects; failures: '+d.failed+'. Refresh this page.';}catch(e){note.textContent=' '+e.message}finally{button.disabled=false}};
 
 const status=document.getElementById('status'),items=document.getElementById('items');
@@ -706,7 +706,6 @@ box.append(name,generate,remove,message,player);row.append(box);refresh()}sectio
 </script></body></html>`;
 // Experimental Gemini 3.8 Flash TTS through Vertex AI, separate from production audio.
 const GEMINI38_MODEL='gemini-3.8-flash-tts';
-const GEMINI38_PREFIX='experiments/gemini38/';
 const GEMINI38_STYLE='Read in a warm, gentle, compassionate voice, with a calm, unhurried pace, consistent volume, and reverence when reading Scripture. Read the supplied words faithfully.';
 async function hasProductionAudio(env,id){
   let cursor;
@@ -716,12 +715,6 @@ async function hasProductionAudio(env,id){
     cursor=page.truncated?page.cursor:null;
   }while(cursor);
   return false;
-}
-function gemini38Key(id,part,voice){return `${GEMINI38_PREFIX}${id}/${part}/${voice}.wav`;}
-async function gemini38Eligible(env,id){
-  const row=await env.DB.prepare('SELECT id,title,day FROM devotionals WHERE id=? AND status=?').bind(id,'published').first();
-  if(!row||await hasProductionAudio(env,id))return null;
-  return row;
 }
 // Gemini 3.8 returns WAV, not MP3. Merge only matching PCM WAV chunks.
 function joinGemini38Wav(chunks){
@@ -784,15 +777,6 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
   await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:String(!production)}});
   return {bytes:combined.length,segments:chunks.length};
 }
-const GEMINI38_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gemini 3.8 Audio Testing | WHDC</title><style>body{font:16px system-ui;line-height:1.5;max-width:850px;margin:auto;padding:20px;color:#303b3c;background:#f3f5f2}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:14px 0}button,select{font:inherit;padding:9px;margin:5px}audio{display:block;max-width:100%;margin:12px 0}.muted{color:#58636a}</style><body><a href="/admin/audio">← Audio Library</a><h1>Gemini 3.8 Flash TTS Testing</h1><p>Experimental recordings are stored separately and are never served to readers. Only published devotionals with <strong>no existing production audio</strong> are eligible. A devotional disappears if production audio is added.</p><section><h2>Remove test recordings</h2><p>Delete all experimental Gemini 3.8 recordings from R2. This will not affect the recordings in the main Audio Library or public devotionals.</p><button id="clearTests" type="button">Delete all test recordings</button><p id="clearStatus" role="status"></p></section><p id="status" role="status">Checking R2 recordings…</p><div id="items"></div><script>
-const status=document.getElementById('status'),root=document.getElementById('items');
-async function api(path,opts){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opts}),d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d;}
-const post=(path,data)=>api(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});
-async function load(){try{const data=await api('/api/admin/gemini38/list');root.replaceChildren();status.textContent=data.length+' eligible devotionals (no production audio).';for(const d of data){const section=document.createElement('section'),h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;section.append(h);for(const part of ['devotional','deeper','scripture']){const row=document.createElement('div');row.style.margin='12px 0';const name=document.createElement('strong');name.textContent=part+' ';row.append(name);for(const voice of ['sulafat','sadachbia']){const box=document.createElement('div');const button=document.createElement('button'),note=document.createElement('span'),player=document.createElement('audio');player.controls=true;player.preload='none';const exists=!!d.tests?.[part]?.[voice];button.textContent=exists?'Test saved':'Generate '+voice+' test';button.disabled=exists;if(exists){player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice;box.append(player);}button.onclick=async()=>{button.disabled=true;note.textContent=' Generating…';try{const out=await post('/api/admin/gemini38/generate',{id:d.id,part,voice});note.textContent=' Saved ('+out.segments+' segment(s)).';button.textContent='Test saved';player.src='/api/admin/gemini38/file?id='+encodeURIComponent(d.id)+'&part='+part+'&voice='+voice+'&v='+Date.now();box.append(player);}catch(e){note.textContent=' '+e.message;button.disabled=false;}};box.append(button,note);row.append(box);}section.append(row);}root.append(section);}if(!data.length)root.textContent='No eligible published devotionals. Every published devotional may already have production audio.';}catch(e){status.textContent='Unable to load tests: '+e.message;}}
-document.getElementById('clearTests').onclick=async()=>{if(!confirm('Permanently delete ALL Gemini 3.8 experimental test recordings? Production devotional audio will be kept.'))return;const button=document.getElementById('clearTests'),message=document.getElementById('clearStatus');button.disabled=true;message.textContent='Deleting test recordings…';try{const result=await post('/api/admin/gemini38/delete-tests',{});message.textContent='Deleted '+result.deleted+' test recordings.'+(result.failed?' '+result.failed+' could not be deleted.':'');await load();}catch(e){message.textContent='Unable to delete tests: '+e.message}finally{button.disabled=false}};
-load();
-</script></body></html>`;
-
 const AUDIO_TEST_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Voice Test</title><body style="font:16px system-ui;max-width:720px;margin:3rem auto;padding:1rem;line-height:1.6"><a href="/admin">← Admin</a><h1>WHDC Gemini 3.1 Flash Voice Test</h1><p>Admin-only preview. Generate each sample once, then listen to its stored R2 recording. This does not change reader audio.</p><p>Sample: ${AUDIO_SAMPLE}</p><div id="voices"></div><p id="status" role="status"></p><script>const status=document.getElementById('status'),root=document.getElementById('voices');for(const voice of ['sulafat','sadachbia']){const box=document.createElement('section');const title=document.createElement('h2');title.textContent=voice==='sadachbia'?'Sadachbia (male)':voice.charAt(0).toUpperCase()+voice.slice(1)+' (female)';const btn=document.createElement('button');btn.textContent='Generate sample';const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src='/api/admin/audio-test/file?voice='+voice;btn.onclick=async()=>{btn.disabled=true;status.textContent='Generating '+voice+'…';try{const r=await fetch('/api/admin/audio-test/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({voice})});const data=await r.json();if(!r.ok)throw Error(data.error||'Generation failed');audio.src='/api/admin/audio-test/file?voice='+voice+'&v='+Date.now();status.textContent='Saved '+voice+' recording to R2.'}catch(e){status.textContent=e.message}finally{btn.disabled=false}};box.append(title,btn,document.createElement('br'),audio);root.append(box)}</script></body></html>`;
 
 
@@ -1322,71 +1306,9 @@ export default {async fetch(request,env,ctx){
         return json({ok:true,deleted,failed});
       }catch(e){console.error('Legacy audio cleanup:',e);return fail('Cleanup incomplete: '+e.message,503)}
     }
-    if(path==='/admin/gemini38-audio'&&request.method==='GET'){
-      if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(withSharedDashboardNav(GEMINI38_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
-    }
-    if(path==='/api/admin/gemini38/delete-tests'&&request.method==='POST'){
-      if(!isAdmin(user))return fail('Administrator only',403);
-      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
-      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
-      try{
-        let cursor,deleted=0,failed=0;
-        do{
-          const page=await env.AUDIO_BUCKET.list({prefix:GEMINI38_PREFIX,limit:500,...(cursor?{cursor}:{})});
-          const keys=(page.objects||[]).map(item=>item.key).filter(key=>key.startsWith(GEMINI38_PREFIX));
-          for(let i=0;i<keys.length;i+=100){
-            const batch=keys.slice(i,i+100);
-            try{await env.AUDIO_BUCKET.delete(batch);deleted+=batch.length}
-            catch(e){console.error('Test audio delete batch:',e);failed+=batch.length}
-          }
-          cursor=page.truncated?page.cursor:null;
-        }while(cursor);
-        return json({ok:failed===0,deleted,failed});
-      }catch(e){console.error('Gemini 3.8 test cleanup failed:',e);return fail('Test cleanup incomplete: '+e.message,503)}
-    }
-    if(path==='/api/admin/gemini38/list'&&request.method==='GET'){
-      if(!isAdmin(user))return fail('Administrator only',403);
-      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
-      try{
-        const result=await env.DB.prepare("SELECT id,title,day FROM devotionals WHERE status='published' ORDER BY day ASC").all();
-        const eligible=[];
-        for(const d of result.results||[]){
-          if(await hasProductionAudio(env,d.id))continue;
-          const tests={};for(const part of AUDIO_PARTS){tests[part]={};for(const voice of Object.keys(AUDIO_VOICES))tests[part][voice]=!!await env.AUDIO_BUCKET.head(gemini38Key(d.id,part,voice));}
-          eligible.push({...d,tests});
-        }
-        return json(eligible);
-      }catch(e){console.error('Gemini 3.8 listing failed:',e);return fail('Unable to check audio eligibility',503);}
-    }
-    if(path==='/api/admin/gemini38/file'&&['GET','HEAD'].includes(request.method)){
-      if(!isAdmin(user))return fail('Administrator only',403);
-      const id=url.searchParams.get('id'),part=url.searchParams.get('part'),voice=url.searchParams.get('voice');
-      if(!/^[a-zA-Z0-9_-]{1,160}$/.test(id||'')||!AUDIO_PARTS.has(part)||!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid test recording',400);
-      if(!await gemini38Eligible(env,id))return fail('Devotional is not eligible for testing',409);
-      const item=await env.AUDIO_BUCKET.get(gemini38Key(id,part,voice));if(!item)return fail('Test recording not found',404);
-      return new Response(request.method==='HEAD'?null:item.body,{headers:{'content-type':'audio/wav','cache-control':'private, no-store','x-content-type-options':'nosniff'}});
-    }
-    if(path==='/api/admin/gemini38/generate'&&request.method==='POST'){
-      if(!isAdmin(user))return fail('Administrator only',403);
-      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
-      if(Number(request.headers.get('content-length')||0)>1024)return fail('Request too large',413);
-      let body;try{body=await request.json()}catch{return fail('Invalid JSON',400)}
-      const {id,part,voice}=body||{};
-      if(typeof id!=='string'||!/^[a-zA-Z0-9_-]{1,160}$/.test(id)||!AUDIO_PARTS.has(part)||!Object.hasOwn(AUDIO_VOICES,voice))return fail('Invalid test request',400);
-      if(!env.AUDIO_BUCKET)return fail('Audio storage unavailable',503);
-      try{
-        if(!await gemini38Eligible(env,id))return fail('This devotional already has production audio, so testing is disabled.',409);
-        const key=gemini38Key(id,part,voice);
-        if(await env.AUDIO_BUCKET.head(key))return fail('A test recording already exists for this voice and section.',409);
-        const source=await publishedAudioSource(env,id,part,request);if(!source)return fail('Published reading or Scripture content unavailable',404);
-        if(!await gemini38Eligible(env,id))return fail('Production audio was added during the request.',409);
-        return json({ok:true,...await gemini38Synthesize(env,source.text,voice,key)});
-      }catch(e){console.error('Gemini 3.8 test generation failed:',e.message);return fail(e.message,502);}
-    }
     if(path==='/admin/audio-test'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return Response.redirect(url.origin+'/admin/gemini38-audio',302);
+      return Response.redirect(url.origin+'/admin/audio',302);
     }
     if(path==='/api/admin/audio-test/generate'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
