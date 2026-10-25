@@ -86,3 +86,7 @@ body.dark .resource-section .website-card img{background:#30413f}
 
 /* Resource short descriptions on cards and detail views */
 .whdc-resource-short-description{font-style:italic}
+
+/* Resource listing: keep card titles visible below the image, including featured articles. */
+.resource-section .whdc-resource-card .whdc-resource-card-title{display:block!important;visibility:visible!important;opacity:1!important;position:static!important;flex:0 0 auto;min-height:1.3em;max-height:5.2em;overflow:hidden;line-height:1.3;font-weight:700;white-space:normal;overflow-wrap:anywhere;color:inherit;text-align:left;}
+.resource-section .whdc-resource-card .whdc-resource-short-description,.resource-section .whdc-resource-link .whdc-resource-short-description{display:block;font-style:italic!important;white-space:normal;}
