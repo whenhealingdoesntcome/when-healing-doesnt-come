@@ -468,33 +468,40 @@ function withAdminToolNav(html,active){
 // Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
 // Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
 function withSharedDashboardNav(html, active) {
- // The same document shell, shared header, and stylesheet used by /admin.
- // Legacy tool CSS must never apply to the header.
+ // Render the exact dashboard head/header. Keep tool-specific styles inside main.
  const marker = '<main class="wrap">';
  const split = ADMIN_HTML.indexOf(marker);
  if (split < 0) throw new Error('Dashboard shell not found');
  const header = SHARED_ADMIN_HEADER.replace(
    `href="${active}"`, `href="${active}" aria-current="page"`
  );
- const shell = ADMIN_HTML.slice(0, split).replace(SHARED_ADMIN_HEADER, header);
-
+ const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
  const styleClose = html.indexOf('</style>');
  if (styleClose < 0) throw new Error('Admin tool stylesheet not found');
  const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
  let content = html.slice(bodyOpen ? bodyOpen.index + bodyOpen[0].length : styleClose + '</style>'.length);
  content = content.replace(/<a href="\/admin">← Admin Dashboard<\/a>/i, '');
  content = content.replace(/<a href="\/admin">← Admin dashboard<\/a>/i, '');
- content = content.replace(/<\/body>\s*<\/html>\s*$/i, '');
- content = content.replace(/<\/html>\s*$/i, '');
-
- // Only selectors inside the tool content may be styled here. Previously
- // unscoped button, a, body, etc. rules changed the dashboard nav appearance.
+ content = content.replace(/<\/body>\s*<\/html>\s*$/i, '').replace(/<\/html>\s*$/i, '');
+ // The legacy tool CSS contains global selectors such as button/input/section.
+ // Never inject it into the dashboard document: it would restyle shared navigation.
  const audio = active === '/admin/audio';
- const toolCss = audio ? `
+ const scopedCss = audio ? `
 .whdc-dashboard-tool-main{overflow-wrap:anywhere}
-.whdc-dashboard-tool-main button,.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main select{min-height:44px;font-size:16px}
-.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main select,.whdc-dashboard-tool-main audio{max-width:100%}
-@media(max-width:720px){.whdc-dashboard-tool-main button{margin:3px}.whdc-dashboard-tool-main pre{white-space:pre-wrap;overflow-wrap:anywhere}}
+.whdc-dashboard-tool-main *, .whdc-dashboard-tool-main *::before,.whdc-dashboard-tool-main *::after{box-sizing:border-box}
+.whdc-dashboard-tool-main button,.whdc-dashboard-tool-main input:not([type=radio]),.whdc-dashboard-tool-main select{font-size:16px;min-height:40px}
+.whdc-dashboard-tool-main input:not([type=radio]),.whdc-dashboard-tool-main select,.whdc-dashboard-tool-main audio{max-width:100%}
+.whdc-dashboard-tool-main button{padding:9px 14px;border-radius:7px;cursor:pointer}
+.whdc-dashboard-tool-main #audioFilters{display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px;padding:15px 18px!important}
+.whdc-dashboard-tool-main #audioFilters legend{padding:0 6px;font-weight:600}
+.whdc-dashboard-tool-main #audioFilters label{display:inline-flex;align-items:center;gap:8px;margin:0!important;white-space:nowrap;font-weight:500;cursor:pointer}
+.whdc-dashboard-tool-main #audioFilters input[type=radio]{appearance:auto;width:18px!important;height:18px!important;min-width:18px;min-height:18px!important;margin:0!important;padding:0!important;flex:none;accent-color:#4d7275}
+.whdc-dashboard-tool-main #audioFilterStatus{flex:1 0 100%;margin:4px 0 0;font-size:.92rem}
+.whdc-dashboard-tool-main #pronunciationForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;align-items:end;max-width:760px}
+.whdc-dashboard-tool-main #pronunciationForm label{display:flex;flex-direction:column;gap:5px;margin:0;font-weight:600}
+.whdc-dashboard-tool-main #pronunciationForm input{width:100%;min-width:0;padding:10px 12px}
+.whdc-dashboard-tool-main #pronunciationForm button{justify-self:start}
+@media(max-width:650px){.whdc-dashboard-tool-main #audioFilters{gap:12px}.whdc-dashboard-tool-main #audioFilters label{white-space:normal}.whdc-dashboard-tool-main #pronunciationForm{grid-template-columns:1fr}}
 ` : `
 .whdc-dashboard-tool-main{font:16px/1.5 system-ui;color:#303b3c}
 .whdc-dashboard-tool-main input,.whdc-dashboard-tool-main textarea,.whdc-dashboard-tool-main select,.whdc-dashboard-tool-main button{font:inherit}
@@ -511,8 +518,7 @@ function withSharedDashboardNav(html, active) {
 .whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
 .whdc-dashboard-tool-main h1{margin-top:0}
 @media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
-${toolCss}
-</style>`;
+${scopedCss}</style>`;
  return shell + css + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
 }
 
