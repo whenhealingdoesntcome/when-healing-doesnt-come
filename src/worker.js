@@ -473,7 +473,7 @@ function adminDashboardForSection(params) {
    : params.has('editorNotes') ? '/admin?editorNotes=1' : '/admin';
  // The alert markup is initially inside the hero, then moved to the header
  // by its client script. Never expect it inside the server-rendered header.
- const original = ADMIN_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ const original = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
  if (!original) return ADMIN_HTML;
  return ADMIN_HTML.replace(original[0], adminHeaderForPath(active));
 }
@@ -482,9 +482,9 @@ function outlineWithDashboardNav() {
  // Keep the original outline document and its page-specific behavior intact.
  // Replace its header with the canonical admin header and use the same
  // shared navigation styling, without relying on a bell inside the header.
- const original = OUTLINE_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ const original = OUTLINE_HTML.match(/<header>[\s\S]*?<\/header>/i);
  if (!original) return OUTLINE_HTML;
- const sharedStyles = ADMIN_HTML.match(/<style>[\\s\\S]*?<\\/style>/i);
+ const sharedStyles = ADMIN_HTML.match(/<style>[\s\S]*?<\/style>/i);
  let html = OUTLINE_HTML.replace(original[0], adminHeaderForPath('/admin/outline'));
  if (sharedStyles) html = html.replace('</head>', sharedStyles[0] + '</head>');
  return html;
