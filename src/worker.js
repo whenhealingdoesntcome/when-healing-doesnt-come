@@ -482,7 +482,7 @@ function adminDashboardForSection(params) {
 // Shared dashboard notification script used by standalone admin pages.
 // Keep the bell's behavior in one place while retaining each page's content.
 function dashboardBellMarkup() {
- const match = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\\s\\S]*?<\\/div><\\/div><\\/div>/);
+ const match = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
  return match ? match[0] : null;
 }
 
