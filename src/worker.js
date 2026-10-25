@@ -1324,7 +1324,7 @@ export default {async fetch(request,env,ctx){
     }
     if(path==='/admin/gemini38-audio'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
-      return new Response(withAdminToolNav(GEMINI38_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
+      return new Response(withSharedDashboardNav(GEMINI38_HTML,'/admin/audio'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','content-security-policy':"default-src 'self'; script-src 'unsafe-inline' 'self'; media-src 'self'; style-src 'unsafe-inline' 'self'; frame-ancestors 'none'"}});
     }
     if(path==='/api/admin/gemini38/delete-tests'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
