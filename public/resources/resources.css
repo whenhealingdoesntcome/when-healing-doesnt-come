@@ -83,3 +83,6 @@ body.dark .resource-section .website-card img{background:#30413f}
 .whdc-resource-table-scroll{max-width:100%;overflow-x:auto;margin:1.2em 0}
 .whdc-resource-table-scroll table{width:100%;border-collapse:collapse}
 .whdc-resource-table-scroll th,.whdc-resource-table-scroll td{border:1px solid #aebcb4;padding:9px 12px;text-align:left}
+
+/* Resource short descriptions on cards and detail views */
+.whdc-resource-short-description{font-style:italic}
