@@ -65,3 +65,8 @@ body.dark .resource-jump a{background:#243536;border-color:#526562}
 .article-body th,.article-body td{border:1px solid #c7d2cd;padding:10px 12px;vertical-align:top}
 .article-body blockquote{border-left:3px solid #8ba19a;margin:1em 0;padding:.25em 1em}
 .article-body ul,.article-body ol{padding-left:1.6em}
+
+/* Keep website portraits fully visible rather than cropping off faces.
+   Other card types continue to honor their saved crop positions. */
+.resource-section .website-card img{object-fit:contain;background:#eef0eb;object-position:var(--resource-crop-x,50%) var(--resource-crop-y,50%)}
+body.dark .resource-section .website-card img{background:#30413f}
