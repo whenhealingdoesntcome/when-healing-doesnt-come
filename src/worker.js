@@ -537,7 +537,6 @@ function withSharedDashboardNav(html, active) {
  const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
  let content = html.slice(bodyOpen ? bodyOpen.index + bodyOpen[0].length : styleClose + '</style>'.length);
  content = content.replace(/<a href="\/admin">← Admin Dashboard<\/a>/i, '');
- content = content.replace(/<a href="\/admin">← Admin dashboard<\/a>/i, '');
  content = content.replace(/<\/body>\s*<\/html>\s*$/i, '').replace(/<\/html>\s*$/i, '');
  // The legacy tool CSS contains global selectors such as button/input/section.
  // Never inject it into the dashboard document: it would restyle shared navigation.
