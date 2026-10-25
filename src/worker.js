@@ -468,7 +468,6 @@ function withAdminToolNav(html,active){
 // Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
 // Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
 function withSharedDashboardNav(html, active) {
- // Reuse the ACTUAL dashboard document head and header rather than recreating CSS.
  const marker = '<main class="wrap">';
  const split = ADMIN_HTML.indexOf(marker);
  if (split < 0) throw new Error('Dashboard shell not found');
@@ -476,14 +475,17 @@ function withSharedDashboardNav(html, active) {
    `href="${active}"`, `href="${active}" aria-current="page"`
  );
  const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
- // Extract only the tool page body; retain its existing scripts and controls.
- const bodyMatch = html.match(/<body(?:\s[^>]*)?>/i);
- if (!bodyMatch) throw new Error('Admin tool body not found');
- let content = html.slice(bodyMatch.index + bodyMatch[0].length);
+ // Reading Plans is a legacy document with no explicit <body> element.
+ // Audio Library has one. Both are supported without altering their scripts.
+ const styleClose = html.indexOf('</style>');
+ if (styleClose < 0) throw new Error('Admin tool stylesheet not found');
+ const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
+ const contentStart = bodyOpen ? bodyOpen.index + bodyOpen[0].length : styleClose + '</style>'.length;
+ let content = html.slice(contentStart);
  content = content.replace(/<a href="\/admin">← Admin Dashboard<\/a>/i, '');
  content = content.replace(/<a href="\/admin">← Admin dashboard<\/a>/i, '');
- // The dashboard shell provides the real typography, sizing and sticky header.
- // Scope legacy page styling to the content rather than the shared header.
+ content = content.replace(/<\/body>\s*<\/html>\s*$/i, '');
+ content = content.replace(/<\/html>\s*$/i, '');
  const legacyStyle = html.match(/<style>([\s\S]*?)<\/style>/i);
  const toolCss = legacyStyle ? legacyStyle[1]
    .replace(/(^|})\s*body\s*\{/g, '$1.whdc-dashboard-tool-main{')
@@ -494,8 +496,6 @@ function withSharedDashboardNav(html, active) {
 @media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
 ${toolCss}
 </style>`;
- // Put legacy styles after the header but before the main content; no duplicate nav.
- content = content.replace(/<\/body>\s*<\/html>\s*$/i, '');
  return shell + headCss + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
 }
 
