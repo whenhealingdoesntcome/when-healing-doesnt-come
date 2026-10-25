@@ -1783,6 +1783,27 @@ export default {async fetch(request,env,ctx){
     return fail('Not found',404);
   }
   if(path==='/admin.html'||path==='/admin.js')return fail('Not found',404); // never serve dashboard assets without Access
+  // Only the new domain gets the new PWA identity. Old-domain installs stay unchanged.
+  if(url.hostname==='whdcdevotions.com'){
+    if(path==='/manifest.webmanifest'){
+      const response=await env.ASSETS.fetch(request);
+      if(!response.ok)return response;
+      const manifest=await response.json();
+      manifest.icons=[
+        {src:'/images/icons/new-domain/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
+        {src:'/images/icons/new-domain/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'}
+      ];
+      return new Response(JSON.stringify(manifest),{headers:{'content-type':'application/manifest+json; charset=utf-8','cache-control':'no-store','vary':'Host'}});
+    }
+    if(path==='/'||path==='/index.html'){
+      const response=await env.ASSETS.fetch(request);
+      if(!response.ok)return response;
+      let html=await response.text();
+      html=html.replace('/images/icons/apple-touch-icon.png','/images/icons/new-domain/apple-touch-icon.png')
+        .replace('/images/icons/favicon.png','/images/icons/new-domain/favicon.png');
+      return new Response(html,{status:response.status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','vary':'Host'}});
+    }
+  }
   return env.ASSETS.fetch(request);
 },
  async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env),pushScriptureMemoryReminders(env),pushDeferredAnnouncements(env)]).catch(e=>console.error('Scheduled notifications failed',e)))}
