@@ -471,28 +471,22 @@ function withAdminToolNav(html,active){
 function adminDashboardForSection(params) {
  const active = params.has('submissions') ? '/admin?submissions=1'
    : params.has('editorNotes') ? '/admin?editorNotes=1' : '/admin';
- const original = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
- if (!original) throw new Error('Admin header missing');
- const bell = original[0].match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
- if (!bell) throw new Error('Admin alert bell missing');
- const header = adminHeaderForPath(active).replace('</div></header>', bell[0] + '</div></header>');
- return ADMIN_HTML.replace(original[0], header);
+ // The alert markup is initially inside the hero, then moved to the header
+ // by its client script. Never expect it inside the server-rendered header.
+ const original = ADMIN_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ if (!original) return ADMIN_HTML;
+ return ADMIN_HTML.replace(original[0], adminHeaderForPath(active));
 }
 
-// Outline keeps its existing content CSS and JS, but no longer has a separate header/CSS system.
 function outlineWithDashboardNav() {
- const dashboard = adminDashboardForSection(new URLSearchParams());
- const dashboardHeader = dashboard.match(/<header>[\s\S]*?<\/header>/i);
- const outlineHeader = OUTLINE_HTML.match(/<header>[\s\S]*?<\/header>/i);
- const dashboardStyles = dashboard.match(/<style>[\s\S]*?<\/style>/i);
- const alertScript = dashboard.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
- if (!dashboardHeader || !outlineHeader || !dashboardStyles || !alertScript) throw new Error('Shared admin navigation missing');
- let html = OUTLINE_HTML.replace(outlineHeader[0], adminHeaderForPath('/admin/outline').replace('</div></header>', dashboardHeader[0].match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/)[0] + '</div></header>'));
- // Remove the legacy outline navigation rules while retaining all outline-specific layout rules.
- html = html.replace(/\.whdc-header-top\{position:relative;[\s\S]*?(?=\/\* Admin navigation: persistent links)/, '');
- html = html.replace(/\/\* Admin navigation: persistent links[\s\S]*?(?=<\/style>)/, '');
- html = html.replace('</head>', dashboardStyles[0] + '</head>');
- html = html.replace('</body>', alertScript[0].replace("hero=document.querySelector('.whdc-admin-hero')", "hero=document.querySelector('.whdc-admin-hero')||headerTop") + '</body>');
+ // Keep the original outline document and its page-specific behavior intact.
+ // Replace its header with the canonical admin header and use the same
+ // shared navigation styling, without relying on a bell inside the header.
+ const original = OUTLINE_HTML.match(/<header>[\\s\\S]*?<\\/header>/i);
+ if (!original) return OUTLINE_HTML;
+ const sharedStyles = ADMIN_HTML.match(/<style>[\\s\\S]*?<\\/style>/i);
+ let html = OUTLINE_HTML.replace(original[0], adminHeaderForPath('/admin/outline'));
+ if (sharedStyles) html = html.replace('</head>', sharedStyles[0] + '</head>');
  return html;
 }
 
