@@ -479,6 +479,17 @@ function adminDashboardForSection(params) {
  return ADMIN_HTML.replace(original[0], adminHeaderForPath(active));
 }
 
+// Shared dashboard notification script used by standalone admin pages.
+// Keep the bell's behavior in one place while retaining each page's content.
+function dashboardAlertScript() {
+ const match = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
+ if (!match) return null;
+ return match[0].replace(
+   "hero=document.querySelector('.whdc-admin-hero')",
+   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
+ );
+}
+
 function outlineWithDashboardNav() {
  // Use the dashboard's actual document head and header, not a reconstructed
  // approximation. Only the outline's main content and local styles differ.
@@ -495,7 +506,7 @@ function outlineWithDashboardNav() {
  const dashboardHeader = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
  if (!dashboardHeader) return OUTLINE_HTML;
  const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
- const alertScript = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
+ const alertScript = dashboardAlertScript();
  if (!bell || !alertScript) return OUTLINE_HTML;
 
  let header = adminHeaderForPath('/admin/outline');
@@ -503,10 +514,7 @@ function outlineWithDashboardNav() {
  header = header.replace('</div></header>', bell[0] + '</div></header>');
  let shell = ADMIN_HTML.slice(0, shellEnd).replace(dashboardHeader[0], header);
  shell = shell.replace('</head>', '<style>' + outlineCss + '</style></head>');
- const script = alertScript[0].replace(
-   "hero=document.querySelector('.whdc-admin-hero')",
-   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
- );
+ const script = alertScript;
  return shell + OUTLINE_HTML.slice(mainStart, mainEnd) + script + '</body></html>';
 }
 
@@ -526,12 +534,8 @@ function withSharedDashboardNav(html, active) {
  header = header.replace('</div></header>', bellMatch[0] + '</div></header>');
  const shell = ADMIN_HTML.slice(0, split).replace(dashboardHeaderMatch[0], header);
  // Use the same bell behavior on all admin pages, including unread counts.
- const alertScriptMatch = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
- if (!alertScriptMatch) throw new Error('Dashboard alert script not found');
- const alertScript = alertScriptMatch[0].replace(
-   "hero=document.querySelector('.whdc-admin-hero')",
-   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
- );
+ const alertScript = dashboardAlertScript();
+ if (!alertScript) throw new Error('Dashboard alert script not found');
  const styleClose = html.indexOf('</style>');
  if (styleClose < 0) throw new Error('Admin tool stylesheet not found');
  const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
