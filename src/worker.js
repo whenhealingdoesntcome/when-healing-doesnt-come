@@ -468,35 +468,52 @@ function withAdminToolNav(html,active){
 // Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
 // Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
 function withSharedDashboardNav(html, active) {
+ // The same document shell, shared header, and stylesheet used by /admin.
+ // Legacy tool CSS must never apply to the header.
  const marker = '<main class="wrap">';
  const split = ADMIN_HTML.indexOf(marker);
  if (split < 0) throw new Error('Dashboard shell not found');
  const header = SHARED_ADMIN_HEADER.replace(
    `href="${active}"`, `href="${active}" aria-current="page"`
  );
- const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
- // Reading Plans is a legacy document with no explicit <body> element.
- // Audio Library has one. Both are supported without altering their scripts.
+ const shell = ADMIN_HTML.slice(0, split).replace(SHARED_ADMIN_HEADER, header);
+
  const styleClose = html.indexOf('</style>');
  if (styleClose < 0) throw new Error('Admin tool stylesheet not found');
  const bodyOpen = html.match(/<body(?:\s[^>]*)?>/i);
- const contentStart = bodyOpen ? bodyOpen.index + bodyOpen[0].length : styleClose + '</style>'.length;
- let content = html.slice(contentStart);
+ let content = html.slice(bodyOpen ? bodyOpen.index + bodyOpen[0].length : styleClose + '</style>'.length);
  content = content.replace(/<a href="\/admin">← Admin Dashboard<\/a>/i, '');
  content = content.replace(/<a href="\/admin">← Admin dashboard<\/a>/i, '');
  content = content.replace(/<\/body>\s*<\/html>\s*$/i, '');
  content = content.replace(/<\/html>\s*$/i, '');
- const legacyStyle = html.match(/<style>([\s\S]*?)<\/style>/i);
- const toolCss = legacyStyle ? legacyStyle[1]
-   .replace(/(^|})\s*body\s*\{/g, '$1.whdc-dashboard-tool-main{')
-   .replace(/(^|})\s*html\s*\{/g, '$1.whdc-dashboard-tool-main{') : '';
- const headCss = `<style>
+
+ // Only selectors inside the tool content may be styled here. Previously
+ // unscoped button, a, body, etc. rules changed the dashboard nav appearance.
+ const audio = active === '/admin/audio';
+ const toolCss = audio ? `
+.whdc-dashboard-tool-main{overflow-wrap:anywhere}
+.whdc-dashboard-tool-main button,.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main select{min-height:44px;font-size:16px}
+.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main select,.whdc-dashboard-tool-main audio{max-width:100%}
+@media(max-width:720px){.whdc-dashboard-tool-main button{margin:3px}.whdc-dashboard-tool-main pre{white-space:pre-wrap;overflow-wrap:anywhere}}
+` : `
+.whdc-dashboard-tool-main{font:16px/1.5 system-ui;color:#303b3c}
+.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main textarea,.whdc-dashboard-tool-main select,.whdc-dashboard-tool-main button{font:inherit}
+.whdc-dashboard-tool-main input,.whdc-dashboard-tool-main textarea,.whdc-dashboard-tool-main select{width:100%;box-sizing:border-box;padding:10px;margin:4px 0 12px}
+.whdc-dashboard-tool-main button{padding:10px 16px;margin:4px;cursor:pointer}
+.whdc-dashboard-tool-main section{background:white;border:1px solid #ddd;border-radius:12px;padding:20px;margin:16px 0}
+.whdc-dashboard-tool-main label{display:block;font-weight:600}
+.whdc-dashboard-tool-main .muted{color:#58636a}
+.whdc-dashboard-tool-main #items button{font-size:14px}
+.whdc-dashboard-tool-main #devotions{height:240px}
+.whdc-dashboard-tool-main a{color:#315b5c}
+`;
+ const css = `<style>
 .whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
 .whdc-dashboard-tool-main h1{margin-top:0}
 @media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
 ${toolCss}
 </style>`;
- return shell + headCss + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
+ return shell + css + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
 }
 
 const RESOURCES_ADMIN_HTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Resources Admin</title><link rel="stylesheet" href="/resources/resources.css"><style>
