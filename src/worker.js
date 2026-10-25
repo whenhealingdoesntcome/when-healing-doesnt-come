@@ -481,6 +481,11 @@ function adminDashboardForSection(params) {
 
 // Shared dashboard notification script used by standalone admin pages.
 // Keep the bell's behavior in one place while retaining each page's content.
+function dashboardBellMarkup() {
+ const match = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\\s\\S]*?<\\/div><\\/div><\\/div>/);
+ return match ? match[0] : null;
+}
+
 function dashboardAlertScript() {
  const match = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
  if (!match) return null;
@@ -505,13 +510,13 @@ function outlineWithDashboardNav() {
  const outlineCss = outlineStyle[1].replace(SHARED_ADMIN_STYLES, '');
  const dashboardHeader = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
  if (!dashboardHeader) return OUTLINE_HTML;
- const bell = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
+ const bell = dashboardBellMarkup();
  const alertScript = dashboardAlertScript();
  if (!bell || !alertScript) return OUTLINE_HTML;
 
  let header = adminHeaderForPath('/admin/outline');
  // Match the dashboard's bell markup and placement behavior.
- header = header.replace('</div></header>', bell[0] + '</div></header>');
+ header = header.replace('</div></header>', bell + '</div></header>');
  let shell = ADMIN_HTML.slice(0, shellEnd).replace(dashboardHeader[0], header);
  shell = shell.replace('</head>', '<style>' + outlineCss + '</style></head>');
  const script = alertScript;
@@ -526,12 +531,12 @@ function withSharedDashboardNav(html, active) {
  // ADMIN_HTML is the canonical rendered dashboard, including the notification
  // bell and its styles. Reuse that markup rather than creating another header.
  const dashboardHeaderMatch = ADMIN_HTML.match(/<header>[\s\S]*?<\/header>/i);
- const bellMatch = ADMIN_HTML.match(/<div class="whdc-admin-alert" id="whdcAdminAlert">[\s\S]*?<\/div><\/div><\/div>/);
+ const bellMatch = dashboardBellMarkup();
  if (!dashboardHeaderMatch || !bellMatch) throw new Error('Dashboard navigation or alerts not found');
  // Replace only the navigation element with the canonical component.
  // Keep the dashboard's alert bell and header layout unchanged.
  let header = adminHeaderForPath(active);
- header = header.replace('</div></header>', bellMatch[0] + '</div></header>');
+ header = header.replace('</div></header>', bellMatch + '</div></header>');
  const shell = ADMIN_HTML.slice(0, split).replace(dashboardHeaderMatch[0], header);
  // Use the same bell behavior on all admin pages, including unread counts.
  const alertScript = dashboardAlertScript();
