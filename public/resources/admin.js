@@ -53,6 +53,23 @@ function enablePopupFormatting(root){
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let records=[],editing='',busy=false,selected=new Set(),previousFocus=null,activeStatus='all',localPreviewUrl=null,previewGeneration=0;
 const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
+
+// Create delete controls in the client as well as the server markup. This keeps
+// them available even when an older dashboard HTML template is cached.
+function ensureDeleteControls(){
+ const head=modal?.querySelector('.dialog-head');
+ const actions=modal?.querySelector('.actions');
+ if(!head||!actions)return;
+ for(const [id,parent] of [['deleteResourceTop',head],['deleteResource',actions]]){
+  let btn=document.getElementById(id);
+  if(!btn){btn=document.createElement('button');btn.id=id;btn.type='button';btn.textContent='Delete Resource';parent.insertBefore(btn,id==='deleteResourceTop'?document.getElementById('closeResourceEditor'):null);}
+  btn.type='button';btn.textContent='Delete Resource';btn.style.cssText='background:#a12b2b;color:#fff;border:1px solid #a12b2b;border-radius:7px;padding:9px 12px;cursor:pointer;';
+  btn.hidden=true;
+ }
+}
+ensureDeleteControls();
+function toggleDeleteControls(visible){for(const id of ['deleteResource','deleteResourceTop']){const btn=document.getElementById(id);if(btn){btn.hidden=!visible;btn.style.display=visible?'inline-flex':'none';}}}
+
 // The resources dashboard is embedded in an iframe. Temporarily move that iframe
 // to the parent document so the editor overlays the visible page, not just the tab.
 // Do not reparent the live iframe: moving an iframe reloads its document on
@@ -61,6 +78,14 @@ const form=$('#editor'),notice=$('#notice'),modal=$('#resourceModal');
 // Never resize or reparent the dashboard iframe: doing so breaks iOS Safari.
 const editorParams=new URLSearchParams(location.search);
 const isEditorWindow=editorParams.get('resourceEditor')==='1';
+
+if(isEditorWindow){
+ document.documentElement.classList.add('whdc-resource-editor-only');
+ const style=document.createElement('style');
+ style.textContent='html.whdc-resource-editor-only,html.whdc-resource-editor-only body{background:transparent!important;}html.whdc-resource-editor-only body>:not(#resourceModal){display:none!important;}html.whdc-resource-editor-only #resourceModal{background:transparent!important;}';
+ document.head.append(style);
+}
+
 let editorOverlay=null;
 function openEditorWindow(id){
  if(isEditorWindow||window.parent===window)return false;
@@ -104,10 +129,10 @@ function preview(url){updateCrop();const img=$('#imagePreview');img.hidden=!url;
 function releaseLocalPreview(){localPreviewUrl=null;previewGeneration++}
 async function localPreview(file){const generation=++previewGeneration;const dataUrl=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error('Unable to read the selected picture.'));reader.readAsDataURL(file)});if(generation!==previewGeneration)return;localPreviewUrl=dataUrl;preview(dataUrl)}
 $('#imagePreview').addEventListener('error',()=>{const img=$('#imagePreview');if(img.src.startsWith('data:image/')){$('#uploadStatus').textContent='The selected image could not be previewed. Try another JPG, PNG, WebP or GIF.';return}if(localPreviewUrl){preview(localPreviewUrl);return}img.hidden=true;$('#uploadStatus').textContent='The saved image URL could not be loaded.'});
-function show(){if(!isEditorWindow&&openEditorWindow(editing))return;previousFocus=document.activeElement;modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';if(!matchMedia('(max-width: 600px)').matches)form.elements.title.focus()}
+function show(){if(!isEditorWindow&&openEditorWindow(editing))return;toggleDeleteControls(!!editing);previousFocus=document.activeElement;modal.hidden=false;document.body.classList.add('resource-editor-open');document.body.style.overflow='hidden';if(!matchMedia('(max-width: 600px)').matches)form.elements.title.focus()}
 function close(){modal.hidden=true;document.body.classList.remove('resource-editor-open');document.body.style.overflow='';closeEditorWindow();previousFocus?.focus()}
-function reset(){releaseLocalPreview();editing='';$('#deleteResource').hidden=true;$('#deleteResourceTop').hidden=true;form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');updateCrop();mode();show()}
-function edit(id){releaseLocalPreview();$('#deleteResource').hidden=false;$('#deleteResourceTop').hidden=false;const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='type'?editorResourceType(r):key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);updateCrop();mode();show()}
+function reset(){releaseLocalPreview();editing='';toggleDeleteControls(false);form.reset();$('#resourceImageFile').value='';$('#editHeading').textContent='New Resource';$('#uploadStatus').textContent='JPG, PNG, WebP or GIF, up to 5 MB.';preview('');updateCrop();mode();show()}
+function edit(id){releaseLocalPreview();toggleDeleteControls(true);const r=records.find(x=>x.id===id);if(!r)return;editing=id;form.reset();for(const key of fields){const el=form.elements[key];if(!el)continue;if(el.type==='checkbox')el.checked=!!r[key];else el.value=key==='type'?editorResourceType(r):key==='topics'?(Array.isArray(r.topics)?r.topics.join(', '):r.topics||''):r[key]??''}$('#resourceImageFile').value='';$('#editHeading').textContent='Edit: '+r.title;preview(r.image_url);updateCrop();mode();show()}
 function filtered(){const q=$('#resourceSearch').value.trim().toLowerCase(),type=$('#resourceTypeFilter').value,status=activeStatus,sort=$('#resourceSort').value;const shown=records.filter(r=>(type==='all'||editorResourceType(r)===type)&&(status==='all'||(status==='published')===!!r.published)&&(!q||[r.title,r.creator,r.description,...(Array.isArray(r.topics)?r.topics:[])].join(' ').toLowerCase().includes(q)));shown.sort((a,b)=>sort==='order'?(Number(a.sort_order||0)-Number(b.sort_order||0))||String(a.title).localeCompare(String(b.title)):sort==='type'?String(editorResourceType(a)).localeCompare(String(editorResourceType(b)))||String(a.title).localeCompare(String(b.title)):sort==='title-desc'?String(b.title).localeCompare(String(a.title)):String(a.title).localeCompare(String(b.title)));return shown}
 function render(){for(const tab of document.querySelectorAll('[data-status-tab]')){const active=tab.dataset.statusTab===activeStatus;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active))}$('#draftCount').textContent='('+records.filter(r=>!r.published).length+')';$('#publishedCount').textContent='('+records.filter(r=>!!r.published).length+')';$('#allCount').textContent='('+records.length+')';const shown=filtered();$('#resourceCount').textContent=`Showing ${shown.length} of ${records.length} resources`;
 $('#list').innerHTML=shown.map(r=>'<div class="item whdc-row"><input class="resource-check whdc-select" type="checkbox" aria-label="Select '+esc(r.title)+'" data-select="'+esc(r.id)+'" '+(selected.has(r.id)?'checked':'')+'><span class="resource-main whdc-row-body"><button type="button" class="resource-title" data-edit="'+esc(r.id)+'">'+esc(r.title)+'</button><span class="resource-meta">'+esc(editorResourceType(r).charAt(0).toUpperCase()+editorResourceType(r).slice(1))+' · '+(r.published?'Published':'Draft')+(r.featured?' · Featured':'')+'</span></span><span class="resource-actions whdc-row-actions"><button type="button" data-edit="'+esc(r.id)+'">Edit</button></span></div>').join('')||'<p>No matching resources.</p>';
