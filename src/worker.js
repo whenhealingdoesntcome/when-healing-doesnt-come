@@ -1,5 +1,4 @@
 import { SHARED_ADMIN_HEADER } from './admin/shared-header.js';
-import { SHARED_ADMIN_STYLES } from './admin/shared-styles.js';
 const ANNOUNCEMENT_ADMIN_JS="(()=>{\n const form=document.getElementById('announcementForm');if(!form)return;\n const title=document.getElementById('announcementTitle'),body=document.getElementById('announcementBody'),visible=document.getElementById('announcementVisible'),status=document.getElementById('announcementStatus');\n const formatSelection=(marker)=>{const start=body.selectionStart,end=body.selectionEnd,old=body.value,selected=old.slice(start,end);if(!selected){body.focus();return;}const replacement=marker+selected+marker;if(old.length+marker.length*2>4000){status.textContent='Announcement exceeds 4,000 characters.';return;}body.value=old.slice(0,start)+replacement+old.slice(end);body.focus();body.setSelectionRange(start+marker.length,end+marker.length);body.dispatchEvent(new Event('input',{bubbles:true}));};\n for(const [id,marker] of [['announcementBold','**'],['announcementItalic','*']]){const btn=document.getElementById(id);if(btn)btn.addEventListener('click',()=>formatSelection(marker));}\n body.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();formatSelection(e.key.toLowerCase()==='b'?'**':'*');}});\n const summary=document.getElementById('announcementSummary'),publish=document.getElementById('announcementPublish'),save=document.getElementById('announcementSave'),hide=document.getElementById('announcementHide');\n async function request(opts){const response=await fetch('/api/admin/announcement',{credentials:'same-origin',cache:'no-store',...opts});const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result;}\n function updateSummary(){summary.textContent=(title.value.trim()||\"What's New\")+' \u00b7 '+(visible.checked?'Visible on Home':'Hidden from Home');}\n async function send(mode){const button=mode==='publish'?publish:mode==='hide'?hide:save;button.disabled=true;status.textContent='Saving\u2026';try{const result=await request({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:title.value,body:body.value,visible:mode==='hide'?false:visible.checked,publishNew:mode==='publish'})});visible.checked=!!result.visible;updateSummary();status.textContent=mode==='publish'?'New announcement published. Readers who have not seen it will be directed to Home.':mode==='hide'?'Announcement hidden. Welcome is at the top of Home.':'Changes saved. Existing readers will not be redirected again.';}catch(e){status.textContent='Save failed: '+e.message;}finally{button.disabled=false;}}\n (async()=>{try{const item=await request();title.value=item.title||\"What's New\";body.value=item.body||'';visible.checked=!!item.visible;updateSummary();status.textContent='Current saved announcement loaded.';}catch(e){status.textContent='Could not load announcement: '+e.message;}})();\n title.addEventListener('input',updateSummary);visible.addEventListener('change',updateSummary);\n form.addEventListener('submit',e=>{e.preventDefault();send('save')});\n publish.addEventListener('click',()=>{if(!form.reportValidity())return;if(!confirm('Publish this as a NEW announcement and direct readers to Home once?'))return;visible.checked=true;send('publish')});\n hide.addEventListener('click',()=>send('hide'));\n})();";
 import {scriptureLookup,formatFurtherStudyReferences} from './scripture.js';
 import {handlePublicAudio,handleAdminAudio} from './audio/api.js';
@@ -469,28 +468,35 @@ function withAdminToolNav(html,active){
 // Audio Library and Reading Plans use the SAME header component as the main admin dashboard.
 // Do not pass these pages through withAdminToolNav: that creates a second navigation bar.
 function withSharedDashboardNav(html, active) {
- const nav = SHARED_ADMIN_HEADER.replace(`href="${active}"`, `href="${active}" aria-current="page"`);
- const css = `<link rel="stylesheet" href="/shared/styles.css"><style>${SHARED_ADMIN_STYLES}
-body.whdc-dashboard-tool{margin:0;max-width:none;padding:0;background:#f3f5f2;color:#303b3c}
-body.whdc-dashboard-tool>header{position:sticky;top:0;z-index:1500;background:#fff;box-shadow:0 2px 12px #00000012}
-body.whdc-dashboard-tool>.whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
-body.whdc-dashboard-tool>.whdc-dashboard-tool-main h1{margin-top:0}
-@media(max-width:720px){body.whdc-dashboard-tool>.whdc-dashboard-tool-main{padding:20px 16px 50px}}
+ // Reuse the ACTUAL dashboard document head and header rather than recreating CSS.
+ const marker = '<main class="wrap">';
+ const split = ADMIN_HTML.indexOf(marker);
+ if (split < 0) throw new Error('Dashboard shell not found');
+ const header = SHARED_ADMIN_HEADER.replace(
+   `href="${active}"`, `href="${active}" aria-current="page"`
+ );
+ const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
+ // Extract only the tool page body; retain its existing scripts and controls.
+ const bodyMatch = html.match(/<body(?:\\s[^>]*)?>/i);
+ if (!bodyMatch) throw new Error('Admin tool body not found');
+ let content = html.slice(bodyMatch.index + bodyMatch[0].length);
+ content = content.replace(/<a href="\\/admin">← Admin Dashboard<\\/a>/i, '');
+ content = content.replace(/<a href="\\/admin">← Admin dashboard<\\/a>/i, '');
+ // The dashboard shell provides the real typography, sizing and sticky header.
+ // Scope legacy page styling to the content rather than the shared header.
+ const legacyStyle = html.match(/<style>([\\s\\S]*?)<\\/style>/i);
+ const toolCss = legacyStyle ? legacyStyle[1]
+   .replace(/(^|})\\s*body\\s*\\{/g, '$1.whdc-dashboard-tool-main{')
+   .replace(/(^|})\\s*html\\s*\\{/g, '$1.whdc-dashboard-tool-main{') : '';
+ const headCss = `<style>
+.whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
+.whdc-dashboard-tool-main h1{margin-top:0}
+@media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
+${toolCss}
 </style>`;
- // Legacy page templates have head tags omitted. Close the head before opening body.
- let page = html.replace(/<html lang="en">/i, '<html lang="en"><head>');
- page = page.replace(/<body[^>]*>/i, ''); // Remove legacy inline body sizing.
- page = page.replace('<a href="/admin">← Admin Dashboard</a>', '');
- page = page.replace('<a href="/admin">← Admin dashboard</a>', '');
- const styleEnd = page.indexOf('</style>');
- if (styleEnd < 0) throw new Error('Admin tool page style element missing');
- const insertion = styleEnd + '</style>'.length;
- page = page.slice(0, insertion) + css + '</head><body class="whdc-dashboard-tool">' +
-   nav + '<main class="whdc-dashboard-tool-main">' + page.slice(insertion);
- const scriptAt = page.indexOf('<script>');
- if (scriptAt < 0) throw new Error('Admin tool page script missing');
- page = page.slice(0, scriptAt) + '</main>' + page.slice(scriptAt);
- return page.includes('</html>') ? page.replace('</html>', '</body></html>') : page + '</body></html>';
+ // Put legacy styles after the header but before the main content; no duplicate nav.
+ content = content.replace(/<\\/body>\\s*<\\/html>\\s*$/i, '');
+ return shell + headCss + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
 }
 
 const RESOURCES_ADMIN_HTML=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Resources Admin</title><link rel="stylesheet" href="/resources/resources.css"><style>
