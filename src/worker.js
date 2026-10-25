@@ -477,17 +477,17 @@ function withSharedDashboardNav(html, active) {
  );
  const shell = ADMIN_HTML.slice(0, split).replace('__SHARED_ADMIN_HEADER__', header);
  // Extract only the tool page body; retain its existing scripts and controls.
- const bodyMatch = html.match(/<body(?:\\s[^>]*)?>/i);
+ const bodyMatch = html.match(/<body(?:\s[^>]*)?>/i);
  if (!bodyMatch) throw new Error('Admin tool body not found');
  let content = html.slice(bodyMatch.index + bodyMatch[0].length);
- content = content.replace(/<a href="\\/admin">← Admin Dashboard<\\/a>/i, '');
- content = content.replace(/<a href="\\/admin">← Admin dashboard<\\/a>/i, '');
+ content = content.replace(/<a href="\/admin">← Admin Dashboard<\/a>/i, '');
+ content = content.replace(/<a href="\/admin">← Admin dashboard<\/a>/i, '');
  // The dashboard shell provides the real typography, sizing and sticky header.
  // Scope legacy page styling to the content rather than the shared header.
- const legacyStyle = html.match(/<style>([\\s\\S]*?)<\\/style>/i);
+ const legacyStyle = html.match(/<style>([\s\S]*?)<\/style>/i);
  const toolCss = legacyStyle ? legacyStyle[1]
-   .replace(/(^|})\\s*body\\s*\\{/g, '$1.whdc-dashboard-tool-main{')
-   .replace(/(^|})\\s*html\\s*\\{/g, '$1.whdc-dashboard-tool-main{') : '';
+   .replace(/(^|})\s*body\s*\{/g, '$1.whdc-dashboard-tool-main{')
+   .replace(/(^|})\s*html\s*\{/g, '$1.whdc-dashboard-tool-main{') : '';
  const headCss = `<style>
 .whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
 .whdc-dashboard-tool-main h1{margin-top:0}
@@ -495,7 +495,7 @@ function withSharedDashboardNav(html, active) {
 ${toolCss}
 </style>`;
  // Put legacy styles after the header but before the main content; no duplicate nav.
- content = content.replace(/<\\/body>\\s*<\\/html>\\s*$/i, '');
+ content = content.replace(/<\/body>\s*<\/html>\s*$/i, '');
  return shell + headCss + '<main class="whdc-dashboard-tool-main">' + content + '</main></body></html>';
 }
 
