@@ -401,3 +401,12 @@ body:has(#whdcBibleRoot) #whdcStudyToggle{display:none!important}
   padding: 7px !important; flex-shrink: 0 !important;
  }
 }
+
+/* Study pencil: keep the original icon without a visible button outline. */
+#whdcBibleRoot .mobile-bible-toolbar .mobile-study-guide,
+#whdcBibleRoot .mobile-bible-toolbar .mobile-study-guide:hover,
+#whdcBibleRoot .mobile-bible-toolbar .mobile-study-guide:active {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
