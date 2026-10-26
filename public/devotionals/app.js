@@ -86,7 +86,7 @@ const WHDC_TRANSFER_KEYS=[
 ];
 function whdcReaderAccountPanel(){
  if(location.hostname!=='whdcdevotions.com')return '';
- return `<section class="card" style="max-width:760px;margin:14px auto 20px" id="whdcReaderAccountSection"><h2>Optional Reader Account</h2><p>Read WHDC without an account. Cloud syncing is not yet enabled, and saved data remains on this device.</p><button type="button" class="btn" id="whdcManageReaderAccount" aria-expanded="false">Manage reader account</button><div id="whdcAccountInline" hidden style="margin-top:16px"><p id="whdcAccountStatus" role="status" aria-live="polite"></p><div id="whdcAccountSignedIn" hidden><p>Signed in as <strong id="whdcAccountWho"></strong>.</p><button type="button" class="btn" id="whdcAccountLogout">Sign out</button></div><form id="whdcAccountRequest" hidden><label>Email address <input id="whdcAccountEmail" type="email" autocomplete="email" maxlength="254" required style="display:block;max-width:100%;width:340px"></label><button class="btn" type="submit">Send sign-in code</button></form><form id="whdcAccountVerify" hidden><label>Six-digit code from your email <input id="whdcAccountCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="display:block;width:180px"></label><button class="btn" type="submit">Verify and sign in</button> <button class="btn" type="button" id="whdcAccountRestart">Use another email</button></form></div></section>`;
+ return `<section class="card" style="max-width:760px;margin:14px auto 20px" id="whdcReaderAccountSection"><h2>Optional Reader Account</h2><p>Read WHDC without an account. Optional manual cloud backup is available after signing in. Automatic syncing is not yet enabled.</p><button type="button" class="btn" id="whdcManageReaderAccount" aria-expanded="false">Manage reader account</button><div id="whdcAccountInline" hidden style="margin-top:16px"><p id="whdcAccountStatus" role="status" aria-live="polite"></p><div id="whdcAccountSignedIn" hidden><p>Signed in as <strong id="whdcAccountWho"></strong>.</p><p class="muted">Cloud backup is optional and manual. Your saved information stays on this device unless you choose to upload it.</p><div class="actions" style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" id="whdcCloudUpload">Back up this device to my account</button><button type="button" class="btn" id="whdcCloudRestore">Bring saved data to this device</button></div><p class="muted small">Uploading replaces your previous cloud backup after confirmation. Restoring adds only missing local sections and never replaces existing sections. Keep a separate exported backup.</p><button type="button" class="btn" id="whdcAccountLogout">Sign out</button></div><form id="whdcAccountRequest" hidden><label>Email address <input id="whdcAccountEmail" type="email" autocomplete="email" maxlength="254" required style="display:block;max-width:100%;width:340px"></label><button class="btn" type="submit">Send sign-in code</button></form><form id="whdcAccountVerify" hidden><label>Six-digit code from your email <input id="whdcAccountCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="display:block;width:180px"></label><button class="btn" type="submit">Verify and sign in</button> <button class="btn" type="button" id="whdcAccountRestart">Use another email</button></form></div></section>`;
 }
 async function whdcReaderApi(path,body){
  const response=await fetch('/api/reader/'+path,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});
@@ -121,8 +121,37 @@ document.addEventListener('submit',async event=>{
   whdcAccountShow('verify');whdcAccountMessage(result.message||'Check your email for a sign-in code.');
  }else{
   whdcAccountMessage('Checking code…');const result=await whdcReaderApi('verify-code',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
-  document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. Saved data is still stored locally until syncing is enabled.');
+  document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
  }}catch(error){whdcAccountMessage(error.message);}finally{button.disabled=false;}
+});
+// Manual cloud backup: explicit consent; never overwrite existing local sections.
+document.addEventListener('click',async event=>{
+ const button=event.target.closest?.('#whdcCloudUpload,#whdcCloudRestore');
+ if(!button)return;
+ event.preventDefault();button.disabled=true;
+ try{
+  if(button.id==='whdcCloudUpload'){
+   const current={};for(const key of WHDC_TRANSFER_KEYS){const v=localStorage.getItem(key);if(v!==null)current[key]=v;}
+   if(!Object.keys(current).length)throw Error('No saved data was found on this device.');
+   const cloud=await whdcReaderApi('saved-data');
+   const question=cloud.exists?'Replace your existing cloud backup with the saved data from this device? Download your existing cloud backup on another device first if you need it.':'Upload saved data from this device to your private account?';
+   if(!confirm(question))return;
+   await whdcReaderApi('saved-data',{items:current,replaceExisting:!!cloud.exists});
+   whdcAccountMessage('Cloud backup saved. Automatic syncing is not enabled.');
+  }else{
+   const cloud=await whdcReaderApi('saved-data');
+   if(!cloud.exists){whdcAccountMessage('No cloud backup is available yet.');return;}
+   const entries=Object.entries(cloud.items||{});
+   if(entries.some(([k,v])=>!WHDC_TRANSFER_KEYS.includes(k)||typeof v!=='string'))throw Error('Cloud backup contains unsupported data.');
+   const missing=entries.filter(([k])=>localStorage.getItem(k)===null);
+   const skipped=entries.length-missing.length;
+   if(!missing.length){whdcAccountMessage('No missing sections to restore. Existing local data was not changed.');return;}
+   if(!confirm(`Restore ${missing.length} missing saved sections to this device? ${skipped} existing sections will remain unchanged. This does not merge individual journal entries.`))return;
+   for(const [key,value] of missing)localStorage.setItem(key,value);
+   whdcAccountMessage(`Restored ${missing.length} missing sections. Preserved ${skipped} existing sections. Reload to see restored data.`);
+  }
+ }catch(error){whdcAccountMessage(error.message||'Cloud backup failed.');}
+ finally{button.disabled=false;}
 });
 function whdcTransferPanel(){
  const old=location.hostname===WHDC_OLD_HOST;

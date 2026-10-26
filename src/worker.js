@@ -17,6 +17,26 @@ async function readerApi(req,env,path){
   const session=await env.DB.prepare('SELECT a.id,a.email FROM reader_sessions s JOIN reader_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?').bind(await readerDigest(token),now).first();
   return readerReply(session?{signedIn:true,email:session.email}:{signedIn:false});
  }
+ if(path==='/api/reader/saved-data'&&(req.method==='GET'||req.method==='POST')){
+  const token=readerCookie(req);
+  if(!/^[0-9a-f]{64}$/.test(token))return readerReply({error:'Sign in to access cloud storage.'},401);
+  const session=await env.DB.prepare('SELECT account_id FROM reader_sessions WHERE token_hash=? AND expires_at>?').bind(await readerDigest(token),now).first();
+  if(!session)return readerReply({error:'Session expired. Sign in again.'},401);
+  if(req.method==='GET'){
+   const record=await env.DB.prepare('SELECT payload,updated_at FROM reader_saved_snapshots WHERE account_id=?').bind(session.account_id).first();
+   return readerReply(record?{exists:true,items:JSON.parse(record.payload),updatedAt:record.updated_at}:{exists:false});
+  }
+  const raw=await req.text();
+  if(raw.length>1024*1024)return readerReply({error:'Saved data exceeds the 1 MB cloud limit.'},413);
+  let body;try{body=JSON.parse(raw)}catch{return readerReply({error:'Invalid saved data'},400)}
+  const allowed=['whdc-private-journal-v1','whdc-favorites-v1','whdc-read-history-v1','whdc-bible-annotations-v1','whdc-devotional-annotations-v1','whdc-favorite-verses-v1','whdc-saved-quotes-v1','whdc-saved-resources-v1','whdc-inductive-paragraph-notes-v1','whdc-reading-plan-completions-v1','whdc-reading-plans-enrolled-v1','whdc-opening-page-v1','whdc-appearance','whdc-reading-size','whdc-device-voice','whdc-access-high-contrast','whdc-access-reduce-motion','whdc-access-simplified-reading'];
+  const items=body?.items;
+  if(!items||Array.isArray(items)||typeof items!=='object'||Object.keys(items).some(k=>!allowed.includes(k)||typeof items[k]!=='string'))return readerReply({error:'Unsupported saved data'},400);
+  const existing=await env.DB.prepare('SELECT updated_at FROM reader_saved_snapshots WHERE account_id=?').bind(session.account_id).first();
+  if(existing&&!body.replaceExisting)return readerReply({error:'A cloud backup already exists. Download and review it before replacing it.'},409);
+  await env.DB.prepare('INSERT INTO reader_saved_snapshots(account_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(session.account_id,JSON.stringify(items),now).run();
+  return readerReply({ok:true,updatedAt:now});
+ }
  if(path==='/api/reader/logout'&&req.method==='POST'){
   const token=readerCookie(req);if(/^[0-9a-f]{64}$/.test(token))await env.DB.prepare('DELETE FROM reader_sessions WHERE token_hash=?').bind(await readerDigest(token)).run();
   return readerReply({ok:true},200,{'set-cookie':readerSessionCookie('',0)});
