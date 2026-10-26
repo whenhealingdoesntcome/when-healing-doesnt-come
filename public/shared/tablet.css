@@ -18,3 +18,13 @@
  html.whdc-desktop-device body:has(#app) #app > header {display:flex!important}
  html.whdc-desktop-device body:has(#app) #whdcStudyToggle {display:revert!important}
 }
+
+/* Tablet home: keep Share App below the iPad status bar. */
+@media (min-width:768px) and (max-width:1199px) {
+ html.whdc-tablet-device body:has(#app) .home-hero {
+   padding-top:calc(48px + env(safe-area-inset-top, 0px))!important;
+ }
+ html.whdc-tablet-device body:has(#app) .home-hero .whdc-home-share-icon {
+   top:calc(22px + env(safe-area-inset-top, 0px))!important;
+ }
+}

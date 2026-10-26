@@ -210,3 +210,17 @@ body.dark{background:#20282b;color:#f0eee8;color-scheme:dark}
 body.dark .site-header,body.dark .controls,body.dark .reading,body.dark .bible-search form{background:#2a3335!important;color:#f0eee8!important;border-color:#4d5959!important}
 body.dark .mobile-reader-options,body.dark .search-line input{background:#2a3335!important;color:#f0eee8!important;border-color:#4d5959!important}
 body.dark .intro,body.dark .help,body.dark .translation,body.dark footer{color:#c0c9c8}
+
+/* Tablet Bible Reader: clearance for the iPad status bar and camera edge.
+   Scoped to detected tablet devices so resized desktop windows stay unchanged. */
+@media (min-width:768px) and (max-width:1199px) {
+ html.whdc-tablet-device body {
+   padding-top:calc(34px + env(safe-area-inset-top, 0px))!important;
+ }
+ html.whdc-tablet-device .layout {
+   padding-top:24px!important;
+ }
+ html.whdc-tablet-device .controls {
+   scroll-margin-top:calc(44px + env(safe-area-inset-top, 0px));
+ }
+}
