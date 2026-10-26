@@ -12,6 +12,15 @@ async function readerApi(req,env,path){
  if(!env.DB)return readerReply({error:'Account database unavailable'},503);
  const origin=req.headers.get('origin');if(req.method==='POST'&&origin!==new URL(req.url).origin)return readerReply({error:'Invalid request origin'},403);
  const now=Math.floor(Date.now()/1000);
+ if(path==='/api/reader/cookie-test'&&req.method==='GET'){
+  const u=new URL(req.url);
+  const probeName='whdc_cookie_probe';
+  if(u.searchParams.get('check')==='1'){
+   const present=(req.headers.get('cookie')||'').split(';').some(part=>part.trim()===probeName+'=ok');
+   return new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Cookie Check</title><body style="font:18px system-ui;padding:2rem;max-width:35rem;margin:auto"><h1>WHDC Cookie Check</h1><p>'+ (present?'PASS: Safari returned the test cookie on a normal page navigation.':'FAIL: Safari did not return the test cookie on a normal page navigation.') +'</p><p>This check does not access or change your account or saved data.</p></body></html>',{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','set-cookie':probeName+'=; Path=/api/reader/cookie-test; Secure; SameSite=Lax; Max-Age=0'}});
+  }
+  return new Response(null,{status:303,headers:{'location':'/api/reader/cookie-test?check=1','cache-control':'no-store','set-cookie':probeName+'=ok; Path=/api/reader/cookie-test; Secure; SameSite=Lax; Max-Age=60'}});
+ }
  if(path==='/api/reader/session-check'&&req.method==='GET'){
   const cookieHeader=req.headers.get('cookie')||'';
   const token=readerCookie(req);
