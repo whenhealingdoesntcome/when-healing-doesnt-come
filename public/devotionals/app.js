@@ -86,8 +86,44 @@ const WHDC_TRANSFER_KEYS=[
 ];
 function whdcReaderAccountPanel(){
  if(location.hostname!=='whdcdevotions.com')return '';
- return `<section class="card" style="max-width:760px;margin:14px auto 20px"><h2>Optional Reader Account</h2><p>Read WHDC without an account, or sign in with your email. Your journals and other saved data remain on this device for now; cloud syncing is not yet enabled.</p><a class="btn" href="/reader-account.html">Manage reader account</a></section>`;
+ return `<section class="card" style="max-width:760px;margin:14px auto 20px" id="whdcReaderAccountSection"><h2>Optional Reader Account</h2><p>Read WHDC without an account. Cloud syncing is not yet enabled, and saved data remains on this device.</p><button type="button" class="btn" id="whdcManageReaderAccount" aria-expanded="false">Manage reader account</button><div id="whdcAccountInline" hidden style="margin-top:16px"><p id="whdcAccountStatus" role="status" aria-live="polite"></p><div id="whdcAccountSignedIn" hidden><p>Signed in as <strong id="whdcAccountWho"></strong>.</p><button type="button" class="btn" id="whdcAccountLogout">Sign out</button></div><form id="whdcAccountRequest" hidden><label>Email address <input id="whdcAccountEmail" type="email" autocomplete="email" maxlength="254" required style="display:block;max-width:100%;width:340px"></label><button class="btn" type="submit">Send sign-in code</button></form><form id="whdcAccountVerify" hidden><label>Six-digit code from your email <input id="whdcAccountCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="display:block;width:180px"></label><button class="btn" type="submit">Verify and sign in</button> <button class="btn" type="button" id="whdcAccountRestart">Use another email</button></form></div></section>`;
 }
+async function whdcReaderApi(path,body){
+ const response=await fetch('/api/reader/'+path,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});
+ const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result;
+}
+function whdcAccountShow(which){
+ for(const [name,id] of [['account','whdcAccountSignedIn'],['request','whdcAccountRequest'],['verify','whdcAccountVerify']]){
+  const element=document.getElementById(id);if(element)element.hidden=name!==which;
+ }
+}
+function whdcAccountMessage(message){const el=document.getElementById('whdcAccountStatus');if(el)el.textContent=message;}
+// Use the existing Settings view rather than leaving the installed PWA for a separate HTML page.
+document.addEventListener('click',async event=>{
+ const target=event.target.closest?.('#whdcManageReaderAccount,#whdcAccountLogout,#whdcAccountRestart');if(!target)return;
+ event.preventDefault();
+ if(target.id==='whdcManageReaderAccount'){
+  const panel=document.getElementById('whdcAccountInline');if(!panel)return;
+  panel.hidden=!panel.hidden;target.setAttribute('aria-expanded',String(!panel.hidden));if(panel.hidden)return;
+  whdcAccountMessage('Checking account…');
+  try{const result=await whdcReaderApi('me');if(!document.getElementById('whdcAccountInline')||panel.hidden)return;
+   if(result.signedIn){document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');}
+   else whdcAccountShow('request');whdcAccountMessage('');
+  }catch(error){whdcAccountMessage(error.message);}
+ }else if(target.id==='whdcAccountRestart'){whdcAccountShow('request');whdcAccountMessage('');}
+ else {target.disabled=true;try{await whdcReaderApi('logout',{});whdcAccountShow('request');whdcAccountMessage('Signed out.');}catch(error){whdcAccountMessage(error.message);}finally{target.disabled=false;}}
+});
+document.addEventListener('submit',async event=>{
+ const form=event.target;if(!['whdcAccountRequest','whdcAccountVerify'].includes(form.id))return;
+ event.preventDefault();const button=form.querySelector('button[type="submit"]');button.disabled=true;
+ try{if(form.id==='whdcAccountRequest'){
+  whdcAccountMessage('Sending code…');const result=await whdcReaderApi('request-code',{email:document.getElementById('whdcAccountEmail').value});
+  whdcAccountShow('verify');whdcAccountMessage(result.message||'Check your email for a sign-in code.');
+ }else{
+  whdcAccountMessage('Checking code…');const result=await whdcReaderApi('verify-code',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
+  document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. Saved data is still stored locally until syncing is enabled.');
+ }}catch(error){whdcAccountMessage(error.message);}finally{button.disabled=false;}
+});
 function whdcTransferPanel(){
  const old=location.hostname===WHDC_OLD_HOST;
  return `<section class="card" style="max-width:760px;margin:14px auto;border:1px solid #a9b9b2"><h2>Move your saved data to whdcdevotions.com</h2>
