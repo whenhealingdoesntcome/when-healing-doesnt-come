@@ -45,6 +45,25 @@ async function readerApi(req,env,path){
   }
   return new Response(null,{status:303,headers:{...base,'location':'/api/reader/cookie-attributes-test?step=check','set-cookie':name+'=ok; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120'}});
  }
+ if(path==='/api/reader/cookie-matrix'&&req.method==='GET'){
+  const u=new URL(req.url), step=u.searchParams.get('step')||'start';
+  const names=['whdc_probe_plain','whdc_probe_httponly','whdc_probe_root','whdc_probe_root_httponly'];
+  const attrs=['Path=/api/reader/cookie-matrix; Secure; SameSite=Lax','Path=/api/reader/cookie-matrix; Secure; SameSite=Lax; HttpOnly','Path=/; Secure; SameSite=Lax','Path=/; Secure; SameSite=Lax; HttpOnly'];
+  const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store, private','x-content-type-options':'nosniff'};
+  const page=body=>'<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Cookie Comparison</title></head><body style="font:18px system-ui;padding:1.5rem;max-width:36rem;margin:auto"><h1>WHDC Cookie Comparison</h1>'+body+'<p>This test does not access or modify your account, journals, or backups.</p></body></html>';
+  if(step==='check'){
+    const incoming=req.headers.get('cookie')||'';
+    const results=names.map(name=>incoming.split(';').some(part=>part.trim()===name+'=yes'));
+    const labels=['1. Path limited, no HttpOnly','2. Path limited, HttpOnly','3. Site-wide path, no HttpOnly','4. Site-wide path, HttpOnly'];
+    const html=page('<p>'+results.map((ok,i)=>labels[i]+': <strong>'+(ok?'PASS':'FAIL')+'</strong>').join('</p><p>')+'</p><p>Tell me the four results in order.</p>');
+    const response=new Response(html,{headers});
+    names.forEach((name,i)=>response.headers.append('set-cookie',name+'=; '+attrs[i]+'; Max-Age=0'));
+    return response;
+  }
+  const response=new Response(page('<p>Four temporary cookies have been requested.</p><p><a href="/api/reader/cookie-matrix?step=check">Check four cookies</a></p>'),{headers});
+  names.forEach((name,i)=>response.headers.append('set-cookie',name+'=yes; '+attrs[i]+'; Max-Age=120'));
+  return response;
+ }
  if(path==='/api/reader/session-check'&&req.method==='GET'){
   const cookieHeader=req.headers.get('cookie')||'';
   const token=readerCookie(req);
