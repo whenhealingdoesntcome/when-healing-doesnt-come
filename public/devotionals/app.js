@@ -121,30 +121,24 @@ document.addEventListener('submit',async event=>{
   whdcAccountShow('verify');whdcAccountMessage(result.message||'Check your email for a sign-in code.');
  }else{
   whdcAccountMessage('Checking code…');const result=await whdcReaderApi('verify-code',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
-  document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
+  // A successful code verification is not proof that Safari retained the HttpOnly session cookie.
+  const check=await whdcReaderApi('me');
+  if(!check.signedIn){
+   whdcAccountShow('request');
+   whdcAccountMessage('Your sign-in code was accepted, but this browser did not retain the secure session cookie. Cloud backup cannot be accessed on this device yet. Check that Safari is not in Private Browsing and that cookies are allowed. Your local data is unchanged.');
+  }else{
+   document.getElementById('whdcAccountWho').textContent=check.email;
+   whdcAccountShow('account');
+   whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
+  }
  }}catch(error){whdcAccountMessage(error.message);}finally{button.disabled=false;}
 });
-// Confirm the live server session before using cloud storage. The account panel can
-// otherwise show a stale signed-in state after Safari/PWA cookie changes.
-async function whdcEnsureCloudSession(){
- const account=await whdcReaderApi('me');
- if(account.signedIn){
-  const who=document.getElementById('whdcAccountWho');
-  if(who)who.textContent=account.email;
-  whdcAccountShow('account');
-  return true;
- }
- whdcAccountShow('request');
- whdcAccountMessage('Your sign-in is no longer available in this browser session. Sign in again here before using cloud backup. Your saved data on this device has not been changed.');
- return false;
-}
 // Manual cloud backup: explicit consent; never overwrite existing local sections.
 document.addEventListener('click',async event=>{
  const button=event.target.closest?.('#whdcCloudUpload,#whdcCloudRestore');
  if(!button)return;
  event.preventDefault();button.disabled=true;
  try{
-  if(!await whdcEnsureCloudSession())return;
   if(button.id==='whdcCloudUpload'){
    const current={};for(const key of WHDC_TRANSFER_KEYS){const v=localStorage.getItem(key);if(v!==null)current[key]=v;}
    if(!Object.keys(current).length)throw Error('No saved data was found on this device.');
@@ -165,11 +159,7 @@ document.addEventListener('click',async event=>{
    for(const [key,value] of missing)localStorage.setItem(key,value);
    whdcAccountMessage(`Restored ${missing.length} missing sections. Preserved ${skipped} existing sections. Reload to see restored data.`);
   }
- }catch(error){
-  if(/Sign in to access cloud storage|Session expired/i.test(error.message||'')){
-   try{await whdcEnsureCloudSession();}catch(checkError){whdcAccountMessage(checkError.message||'Unable to verify your account.');}
-  }else whdcAccountMessage(error.message||'Cloud backup failed.');
- }
+ }catch(error){whdcAccountMessage(error.message||'Cloud backup failed.');}
  finally{button.disabled=false;}
 });
 function whdcTransferPanel(){
