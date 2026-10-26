@@ -1,0 +1,22 @@
+/* WHDC shared tablet presentation, 768-1199px.
+   One responsive app; mobile and desktop retain their existing styles. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  main.wrap, .wrap { width: min(calc(100% - 64px), 1040px); }
+  main { padding-top: 28px; }
+  .reading, .reading-content, .devotional-content, .devotional-body {
+    max-width: 76ch;
+    margin-inline: auto;
+  }
+  .reading.card { width: 100%; }
+  .card { padding: clamp(24px, 3vw, 36px); }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .grid > * { min-width: 0; }
+  .hero { max-width: 76ch; }
+  textarea { min-height: 160px; }
+  button, select, input, textarea { max-width: 100%; }
+  .actions { gap: 12px; }
+}
+/* Narrow portrait tablets retain readable one-column cards where needed. */
+@media (min-width: 768px) and (max-width: 850px) {
+  .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+}
