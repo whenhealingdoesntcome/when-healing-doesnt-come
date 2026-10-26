@@ -121,15 +121,13 @@ document.addEventListener('submit',async event=>{
   whdcAccountShow('verify');whdcAccountMessage(result.message||'Check your email for a sign-in code.');
  }else{
   whdcAccountMessage('Checking code…');const result=await whdcReaderApi('verify-code',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
-  // A successful code verification is not proof that Safari retained the HttpOnly session cookie.
-  const check=await whdcReaderApi('me');
-  if(!check.signedIn){
+  const check=await whdcReaderApi('session-check');
+  if(!check.sessionValid){
    whdcAccountShow('request');
-   whdcAccountMessage('Your sign-in code was accepted, but this browser did not retain the secure session cookie. Cloud backup cannot be accessed on this device yet. Check that Safari is not in Private Browsing and that cookies are allowed. Your local data is unchanged.');
+   const detail=!check.readerCookiePresent?'The session cookie was not sent back to WHDC.':!check.tokenFormatValid?'The returned session cookie was invalid.':'The cookie was sent, but the server could not validate the session.';
+   whdcAccountMessage('Your code was accepted, but sign-in verification failed. '+detail+' Please report this message; do not clear your saved data.');
   }else{
-   document.getElementById('whdcAccountWho').textContent=check.email;
-   whdcAccountShow('account');
-   whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
+   document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
   }
  }}catch(error){whdcAccountMessage(error.message);}finally{button.disabled=false;}
 });

@@ -12,6 +12,18 @@ async function readerApi(req,env,path){
  if(!env.DB)return readerReply({error:'Account database unavailable'},503);
  const origin=req.headers.get('origin');if(req.method==='POST'&&origin!==new URL(req.url).origin)return readerReply({error:'Invalid request origin'},403);
  const now=Math.floor(Date.now()/1000);
+ if(path==='/api/reader/session-check'&&req.method==='GET'){
+  const cookieHeader=req.headers.get('cookie')||'';
+  const token=readerCookie(req);
+  const tokenValid=/^[0-9a-f]{64}$/.test(token);
+  let sessionValid=false;
+  if(tokenValid){
+   const found=await env.DB.prepare('SELECT 1 AS valid FROM reader_sessions WHERE token_hash=? AND expires_at>?').bind(await readerDigest(token),now).first();
+   sessionValid=!!found;
+  }
+  // Never return cookie contents, account email, or session token.
+  return readerReply({cookieHeaderPresent:!!cookieHeader,readerCookiePresent:!!token,tokenFormatValid:tokenValid,sessionValid,host:new URL(req.url).hostname});
+ }
  if(path==='/api/reader/me'&&req.method==='GET'){
   const token=readerCookie(req);if(!/^[0-9a-f]{64}$/.test(token))return readerReply({signedIn:false});
   const session=await env.DB.prepare('SELECT a.id,a.email FROM reader_sessions s JOIN reader_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?').bind(await readerDigest(token),now).first();
