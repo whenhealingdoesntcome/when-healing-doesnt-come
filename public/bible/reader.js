@@ -8,7 +8,18 @@ let books=[],book='',chapter=1,paragraphs={},current={},loading=0,downloading=fa
 const store=(k,v)=>{try{localStorage.setItem('whdc-bible-'+k,String(v))}catch{}};
 const recall=k=>{try{return localStorage.getItem('whdc-bible-'+k)}catch{return null}};
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-async function get(url){try{const r=await fetch(url);if(r.ok)return r.json();throw Error('HTTP '+r.status)}catch(e){const r=await caches.match(url);if(r)return r.json();throw e}}
+async function get(url){
+ let failure;
+ try{
+  const r=await fetch(url,{cache:'no-store'});
+  if(!r.ok)throw Error(url+' returned HTTP '+r.status);
+  const type=r.headers.get('content-type')||'';
+  if(!type.includes('json'))throw Error(url+' returned '+(type||'an unknown content type')+' instead of JSON');
+  return await r.json();
+ }catch(e){failure=e}
+ try{if('caches' in window){const cached=await caches.match(url);if(cached)return await cached.json()}}catch(e){}
+ throw failure;
+}
 function setChapterOptions(){const max=Object.keys(current).length;$('chapter').replaceChildren(...Array.from({length:max},(_,i)=>new Option(String(i+1),String(i+1))));chapter=Math.max(1,Math.min(chapter,max));$('chapter').value=String(chapter)}
 function position(target){requestAnimationFrame(()=>{const el=document.getElementById(target);if(el)el.scrollIntoView({block:'start',behavior:'smooth'})})}
 function render(){const article=$('reading');const out=[];let para=[],index=0;const starts=new Set(paragraphs[book]||[]);const chapterAnchors={};let lastPara=0;
@@ -73,5 +84,10 @@ if(mobileBook&&mobileChapter){
  });
  document.addEventListener('keydown',event=>{if(event.key==='Escape'){const panel=$('bibleSearchPanel');if(panel?.classList.contains('whdc-mobile-search-open')){panel.classList.remove('whdc-mobile-search-open');panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');$('mobileSearchToggle')?.focus({preventScroll:true});}}});
 }$('font').value=recall('font')||19;function font(){document.documentElement.style.setProperty('--scripture-size',$('font').value+'px');$('fontValue').textContent=$('font').value;store('font',$('font').value)}$('font').addEventListener('input',font);font();const whdcTheme=()=>{const choice=localStorage.getItem('whdc-appearance');return choice==='dark'||(choice!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches)};const applyBibleTheme=()=>{const dark=whdcTheme();(document.getElementById('whdcBibleRoot')||document.body).classList.toggle('dark',dark);document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#20282b':'#f7f5f0');document.documentElement.style.backgroundColor=dark?'#20282b':'#f7f5f0'};applyBibleTheme();window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',applyBibleTheme);window.addEventListener('pageshow',applyBibleTheme);window.addEventListener('storage',e=>{if(e.key==='whdc-appearance')applyBibleTheme()});$('download').addEventListener('click',download);$('remove').addEventListener('click',remove);
-const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',async e=>{e.preventDefault();await runBibleSearch($('bibleSearch').value);const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs')||params.get('references');if(searchParam){const combinedReferences=searchParam.replace(/\r?\n+/g,'; ');$('bibleSearch').value=combinedReferences;syncClear();await runBibleSearch(combinedReferences)}await status();}catch(e){console.error('Bible initialization failed',e);const reading=$('reading');if(reading)reading.innerHTML='<p class="error">Unable to load Bible navigation. Please connect to the internet once to prepare the reader. <a href="/bible-reader.html">Open standalone Bible Reader</a>.</p>';}}
+const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',async e=>{e.preventDefault();await runBibleSearch($('bibleSearch').value);const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs')||params.get('references');if(searchParam){const combinedReferences=searchParam.replace(/\r?\n+/g,'; ');$('bibleSearch').value=combinedReferences;syncClear();await runBibleSearch(combinedReferences)}await status();}catch(e){console.error('Bible initialization failed',e);const reading=$('reading');if(reading){
+ const paragraph=document.createElement('p');paragraph.className='error';
+ paragraph.append(document.createTextNode('Unable to load Bible navigation: '+(e&&e.message?e.message:String(e))+'. '));
+ const link=document.createElement('a');link.href='/bible-reader.html';link.textContent='Open standalone Bible Reader';paragraph.append(link);
+ reading.replaceChildren(paragraph);
+}}}
 init();})();
