@@ -617,3 +617,6 @@ main.wrap > .home-hero{margin-left:auto;margin-right:auto;width:100%;}
 header .brand .header-logo{width:185px;max-width:100%;height:auto;object-fit:contain}
 @media(max-width:700px){header .brand .header-logo{width:145px;max-width:100%;height:auto}}
 @media(max-width:380px){header .brand .header-logo{width:128px}}
+
+/* Soft cream navigation: top header in light appearance only. */
+body:not(.dark) > #app > header { background:#F3EBDD!important; }
