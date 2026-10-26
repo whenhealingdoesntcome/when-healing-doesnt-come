@@ -161,7 +161,7 @@
     }
     let bar=document.getElementById('whdc-bottom-nav');
     if(!bar){bar=document.createElement('nav');bar.id='whdc-bottom-nav';bar.className='whdc-bottom-nav';bar.setAttribute('aria-label','Quick navigation');document.body.appendChild(bar)}
-    const topicId=(()=>{try{return sessionStorage.getItem('whdc-topic-reading-session-v1')||''}catch{return ''}})();
+    const topicId=(()=>{try{return sessionStorage.getItem('whdc-topic-reading-session-v1')||localStorage.getItem('whdc-topic-reading-session-v1')||''}catch{return ''}})();
     // A Topics reading session always gets the fourth tab, even when a reader
     // previously customized their shortcuts. Do not append a sixth mobile tab.
     const tabs=topicId?['home','today','bible','explore']:selectedTabs();

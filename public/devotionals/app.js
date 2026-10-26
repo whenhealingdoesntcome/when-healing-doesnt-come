@@ -10,10 +10,11 @@ const TOPIC_IMAGE_KEY='whdc-topic-image-v1';
 const TOPIC_IMAGE_NAMES=new Set(['identity','rest','anxiety','peace','loneliness','community','depression','praise','frustration','contentment','fear','joy','grief','hope','suffering','surrender','waiting','healing','purpose','living-with-limits','working-through-chronic-illness']);
 function topicImageHeader(){if(view!=='read'||selectedTopicReading()!==currentId)return '';let topic='';try{const stored=JSON.parse(sessionStorage.getItem(TOPIC_IMAGE_KEY)||'null');if(stored?.id===currentId)topic=stored.topic||'';}catch{}const key=topic.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');return TOPIC_IMAGE_NAMES.has(key)?`<div class="whdc-topic-header"><img src="/images/topic-headers/${key}.webp" alt="" loading="eager" decoding="async"></div>`:'';}
 
-const selectedTopicReading=()=>{try{return sessionStorage.getItem(TOPIC_SESSION_KEY)||''}catch{return ''}};
-function setTopicReading(id){try{sessionStorage.setItem(TOPIC_SESSION_KEY,String(id))}catch{}}
+// Keep Read available when the Bible Reader navigates through a separate page context.
+const selectedTopicReading=()=>{try{return sessionStorage.getItem(TOPIC_SESSION_KEY)||localStorage.getItem(TOPIC_SESSION_KEY)||''}catch{return ''}};
+function setTopicReading(id){try{sessionStorage.setItem(TOPIC_SESSION_KEY,String(id));localStorage.setItem(TOPIC_SESSION_KEY,String(id))}catch{}}
 function syncTopicReadingNav(){window.WHDCNav?.bottomNav(view==='topics'?'explore':view,true)}
-function closeTopicReading(){sessionStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(OPEN_DEVOTIONAL_KEY);currentId=dailyPick(data)?.id;view='explore';history.pushState(null,'','#explore');render();window.scrollTo(0,0)}
+function closeTopicReading(){localStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(OPEN_DEVOTIONAL_KEY);currentId=dailyPick(data)?.id;view='explore';history.pushState(null,'','#explore');render();window.scrollTo(0,0)}
 const devotionalHash=id=>'#devotional/'+encodeURIComponent(id);
 function rememberOpenDevotional(id){sessionStorage.setItem(OPEN_DEVOTIONAL_KEY,String(id));history.pushState(null,'',devotionalHash(id))}
 async function shareDevotional(d){
