@@ -1357,58 +1357,94 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
  };
  const status=s=>{lastMessage=s;ensureControls();};
  const readConflicts=()=>{try{const x=JSON.parse(localStorage.getItem(CONFLICTS)||'[]');return Array.isArray(x)?x:[]}catch{return []}};
+ const journalKey='whdc-private-journal-v1';
+ const parseJournal=value=>{try{const items=JSON.parse(value);return Array.isArray(items)&&items.every(x=>x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.id==='string')&&new Set(items.map(x=>x.id)).size===items.length?items:null}catch{return null}};
+ const sameEntry=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+ const conflictItems=(entry)=>{
+  if(entry.key!==journalKey)return null;
+  const local=parseJournal(entry.local),remote=parseJournal(entry.remote);
+  if(!local||!remote)return null;
+  const l=new Map(local.map(x=>[x.id,x])),r=new Map(remote.map(x=>[x.id,x]));
+  return [...new Set([...l.keys(),...r.keys()])].filter(id=>l.has(id)&&r.has(id)&&!sameEntry(l.get(id),r.get(id))).map(id=>({id,local:l.get(id),remote:r.get(id)}));
+ };
  const showConflicts=()=>{
   const panel=document.getElementById('whdcAccountInline');if(!panel)return;
   let holder=document.getElementById('whdcSyncConflictReview');
   if(!holder){holder=document.createElement('div');holder.id='whdcSyncConflictReview';holder.style.cssText='margin-top:12px';panel.append(holder);}
   const entries=readConflicts();holder.replaceChildren();if(!entries.length)return;
   const heading=document.createElement('h4');heading.textContent='Saved-data conflicts ('+entries.length+')';holder.append(heading);
-  const explanation=document.createElement('p');explanation.textContent='Both versions are preserved here on this device. Review before choosing. Choosing a version updates the cloud or this device, but does not delete the conflict archive.';holder.append(explanation);
-  entries.forEach((entry,index)=>{
-   const card=document.createElement('section');card.style.cssText='border:1px solid currentColor;border-radius:8px;padding:12px;margin:10px 0';
-   const name=document.createElement('strong');name.textContent='Saved section: '+entry.key;card.append(name);
-   const columns=document.createElement('div');columns.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0';
-   for(const [label,value] of [['This device (at detection)',entry.local],['Cloud (at detection)',entry.remote]]){
-    const block=document.createElement('div');const title=document.createElement('div');title.textContent=label;title.style.fontWeight='bold';
-    const preview=document.createElement('pre');preview.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:170px;overflow:auto;font-size:12px';
-    preview.textContent=value===null?'(no saved data)':value.length>5000?value.slice(0,5000)+'…':value;
-    block.append(title,preview);columns.append(block);
-   }
-   card.append(columns);
-   const note=document.createElement('p');note.className='muted small';note.textContent='These are saved-section snapshots, not individual reflection previews. If this section contains multiple entries, review carefully before replacing it.';card.append(note);
-   for(const [label,choice] of [['Keep this device version','local'],['Keep cloud version','cloud']]){
-    const btn=document.createElement('button');btn.type='button';btn.className='btn';btn.textContent=label;btn.style.marginRight='8px';
-    btn.addEventListener('click',async()=>{
-     if(!confirm('Replace the '+(choice==='local'?'cloud':'local')+' copy of this saved section? A conflict archive remains on this device.'))return;
-     btn.disabled=true;
-     try{
-      // Re-read current cloud and local state: never resolve from stale snapshots.
-      const res=await fetch('/api/reader/sync',{credentials:'same-origin',cache:'no-store'});
-      if(!res.ok)throw Error('Could not verify current cloud data');
-      const cloud=(await res.json()).items?.[entry.key];
-      const liveCloud=cloud?.value??null;
-      const liveLocal=localStorage.getItem(entry.key);
-      if(liveCloud!==entry.remote||liveLocal!==entry.local)throw Error('Data changed since conflict detection. Sync again before resolving.');
-      let revision=cloud?.revision||0;
-      if(choice==='local'){
-       if(liveLocal===null)throw Error('Cannot upload a deleted section safely yet');
-       const uploaded=await put(entry.key,liveLocal,revision);
-       if(!uploaded)throw Error('Cloud changed while resolving. Sync again.');
-       revision=uploaded.revision;
-      }else{
-       if(liveCloud===null)localStorage.removeItem(entry.key);else localStorage.setItem(entry.key,liveCloud);
-      }
-      const meta=read();meta[entry.key]={value:choice==='local'?liveLocal:liveCloud,revision};save(meta);
-      const remaining=readConflicts();const at=remaining.findIndex(x=>x.key===entry.key&&x.local===entry.local&&x.remote===entry.remote);
-      if(at>=0){remaining.splice(at,1);localStorage.setItem(CONFLICTS,JSON.stringify(remaining));}
-      status('Conflict resolved. Review the saved content and sync the other device.');showConflicts();
-     }catch(err){status('Conflict not resolved: '+err.message);}finally{btn.disabled=false;}
-    });card.append(btn);
+  const explanation=document.createElement('p');explanation.textContent='Review both saved versions before choosing. The original conflict snapshots remain stored on this device until a resolution succeeds.';holder.append(explanation);
+  entries.forEach(entry=>{
+   const card=document.createElement('section');card.style.cssText='border:1px solid currentColor;border-radius:8px;padding:14px;margin:12px 0';
+   const name=document.createElement('strong');name.textContent=entry.key===journalKey?'Journal reflections and prayers':'Saved section: '+entry.key;card.append(name);
+   const items=conflictItems(entry);
+   if(items&&items.length){
+    const intro=document.createElement('p');intro.textContent='Choose a resolution for each differing journal entry. Other journal entries will be preserved.';card.append(intro);
+    items.forEach(item=>{
+     const section=document.createElement('div');section.style.cssText='border-top:1px solid #999;padding:12px 0';
+     const title=document.createElement('h5');title.textContent=item.local.title||item.remote.title||'Untitled reflection';section.append(title);
+     const columns=document.createElement('div');columns.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px';
+     for(const [label,version] of [['This device',item.local],['Cloud',item.remote]]){
+      const block=document.createElement('div');const h=document.createElement('strong');h.textContent=label;
+      const body=document.createElement('p');body.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto';body.textContent=version.text||'(Empty reflection)';
+      const date=document.createElement('small');date.textContent=version.updatedAt?'Updated: '+new Date(version.updatedAt).toLocaleString():'';
+      block.append(h,body,date);columns.append(block);
+     }
+     section.append(columns);
+     for(const [label,choice] of [['Keep This Device','local'],['Keep Cloud','cloud'],['Combine Both','both']]){
+      const btn=document.createElement('button');btn.type='button';btn.className='btn';btn.textContent=label;btn.style.cssText='margin:8px 8px 0 0';
+      btn.onclick=async()=>{
+       if(!confirm(choice==='both'?'Combine both versions of this reflection, keeping each passage?':'Use '+label+' for this reflection on both devices?'))return;
+       btn.disabled=true;
+       try{
+        const response=await fetch('/api/reader/sync',{credentials:'same-origin',cache:'no-store'});
+        if(!response.ok)throw Error('Could not check the latest cloud data');
+        const cloud=(await response.json()).items?.[journalKey];
+        const localRaw=localStorage.getItem(journalKey),remoteRaw=cloud?.value??null;
+        const local=parseJournal(localRaw),remote=parseJournal(remoteRaw);
+        if(!local||!remote)throw Error('Journal format changed. No data was replaced.');
+        const lm=new Map(local.map(x=>[x.id,x])),rm=new Map(remote.map(x=>[x.id,x]));
+        if(!sameEntry(lm.get(item.id),item.local)||!sameEntry(rm.get(item.id),item.remote))throw Error('This reflection changed since the conflict was saved. Review the latest versions first.');
+        // Reconcile unrelated entries using the previous common baseline when available.
+        const base=parseJournal(read()[journalKey]?.value);
+        const bm=new Map((base||[]).map(x=>[x.id,x]));
+        const result=[];
+        for(const id of new Set([...lm.keys(),...rm.keys(),...bm.keys()])){
+         if(id===item.id){
+          const chosen=choice==='local'?lm.get(id):choice==='cloud'?rm.get(id):{
+           ...lm.get(id),text:[lm.get(id).text,rm.get(id).text].filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).join('\n\n'),updatedAt:new Date().toISOString()
+          };
+          result.push(chosen);continue;
+         }
+         const l=lm.get(id),r=rm.get(id),baseEntry=bm.get(id);
+         if(sameEntry(l,r)){if(l!==undefined)result.push(l);continue;}
+         if(l===undefined&&baseEntry===undefined){result.push(r);continue;}
+         if(r===undefined&&baseEntry===undefined){result.push(l);continue;}
+         if(base&&sameEntry(l,baseEntry)){if(r!==undefined)result.push(r);continue;}
+         if(base&&sameEntry(r,baseEntry)){if(l!==undefined)result.push(l);continue;}
+         throw Error('Another journal entry also has changes on both devices. Resolve it separately before saving this one.');
+        }
+        const merged=JSON.stringify(result);
+        // Upload first; a revision mismatch aborts before local storage changes.
+        const uploaded=await put(journalKey,merged,cloud?.revision||0);
+        if(!uploaded)throw Error('Cloud changed while saving. Please try again.');
+        localStorage.setItem(journalKey,merged);
+        const meta=read();meta[journalKey]={value:merged,revision:uploaded.revision};save(meta);
+        const remaining=readConflicts().filter(x=>!(x.key===entry.key&&x.local===entry.local&&x.remote===entry.remote));
+        localStorage.setItem(CONFLICTS,JSON.stringify(remaining));
+        status('Reflection saved on this device and in the cloud. Both original versions were preserved until the save completed.');
+        showConflicts();
+       }catch(error){status('Reflection not changed: '+error.message)}finally{btn.disabled=false}
+      };section.append(btn);
+     }
+     card.append(section);
+    });
+   }else{
+    const note=document.createElement('p');note.textContent=entry.key===journalKey?'Journal snapshots cannot be safely matched by entry ID. No data has been changed.':'This section has differing saved versions. Its original snapshots are preserved. Automatic resolution is not available for this section.';card.append(note);
    }
    holder.append(card);
   });
  };
-
  const archive=(key,local,remote)=>{
   let entries=[];try{entries=JSON.parse(localStorage.getItem(CONFLICTS)||'[]')}catch{}
   if(!Array.isArray(entries))entries=[];
