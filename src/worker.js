@@ -1,3 +1,56 @@
+// Optional reader accounts: enabled only on whdcdevotions.com.
+const readerAllowed = req => new URL(req.url).hostname === 'whdcdevotions.com';
+const readerHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
+const readerReply=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{...readerHeaders,...headers}});
+const readerCookie=req=>{const m=(req.headers.get('cookie')||'').match(/(?:^|;\s*)whdc_reader_session=([^;]+)/);return m?.[1]||''};
+const readerHex=bytes=>Array.from(new Uint8Array(bytes),x=>x.toString(16).padStart(2,'0')).join('');
+const readerDigest=async value=>readerHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
+const readerRandom=()=>readerHex(crypto.getRandomValues(new Uint8Array(32)));
+const readerSessionCookie=(value,maxAge)=>`whdc_reader_session=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+async function readerApi(req,env,path){
+ if(!readerAllowed(req))return readerReply({error:'Not available on this domain'},404);
+ if(!env.DB)return readerReply({error:'Account database unavailable'},503);
+ const origin=req.headers.get('origin');if(req.method==='POST'&&origin!==new URL(req.url).origin)return readerReply({error:'Invalid request origin'},403);
+ const now=Math.floor(Date.now()/1000);
+ if(path==='/api/reader/me'&&req.method==='GET'){
+  const token=readerCookie(req);if(!/^[0-9a-f]{64}$/.test(token))return readerReply({signedIn:false});
+  const session=await env.DB.prepare('SELECT a.id,a.email FROM reader_sessions s JOIN reader_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?').bind(await readerDigest(token),now).first();
+  return readerReply(session?{signedIn:true,email:session.email}:{signedIn:false});
+ }
+ if(path==='/api/reader/logout'&&req.method==='POST'){
+  const token=readerCookie(req);if(/^[0-9a-f]{64}$/.test(token))await env.DB.prepare('DELETE FROM reader_sessions WHERE token_hash=?').bind(await readerDigest(token)).run();
+  return readerReply({ok:true},200,{'set-cookie':readerSessionCookie('',0)});
+ }
+ if(path==='/api/reader/request-code'&&req.method==='POST'){
+  const body=await req.json().catch(()=>({}));const email=String(body.email||'').trim().toLowerCase();
+  if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return readerReply({error:'Enter a valid email address'},400);
+  if(!env.RESEND_API_KEY||!env.READER_EMAIL_FROM)return readerReply({error:'Email service is not configured'},503);
+  const ip=req.headers.get('cf-connecting-ip')||'unknown';const ipHash=await readerDigest(ip);const emailHash=await readerDigest(email);
+  const recent=await env.DB.prepare('SELECT COUNT(*) AS n FROM reader_email_challenges WHERE created_at>? AND (email_hash=? OR ip_hash=?)').bind(now-3600,emailHash,ipHash).first();
+  if((recent?.n||0)>=5)return readerReply({error:'Too many requests. Please try again later.'},429);
+  const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,'0');const salt=readerRandom();const codeHash=await readerDigest(salt+':'+code);
+  const id=crypto.randomUUID();
+  await env.DB.prepare('INSERT INTO reader_email_challenges (id,email,email_hash,ip_hash,salt,code_hash,created_at,expires_at,attempts) VALUES (?,?,?,?,?,?,?,?,0)').bind(id,email,emailHash,ipHash,salt,codeHash,now,now+600).run();
+  const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{authorization:'Bearer '+env.RESEND_API_KEY,'content-type':'application/json'},body:JSON.stringify({from:env.READER_EMAIL_FROM,to:[email],subject:'Your WHDC sign-in code',text:`Your When Healing Doesn’t Come sign-in code is ${code}. It expires in 10 minutes. If you didn't request it, you can ignore this email.`})}).catch(()=>null);
+  if(!response?.ok){await env.DB.prepare('DELETE FROM reader_email_challenges WHERE id=?').bind(id).run();return readerReply({error:'Could not send the code. Please try again later.'},502)}
+  return readerReply({ok:true,message:'Check your email for a six-digit code.'});
+ }
+ if(path==='/api/reader/verify-code'&&req.method==='POST'){
+  const body=await req.json().catch(()=>({}));const email=String(body.email||'').trim().toLowerCase(),code=String(body.code||'').trim();
+  if(email.length>254||!/^[0-9]{6}$/.test(code))return readerReply({error:'Invalid or expired code'},400);
+  const challenge=await env.DB.prepare('SELECT * FROM reader_email_challenges WHERE email=? AND expires_at>? AND attempts<5 ORDER BY created_at DESC LIMIT 1').bind(email,now).first();
+  if(!challenge)return readerReply({error:'Invalid or expired code'},400);
+  await env.DB.prepare('UPDATE reader_email_challenges SET attempts=attempts+1 WHERE id=?').bind(challenge.id).run();
+  if(await readerDigest(challenge.salt+':'+code)!==challenge.code_hash)return readerReply({error:'Invalid or expired code'},400);
+  await env.DB.prepare('DELETE FROM reader_email_challenges WHERE email=?').bind(email).run();
+  const id=crypto.randomUUID();await env.DB.prepare('INSERT INTO reader_accounts (id,email,created_at) VALUES (?,?,?) ON CONFLICT(email) DO NOTHING').bind(id,email,now).run();
+  const account=await env.DB.prepare('SELECT id FROM reader_accounts WHERE email=?').bind(email).first();
+  const token=readerRandom();await env.DB.prepare('INSERT INTO reader_sessions (token_hash,account_id,created_at,expires_at) VALUES (?,?,?,?)').bind(await readerDigest(token),account.id,now,now+30*86400).run();
+  return readerReply({ok:true,email},200,{'set-cookie':readerSessionCookie(token,30*86400)});
+ }
+ return readerReply({error:'Not found'},404);
+}
+
 import { adminHeaderForPath } from './admin/shared-header.js';
 import { SHARED_ADMIN_STYLES } from './admin/shared-styles.js';
 const ANNOUNCEMENT_ADMIN_JS="(()=>{\n const form=document.getElementById('announcementForm');if(!form)return;\n const title=document.getElementById('announcementTitle'),body=document.getElementById('announcementBody'),visible=document.getElementById('announcementVisible'),status=document.getElementById('announcementStatus');\n const formatSelection=(marker)=>{const start=body.selectionStart,end=body.selectionEnd,old=body.value,selected=old.slice(start,end);if(!selected){body.focus();return;}const replacement=marker+selected+marker;if(old.length+marker.length*2>4000){status.textContent='Announcement exceeds 4,000 characters.';return;}body.value=old.slice(0,start)+replacement+old.slice(end);body.focus();body.setSelectionRange(start+marker.length,end+marker.length);body.dispatchEvent(new Event('input',{bubbles:true}));};\n for(const [id,marker] of [['announcementBold','**'],['announcementItalic','*']]){const btn=document.getElementById(id);if(btn)btn.addEventListener('click',()=>formatSelection(marker));}\n body.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&!e.altKey&&['b','i'].includes(e.key.toLowerCase())){e.preventDefault();formatSelection(e.key.toLowerCase()==='b'?'**':'*');}});\n const summary=document.getElementById('announcementSummary'),publish=document.getElementById('announcementPublish'),save=document.getElementById('announcementSave'),hide=document.getElementById('announcementHide');\n async function request(opts){const response=await fetch('/api/admin/announcement',{credentials:'same-origin',cache:'no-store',...opts});const result=await response.json();if(!response.ok)throw Error(result.error||'Request failed');return result;}\n function updateSummary(){summary.textContent=(title.value.trim()||\"What's New\")+' \u00b7 '+(visible.checked?'Visible on Home':'Hidden from Home');}\n async function send(mode){const button=mode==='publish'?publish:mode==='hide'?hide:save;button.disabled=true;status.textContent='Saving\u2026';try{const result=await request({method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:title.value,body:body.value,visible:mode==='hide'?false:visible.checked,publishNew:mode==='publish'})});visible.checked=!!result.visible;updateSummary();status.textContent=mode==='publish'?'New announcement published. Readers who have not seen it will be directed to Home.':mode==='hide'?'Announcement hidden. Welcome is at the top of Home.':'Changes saved. Existing readers will not be redirected again.';}catch(e){status.textContent='Save failed: '+e.message;}finally{button.disabled=false;}}\n (async()=>{try{const item=await request();title.value=item.title||\"What's New\";body.value=item.body||'';visible.checked=!!item.visible;updateSummary();status.textContent='Current saved announcement loaded.';}catch(e){status.textContent='Could not load announcement: '+e.message;}})();\n title.addEventListener('input',updateSummary);visible.addEventListener('change',updateSummary);\n form.addEventListener('submit',e=>{e.preventDefault();send('save')});\n publish.addEventListener('click',()=>{if(!form.reportValidity())return;if(!confirm('Publish this as a NEW announcement and direct readers to Home once?'))return;visible.checked=true;send('publish')});\n hide.addEventListener('click',()=>send('hide'));\n})();";
@@ -948,6 +1001,7 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 
 export default {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
+  if(path.startsWith('/api/reader/')){try{return await readerApi(request,env,path)}catch(error){console.error('Reader account error',error);return readerReply({error:'Account service unavailable'},503)}}
 
   if(path==='/api/push/public-key'&&request.method==='GET')return json({publicKey:env.VAPID_PUBLIC_KEY||''});
   if(path==='/api/push/preferences'&&request.method==='GET'){
