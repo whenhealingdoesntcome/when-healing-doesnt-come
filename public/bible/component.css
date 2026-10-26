@@ -431,3 +431,35 @@ body:has(#whdcBibleRoot) #whdcStudyToggle{display:none!important}
   visibility: visible !important; opacity: 1 !important; flex: none !important;
  }
 }
+
+/* 2026-10-26: compact centered native Bible toolbar on desktop and iPad. */
+@media (min-width:768px) {
+ #whdcBibleRoot .mobile-bible-toolbar {
+  width:min(720px, calc(100% - 32px))!important;
+  max-width:720px!important;
+  margin:12px auto 18px!important;
+  padding:10px 14px!important;
+  grid-template-columns:minmax(0,1fr) minmax(70px,105px) repeat(3,44px)!important;
+  gap:8px!important;
+  border:1px solid #c4d0c9!important;
+  border-radius:12px!important;
+  justify-content:center!important;
+ }
+ #whdcBibleRoot .mobile-bible-toolbar .mobile-study-guide {
+  display:inline-flex!important;visibility:visible!important;opacity:1!important;
+  grid-column:auto!important;width:44px!important;min-width:44px!important;
+  height:42px!important;border:0!important;box-shadow:none!important;background:transparent!important;
+ }
+}
+/* iPad standalone app: keep toolbar below the system status bar. */
+@media (min-width:768px) and (max-width:1199px) {
+ html.whdc-tablet-device body:has(#whdcBibleRoot) #whdcBibleMount {
+  padding-top:calc(env(safe-area-inset-top,0px) + 20px)!important;
+ }
+ html.whdc-tablet-device body:has(#whdcBibleRoot) main:has(#whdcBibleMount) {
+  padding-top:calc(env(safe-area-inset-top,0px) + 12px)!important;
+ }
+ html.whdc-tablet-device #whdcBibleRoot .mobile-bible-toolbar {
+  top:calc(env(safe-area-inset-top,0px) + 12px)!important;
+ }
+}

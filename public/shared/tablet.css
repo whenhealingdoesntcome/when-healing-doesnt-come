@@ -4,7 +4,6 @@
  html.whdc-tablet-device body:has(#app) .site-header,body:has(#app) header.whdc-header,
  html.whdc-tablet-device body:has(#app) #app > header,body:has(#app) .whdc-header-top,
  html.whdc-tablet-device body:has(#app) #whdcStudyToggle,
- html.whdc-tablet-device body:has(#app) .mobile-study-guide,
  html.whdc-tablet-device body:has(#app) .study-fab {display:none!important}
  html.whdc-tablet-device body:has(#app) {padding-top:0!important}
  html.whdc-tablet-device body:has(#app) #whdc-bottom-nav.whdc-bottom-nav {display:grid!important}
