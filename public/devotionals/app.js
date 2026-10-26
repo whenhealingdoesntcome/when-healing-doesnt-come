@@ -1353,14 +1353,151 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   const message=wrap.querySelector('#whdcSyncStatus');if(message)message.textContent=lastMessage;
   const last=wrap.querySelector('#whdcSyncLastSuccessful');if(last)last.textContent=lastSuccessfulSync?'Last successful sync: '+lastSuccessfulSync.toLocaleString():'Not yet synced in this session';
   const button=wrap.querySelector('#whdcSyncNowButton');if(button){button.disabled=running;button.textContent=running?'Syncing…':'Sync Now';}
+  showConflicts();
  };
  const status=s=>{lastMessage=s;ensureControls();};
+ const readConflicts=()=>{try{const x=JSON.parse(localStorage.getItem(CONFLICTS)||'[]');return Array.isArray(x)?x:[]}catch{return []}};
+ const showConflicts=()=>{
+  const panel=document.getElementById('whdcAccountInline');if(!panel)return;
+  let holder=document.getElementById('whdcSyncConflictReview');
+  if(!holder){holder=document.createElement('div');holder.id='whdcSyncConflictReview';holder.style.cssText='margin-top:12px';panel.append(holder);}
+  const entries=readConflicts();holder.replaceChildren();if(!entries.length)return;
+  const heading=document.createElement('h4');heading.textContent='Saved-data conflicts ('+entries.length+')';holder.append(heading);
+  const explanation=document.createElement('p');explanation.textContent='Both versions are preserved here on this device. Review before choosing. Choosing a version updates the cloud or this device, but does not delete the conflict archive.';holder.append(explanation);
+  entries.forEach((entry,index)=>{
+   const card=document.createElement('section');card.style.cssText='border:1px solid currentColor;border-radius:8px;padding:12px;margin:10px 0';
+   const name=document.createElement('strong');name.textContent='Saved section: '+entry.key;card.append(name);
+   const columns=document.createElement('div');columns.style.cssText='display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin:8px 0';
+   for(const [label,value] of [['This device (at detection)',entry.local],['Cloud (at detection)',entry.remote]]){
+    const block=document.createElement('div');const title=document.createElement('div');title.textContent=label;title.style.fontWeight='bold';
+    const preview=document.createElement('pre');preview.style.cssText='white-space:pre-wrap;overflow-wrap:anywhere;max-height:170px;overflow:auto;font-size:12px';
+    preview.textContent=value===null?'(no saved data)':value.length>5000?value.slice(0,5000)+'…':value;
+    block.append(title,preview);columns.append(block);
+   }
+   card.append(columns);
+   const note=document.createElement('p');note.className='muted small';note.textContent='These are saved-section snapshots, not individual reflection previews. If this section contains multiple entries, review carefully before replacing it.';card.append(note);
+   for(const [label,choice] of [['Keep this device version','local'],['Keep cloud version','cloud']]){
+    const btn=document.createElement('button');btn.type='button';btn.className='btn';btn.textContent=label;btn.style.marginRight='8px';
+    btn.addEventListener('click',async()=>{
+     if(!confirm('Replace the '+(choice==='local'?'cloud':'local')+' copy of this saved section? A conflict archive remains on this device.'))return;
+     btn.disabled=true;
+     try{
+      // Re-read current cloud and local state: never resolve from stale snapshots.
+      const res=await fetch('/api/reader/sync',{credentials:'same-origin',cache:'no-store'});
+      if(!res.ok)throw Error('Could not verify current cloud data');
+      const cloud=(await res.json()).items?.[entry.key];
+      const liveCloud=cloud?.value??null;
+      const liveLocal=localStorage.getItem(entry.key);
+      if(liveCloud!==entry.remote||liveLocal!==entry.local)throw Error('Data changed since conflict detection. Sync again before resolving.');
+      let revision=cloud?.revision||0;
+      if(choice==='local'){
+       if(liveLocal===null)throw Error('Cannot upload a deleted section safely yet');
+       const uploaded=await put(entry.key,liveLocal,revision);
+       if(!uploaded)throw Error('Cloud changed while resolving. Sync again.');
+       revision=uploaded.revision;
+      }else{
+       if(liveCloud===null)localStorage.removeItem(entry.key);else localStorage.setItem(entry.key,liveCloud);
+      }
+      const meta=read();meta[entry.key]={value:choice==='local'?liveLocal:liveCloud,revision};save(meta);
+      const remaining=readConflicts();const at=remaining.findIndex(x=>x.key===entry.key&&x.local===entry.local&&x.remote===entry.remote);
+      if(at>=0){remaining.splice(at,1);localStorage.setItem(CONFLICTS,JSON.stringify(remaining));}
+      status('Conflict resolved. Review the saved content and sync the other device.');showConflicts();
+     }catch(err){status('Conflict not resolved: '+err.message);}finally{btn.disabled=false;}
+    });card.append(btn);
+   }
+   holder.append(card);
+  });
+ };
+
  const archive=(key,local,remote)=>{
   let entries=[];try{entries=JSON.parse(localStorage.getItem(CONFLICTS)||'[]')}catch{}
   if(!Array.isArray(entries))entries=[];
   if(entries.some(x=>x.key===key&&x.local===local&&x.remote===remote))return;
   entries.push({key,local,remote,detectedAt:new Date().toISOString()});
   localStorage.setItem(CONFLICTS,JSON.stringify(entries));
+ };
+ // Three-way merge. Never infer a deletion from a first-time connection.
+ const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+ const absent=Symbol('absent');
+ function reconcile(base,local,remote,initial=false){
+  if(same(local,remote))return {ok:true,value:local};
+  if(!initial){
+   if(same(local,base))return {ok:true,value:remote};
+   if(same(remote,base))return {ok:true,value:local};
+  }
+  const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
+  if(object(local)&&object(remote)&&(initial||object(base))){
+   const result={};
+   for(const k of new Set([...Object.keys(base&&object(base)?base:{}),...Object.keys(local),...Object.keys(remote)])){
+    const b=base&&Object.prototype.hasOwnProperty.call(base,k)?base[k]:absent;
+    const l=Object.prototype.hasOwnProperty.call(local,k)?local[k]:absent;
+    const r=Object.prototype.hasOwnProperty.call(remote,k)?remote[k]:absent;
+    if(l===absent&&r===absent)continue;
+    if(initial){
+     if(l===absent){result[k]=r;continue;}
+     if(r===absent){result[k]=l;continue;}
+     if(!same(l,r))return {ok:false};
+     result[k]=l;continue;
+    }
+    if(l===absent&&b===absent){result[k]=r;continue;}
+    if(r===absent&&b===absent){result[k]=l;continue;}
+    if(l===absent){if(same(r,b))continue;return {ok:false};}
+    if(r===absent){if(same(l,b))continue;return {ok:false};}
+    const child=reconcile(b===absent?undefined:b,l,r,false);
+    if(!child.ok)return child;
+    result[k]=child.value;
+   }
+   return {ok:true,value:result};
+  }
+  if(Array.isArray(local)&&Array.isArray(remote)&&(initial||Array.isArray(base))){
+   // Stable IDs allow safe item-level merging and deletion propagation.
+   const keyed=a=>a.every(x=>object(x)&&(typeof x.id==='string'||typeof x.id==='number')&&String(x.id).length>0)&&new Set(a.map(x=>String(x.id))).size===a.length;
+   if(keyed(local)&&keyed(remote)&&(initial||keyed(base))){
+    const bm=new Map((initial?[]:base).map(x=>[String(x.id),x]));
+    const lm=new Map(local.map(x=>[String(x.id),x]));
+    const rm=new Map(remote.map(x=>[String(x.id),x]));
+    const result=[];
+    for(const id of new Set([...bm.keys(),...lm.keys(),...rm.keys()])){
+     const b=bm.get(id),l=lm.get(id),r=rm.get(id);
+     if(l===undefined&&r===undefined)continue;
+     if(initial){if(l!==undefined&&r!==undefined&&!same(l,r))return {ok:false};result.push(l===undefined?r:l);continue;}
+     if(l===undefined){if(b===undefined)result.push(r);else if(!same(r,b))return {ok:false};continue;}
+     if(r===undefined){if(b===undefined)result.push(l);else if(!same(l,b))return {ok:false};continue;}
+     const child=reconcile(b,l,r,false);if(!child.ok)return child;result.push(child.value);
+    }
+    return {ok:true,value:result};
+   }
+   // Primitive arrays are treated as sets. With a common base, an explicit
+   // removal on either device wins over an unchanged copy on the other.
+   // Concurrent additions from either device are retained.
+   const primitive=a=>a.every(x=>x===null||['string','number','boolean'].includes(typeof x));
+   const unique=a=>new Set(a.map(x=>JSON.stringify(x))).size===a.length;
+   if(primitive(local)&&primitive(remote)&&(initial||primitive(base))&&
+      unique(local)&&unique(remote)&&(initial||unique(base))){
+    if(initial){
+     const out=[...local];for(const item of remote)if(!out.some(x=>same(x,item)))out.push(item);
+     return {ok:true,value:out};
+    }
+    const exists=(a,x)=>a.some(y=>same(x,y));
+    const out=[];
+    // Preserve baseline items only if neither device removed them.
+    for(const item of base)if(exists(local,item)&&exists(remote,item))out.push(item);
+    // Keep newly added items from either side. A removed baseline item
+    // must not be reintroduced just because another device retained it.
+    for(const arr of [local,remote])for(const item of arr){
+     if(!exists(base,item)&&!exists(out,item))out.push(item);
+    }
+    return {ok:true,value:out};
+   }
+  }
+  return {ok:false};
+ }
+ const mergeStrings=(base,local,remote,initial=false)=>{
+  try{
+   const l=JSON.parse(local),r=JSON.parse(remote),b=base===null?undefined:JSON.parse(base);
+   const result=reconcile(b,l,r,initial);
+   return result.ok?JSON.stringify(result.value):null;
+  }catch{return null;}
  };
  async function tick(){
   if(running)return;
@@ -1377,7 +1514,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     const rev=cloud?.revision||0,cloudValue=cloud?.value??null;
     // First connection: preserve both independently created versions.
     if(!previous){
-     if(local!==null&&cloudValue!==null&&local!==cloudValue){archive(key,local,cloudValue);conflicts++;continue;}
+     if(local!==null&&cloudValue!==null&&local!==cloudValue){
+      const merged=mergeStrings(null,local,cloudValue,true);
+      if(merged===null){archive(key,local,cloudValue);conflicts++;continue;}
+      const uploaded=await put(key,merged,rev);
+      if(!uploaded){archive(key,local,cloudValue);conflicts++;continue;}
+      if(local!==merged)localStorage.setItem(key,merged);
+      meta[key]={value:merged,revision:uploaded.revision};updates++;continue;
+     }
      if(local===null&&cloudValue!==null){localStorage.setItem(key,cloudValue);updates++;}
      if(local!==null&&cloudValue===null){
       const uploaded=await put(key,local,0);if(!uploaded){conflicts++;continue;}
@@ -1388,6 +1532,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     const localChanged=local!==previous.value,remoteChanged=rev!==previous.revision;
     if(localChanged&&remoteChanged){
      if(local===cloudValue){meta[key]={value:local,revision:rev};continue;}
+     const merged=local!==null&&cloudValue!==null?mergeStrings(previous.value,local,cloudValue):null;
+     if(merged!==null){
+      const uploaded=await put(key,merged,rev);
+      if(uploaded){if(local!==merged)localStorage.setItem(key,merged);meta[key]={value:merged,revision:uploaded.revision};updates++;continue;}
+     }
      archive(key,local,cloudValue);conflicts++;continue;
     }
     if(remoteChanged){
@@ -1405,7 +1554,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
    }
    save(meta);
    if(!conflicts)lastSuccessfulSync=new Date();
-   status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Contact support before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
+   status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Review the saved-data conflict below before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
   }catch(e){status('Sync waiting: '+e.message);}finally{running=false;ensureControls();}
  }
  async function put(key,value,baseRevision){
