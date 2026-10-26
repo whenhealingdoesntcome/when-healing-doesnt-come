@@ -112,12 +112,66 @@ function decorate(p,start,end,kind,color){let pos=0;const nodes=textNodes(p);for
 function restore(){if(restoring)return;const ps=paragraphs();if(!ps.length)return;const k=key(),saved=read()[k]||[];if(loadedKey===k&&root.querySelector('.whdc-study-mark'))return;restoring=true;loadedKey=k;for(const a of saved){const p=ps[a.p];if(p)decorate(p,a.start,a.end,a.kind,a.color)}restoring=false}
 function add(kind,color){if(!active){bar.querySelector('#whdcStudyNotice').textContent='Select text first.';return}const all=read(),k=key(),items=all[k]||[];const ids=[];for(const seg of active){const id=Date.now()+'-'+Math.random();ids.push(id);items.push({...seg,kind,color,id})}all[k]=items;if(!write(all)){bar.querySelector('#whdcStudyNotice').textContent='Unable to save markings on this device.';return}undoHistory.push({type:'add',key:k,ids});updateUndo();getSelection()?.removeAllRanges();active=null;clearVerseSelection();repaint();bar.querySelector('#whdcStudyNotice').textContent='Study marking saved on this device.'}
 function erase(){if(!active)return;const all=read(),k=key();const removed=(all[k]||[]).filter(a=>active.some(s=>s.p===a.p&&s.start<a.end&&s.end>a.start));if(!removed.length)return;all[k]=(all[k]||[]).filter(a=>!removed.includes(a));if(!write(all))return;undoHistory.push({type:'erase',key:k,removed});updateUndo();repaint();active=null;clearVerseSelection();getSelection()?.removeAllRanges();bar.querySelector('#whdcStudyNotice').textContent='Marking removed.'}
-function saveFavorite(){if(!active)return;const ps=paragraphs(),chosen=[];for(const seg of active){const p=ps[seg.p];if(!p)continue;const marks=[...p.querySelectorAll('sup.verse')];const r=document.createRange();const nodes=textNodes(p);let pos=0;for(const t of nodes){const a=pos,b=pos+t.length;pos=b;if(seg.end<=a||seg.start>=b)continue;try{r.setStart(t,Math.max(0,seg.start-a));r.setEnd(t,Math.min(t.length,seg.end-a))}catch{}}for(const m of marks){const verse=document.createRange();verse.setStartAfter(m);const next=m.nextElementSibling?.matches('sup.verse')?m.nextElementSibling:null;if(next)verse.setEndBefore(next);else verse.setEnd(p,p.childNodes.length);if(r.intersectsNode(m)||r.compareBoundaryPoints(Range.END_TO_START,verse)<0&&r.compareBoundaryPoints(Range.START_TO_END,verse)>0)chosen.push(m)}}if(!chosen.length){bar.querySelector('#whdcStudyNotice').textContent='Select text within a verse.';return}
-const unique=[...new Set(chosen)],allMarkers=[...root.querySelectorAll('.scripture sup.verse')];const start=allMarkers.indexOf(unique[0]),end=allMarkers.indexOf(unique[unique.length-1]);const included=selectedVerses.size?[...selectedVerses].filter(el=>el.isConnected).map(el=>el.querySelector('sup.verse')).filter(Boolean).sort((a,b)=>allMarkers.indexOf(a)-allMarkers.indexOf(b)):allMarkers.slice(start,end+1);const paras=[];let currentP=null,parts=[];
-for(const m of included){const p=m.closest('p');if(p!==currentP){if(parts.length)paras.push(parts.join(' '));parts=[];currentP=p}const next=allMarkers[allMarkers.indexOf(m)+1];const range=document.createRange();range.setStartAfter(m);if(next&&next.closest('p')===p)range.setEndBefore(next);else range.setEnd(p,p.childNodes.length);const clone=range.cloneContents();clone.querySelectorAll?.('.chapter,sup.verse').forEach(x=>x.remove());const t=(clone.textContent||'').trim();if(t)parts.push(t)}
-if(parts.length)paras.push(parts.join(' '));const name=document.querySelector('#reading .book-title')?.textContent||key();const first=unique[0].title||name+' '+unique[0].textContent,last=unique[unique.length-1].title||name+' '+unique[unique.length-1].textContent;const reference=selectedVerses.size>1?included.map(m=>m.title||name+' '+m.textContent).join(', '):first===last?first:first+'–'+last.replace(/^.*?\s(?=\d+:)/,'');
-const item={id:reference.toLowerCase(),reference,text:paras.join('\n\n'),paragraphs:paras,source:'bible',createdAt:new Date().toISOString()};
-try{const arr=JSON.parse(localStorage.getItem(FAV)||'[]');const old=arr.findIndex(x=>x.id===item.id);if(old>=0)arr[old]=item;else arr.push(item);localStorage.setItem(FAV,JSON.stringify(arr));bar.querySelector('#whdcStudyNotice').textContent='♡ Complete verses saved with paragraph breaks.'}catch{bar.querySelector('#whdcStudyNotice').textContent='Unable to save favorites.'}}
+function saveFavorite(){
+ // Resolve the selected text against verse boundaries, never paragraph boundaries.
+ const units=[...root.querySelectorAll('.scripture .verse-unit[data-book][data-chapter][data-verse]')];
+ let touched=[];
+ if(selectedVerses.size){touched=units.filter(unit=>selectedVerses.has(unit));}
+ else{
+  const selectionRange=getSelection();
+  if(selectionRange&&!selectionRange.isCollapsed&&selectionRange.rangeCount){
+   const range=selectionRange.getRangeAt(0);
+   touched=units.filter(unit=>{
+    if(!range.intersectsNode(unit))return false;
+    const content=document.createRange();content.selectNodeContents(unit);
+    // Require a nonempty intersection with the verse text, not merely its boundary.
+    return range.compareBoundaryPoints(Range.END_TO_START,content)>0 &&
+           range.compareBoundaryPoints(Range.START_TO_END,content)<0;
+   });
+  }
+ }
+ if(!touched.length){bar.querySelector('#whdcStudyNotice').textContent='Select text within a verse first.';return}
+ // A continuous drag includes every verse between its first and last touched verse.
+ // Explicitly tapped verses retain their individual selections.
+ if(!selectedVerses.size){const start=units.indexOf(touched[0]),end=units.indexOf(touched[touched.length-1]);touched=units.slice(start,end+1)}
+ const passages=[];
+ let group=[];
+ const flush=()=>{if(group.length){passages.push(group);group=[]}};
+ for(const unit of touched){
+  const previous=group[group.length-1];
+  if(previous&&(previous.dataset.book!==unit.dataset.book||previous.dataset.chapter!==unit.dataset.chapter||Number(previous.dataset.verse)+1!==Number(unit.dataset.verse)))flush();
+  group.push(unit);
+ }
+ flush();
+ const references=[],paragraphs=[];
+ for(const passage of passages){
+  const first=passage[0],last=passage[passage.length-1];
+  const firstTitle=first.querySelector('sup.verse')?.title||`${first.dataset.book} ${first.dataset.chapter}:${first.dataset.verse}`;
+  const lastVerse=last.dataset.verse;
+  references.push(first===last?firstTitle:`${firstTitle}–${lastVerse}`);
+  let paragraph=[],lastP=null;
+  for(const unit of passage){
+   const p=unit.closest('p');
+   if(lastP&&p!==lastP){if(paragraph.length)paragraphs.push(paragraph.join(' '));paragraph=[]}
+   const clone=unit.cloneNode(true);
+   clone.querySelectorAll('sup.verse,.chapter,.whdc-verse-study-note,.whdc-verse-tools').forEach(el=>el.remove());
+   const verseText=(clone.textContent||'').trim();
+   if(verseText)paragraph.push(verseText);
+   lastP=p;
+  }
+  if(paragraph.length)paragraphs.push(paragraph.join(' '));
+ }
+ const reference=references.join(', ');
+ const item={id:reference.toLowerCase(),reference,text:paragraphs.join('\n\n'),paragraphs,source:'bible',createdAt:new Date().toISOString()};
+ try{
+  const arr=JSON.parse(localStorage.getItem(FAV)||'[]');
+  if(!Array.isArray(arr))throw Error('Invalid favorites');
+  const old=arr.findIndex(x=>x.id===item.id);
+  if(old>=0){item.createdAt=arr[old].createdAt||item.createdAt;arr[old]=item}else arr.push(item);
+  localStorage.setItem(FAV,JSON.stringify(arr));
+  bar.querySelector('#whdcStudyNotice').textContent='♡ Complete selected verse'+(touched.length===1?'':'s')+' saved.';
+ }catch{bar.querySelector('#whdcStudyNotice').textContent='Unable to save favorites.'}
+}
 
 function updateStudyPalette(){
  const other=palette.querySelector('[data-theme="other"]');
