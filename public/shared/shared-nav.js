@@ -161,6 +161,7 @@
     }).join('');
     if(inApp)bar.querySelectorAll('button[data-nav]').forEach(button=>button.addEventListener('click',()=>{
       if(button.dataset.nav==='read'&&typeof window.WHDCNavigate==='function'){window.WHDCNavigate('read');return}
+      if(typeof window.WHDCNavigate==='function'){window.WHDCNavigate(button.dataset.nav);return}
       const menuButton=document.querySelector('#mainMenu [data-nav="'+button.dataset.nav+'"]');
       if(menuButton)menuButton.click();
       else location.assign('/#'+button.dataset.nav);

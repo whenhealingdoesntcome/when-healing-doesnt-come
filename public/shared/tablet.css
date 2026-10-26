@@ -1,30 +1,11 @@
+/* WHDC tablet: same app navigation as phone, no top header or floating study shortcut. */
 @media (min-width:768px) and (max-width:1199px) {
- main.wrap, .wrap {width:min(calc(100% - 64px),1040px)}
- .reading, .reading-content, .devotional-content, .devotional-body {max-width:76ch;margin-inline:auto}
- textarea {min-height:160px}
-}
-
-/* WHDC tablets use the SAME shared bottom navigation as phones.
-   Preserve the header branding, hide only top navigation controls. */
-@media (min-width:768px) and (max-width:1199px) {
-  body #app > header #mainMenu,
-  body #app > header .whdc-menu-button,
-  body #app > header .whdc-nav {
-    display:none!important;
-  }
-  body #app > header > .top.whdc-header-top,
-  header .whdc-header-top {
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    width:100%!important;
-    max-width:100%!important;
-  }
-  #whdc-bottom-nav.whdc-bottom-nav {
-    display:grid!important;
-    width:min(calc(100% - 24px), 720px)!important;
-    left:50%!important;
-    right:auto!important;
-    transform:translateX(-50%)!important;
-  }
+ body:has(#app) .site-header,body:has(#app) header.whdc-header,
+ body:has(#app) #app > header,body:has(#app) .whdc-header-top,
+ body:has(#app) #whdcStudyToggle,
+ body:has(#app) .mobile-study-guide,
+ body:has(#app) .study-fab {display:none!important}
+ body:has(#app) {padding-top:0!important}
+ body:has(#app) #whdc-bottom-nav.whdc-bottom-nav {display:grid!important}
+ body:has(#app) main {padding-top:12px}
 }
