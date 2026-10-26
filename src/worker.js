@@ -12,6 +12,20 @@ async function readerApi(req,env,path){
  if(!env.DB)return readerReply({error:'Account database unavailable'},503);
  const origin=req.headers.get('origin');if(req.method==='POST'&&origin!==new URL(req.url).origin)return readerReply({error:'Invalid request origin'},403);
  const now=Math.floor(Date.now()/1000);
+ if(path==='/api/reader/cookie-diagnostics'&&req.method==='GET'){
+  const url=new URL(req.url),step=url.searchParams.get('step');
+  const cookies=req.headers.get('cookie')||'';
+  const has=(name)=>cookies.split(';').some(part=>part.trim()===name+'=yes');
+  const headers={'content-type':'text/html; charset=utf-8','cache-control':'no-store, private','x-content-type-options':'nosniff'};
+  const doc=(body)=>'<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Cookie Diagnostics</title></head><body style="font:18px system-ui;padding:2rem;max-width:40rem;margin:auto"><h1>WHDC Cookie Diagnostics</h1>'+body+'<p>No account credentials or saved data are accessed by this test.</p></body></html>';
+  if(step==='check'){
+   const status=(ok)=>ok?'PASS':'FAIL';
+   return new Response(doc('<p>Server-set cookie: <strong>'+status(has('whdc_diag_server'))+'</strong></p><p>Browser-set cookie: <strong>'+status(has('whdc_diag_browser'))+'</strong></p><p>Tell me both results.</p>'),{headers});
+  }
+  const response=new Response(doc('<p>Preparing two temporary, harmless cookies.</p><p><a href="/api/reader/cookie-diagnostics?step=check" style="display:inline-block;padding:12px;border:1px solid;border-radius:8px">Check cookies</a></p><script>document.cookie="whdc_diag_browser=yes; Path=/api/reader/cookie-diagnostics; Secure; SameSite=Lax; Max-Age=180";</script>'),{headers});
+  response.headers.append('set-cookie','whdc_diag_server=yes; Path=/api/reader/cookie-diagnostics; Secure; SameSite=Lax; Max-Age=180');
+  return response;
+ }
  if(path==='/api/reader/cookie-test'&&req.method==='GET'){
   const u=new URL(req.url);
   const probeName='whdc_cookie_probe';
