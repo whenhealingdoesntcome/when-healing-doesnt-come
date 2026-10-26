@@ -72,6 +72,34 @@ async function readerApi(req,env,path){
   await env.DB.prepare('INSERT INTO reader_saved_snapshots(account_id,payload,updated_at) VALUES(?,?,?) ON CONFLICT(account_id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at').bind(session.account_id,JSON.stringify(items),now).run();
   return readerReply({ok:true,updatedAt:now});
  }
+
+ // Account-scoped, optimistic-concurrency sync. Existing manual backups remain untouched.
+ if(path==='/api/reader/sync'&&(req.method==='GET'||req.method==='POST')){
+  const token=readerCookie(req);
+  if(!/^[0-9a-f]{64}$/.test(token))return readerReply({error:'Sign in to synchronize saved data.'},401);
+  const session=await env.DB.prepare('SELECT account_id FROM reader_sessions WHERE token_hash=? AND expires_at>?').bind(await readerDigest(token),now).first();
+  if(!session)return readerReply({error:'Session expired.'},401);
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS reader_sync_items (account_id TEXT NOT NULL, item_key TEXT NOT NULL, payload TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1, updated_at INTEGER NOT NULL, PRIMARY KEY(account_id,item_key))`).run();
+  const allowed=['whdc-private-journal-v1','whdc-favorites-v1','whdc-read-history-v1','whdc-bible-annotations-v1','whdc-devotional-annotations-v1','whdc-favorite-verses-v1','whdc-saved-quotes-v1','whdc-saved-resources-v1','whdc-inductive-paragraph-notes-v1','whdc-reading-plan-completions-v1','whdc-reading-plans-enrolled-v1','whdc-opening-page-v1','whdc-appearance','whdc-reading-size','whdc-access-high-contrast','whdc-access-simplified-reading'];
+  if(req.method==='GET'){
+   const rows=await env.DB.prepare('SELECT item_key,payload,revision,updated_at FROM reader_sync_items WHERE account_id=?').bind(session.account_id).all();
+   return readerReply({ok:true,items:Object.fromEntries((rows.results||[]).map(r=>[r.item_key,{value:r.payload,revision:r.revision,updatedAt:r.updated_at}]))});
+  }
+  const raw=await req.text();if(raw.length>300000)return readerReply({error:'Sync request too large'},413);
+  let body;try{body=JSON.parse(raw)}catch{return readerReply({error:'Invalid sync request'},400)}
+  const key=body?.key,value=body?.value,base=body?.baseRevision;
+  if(!allowed.includes(key)||typeof value!=='string'||value.length>200000||!Number.isInteger(base)||base<0)return readerReply({error:'Invalid sync item'},400);
+  // A missing row may only be created at revision zero; existing rows require exact revision.
+  if(base===0){
+   const result=await env.DB.prepare('INSERT INTO reader_sync_items(account_id,item_key,payload,revision,updated_at) VALUES(?,?,?,1,?) ON CONFLICT(account_id,item_key) DO NOTHING').bind(session.account_id,key,value,now).run();
+   if(result.meta?.changes===1)return readerReply({ok:true,revision:1});
+  }else{
+   const result=await env.DB.prepare('UPDATE reader_sync_items SET payload=?,revision=revision+1,updated_at=? WHERE account_id=? AND item_key=? AND revision=?').bind(value,now,session.account_id,key,base).run();
+   if(result.meta?.changes===1)return readerReply({ok:true,revision:base+1});
+  }
+  const current=await env.DB.prepare('SELECT payload,revision FROM reader_sync_items WHERE account_id=? AND item_key=?').bind(session.account_id,key).first();
+  return readerReply({error:'Revision conflict',current:current?{value:current.payload,revision:current.revision}:null},409);
+ }
  if(path==='/api/reader/logout'&&req.method==='POST'){
   const token=readerCookie(req);if(/^[0-9a-f]{64}$/.test(token))await env.DB.prepare('DELETE FROM reader_sessions WHERE token_hash=?').bind(await readerDigest(token)).run();
   return readerReply({ok:true},200,{'set-cookie':readerSessionCookie('',0)});

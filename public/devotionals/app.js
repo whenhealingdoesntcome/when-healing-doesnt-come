@@ -1325,3 +1325,84 @@ window.addEventListener('whdc-return-to-reading',()=>nav('read'));
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){whdcBookModalId=null;render()}});
 
+
+
+
+// WHDC automatic account sync (domain-scoped; keeps the manual backup independent).
+// Never silently replace a locally changed section. Conflicts are preserved in a private archive.
+(function(){
+ if(location.hostname!=='whdcdevotions.com'||!window.localStorage)return;
+ const keys=WHDC_TRANSFER_KEYS.filter(k=>!['whdc-device-voice','whdc-access-reduce-motion'].includes(k));
+ const META='whdc-sync-metadata-v1',CONFLICTS='whdc-sync-conflicts-v1';
+ let running=false,authenticated=false;
+ const read=()=>{try{return JSON.parse(localStorage.getItem(META)||'{}')}catch{return {}}};
+ const save=x=>localStorage.setItem(META,JSON.stringify(x));
+ const status=s=>{const el=document.getElementById('whdcSyncStatus');if(el)el.textContent=s;};
+ const archive=(key,local,remote)=>{
+  let entries=[];try{entries=JSON.parse(localStorage.getItem(CONFLICTS)||'[]')}catch{}
+  if(!Array.isArray(entries))entries=[];
+  if(entries.some(x=>x.key===key&&x.local===local&&x.remote===remote))return;
+  entries.push({key,local,remote,detectedAt:new Date().toISOString()});
+  localStorage.setItem(CONFLICTS,JSON.stringify(entries));
+ };
+ async function tick(){
+  if(running||!navigator.onLine)return;
+  running=true;
+  try{
+   const response=await fetch('/api/reader/sync',{credentials:'same-origin',cache:'no-store'});
+   if(response.status===401){authenticated=false;status('Sign in to enable automatic syncing.');return;}
+   if(!response.ok)throw Error('Sync service unavailable');
+   authenticated=true;
+   const remote=(await response.json()).items||{},meta=read();let updates=0,conflicts=0;
+   for(const key of keys){
+    const local=localStorage.getItem(key),cloud=remote[key],previous=meta[key];
+    const rev=cloud?.revision||0,cloudValue=cloud?.value??null;
+    // First connection: preserve both independently created versions.
+    if(!previous){
+     if(local!==null&&cloudValue!==null&&local!==cloudValue){archive(key,local,cloudValue);conflicts++;continue;}
+     if(local===null&&cloudValue!==null){localStorage.setItem(key,cloudValue);updates++;}
+     if(local!==null&&cloudValue===null){
+      const uploaded=await put(key,local,0);if(!uploaded){conflicts++;continue;}
+      meta[key]={value:local,revision:uploaded.revision};updates++;continue;
+     }
+     meta[key]={value:cloudValue,revision:rev};continue;
+    }
+    const localChanged=local!==previous.value,remoteChanged=rev!==previous.revision;
+    if(localChanged&&remoteChanged){
+     if(local===cloudValue){meta[key]={value:local,revision:rev};continue;}
+     archive(key,local,cloudValue);conflicts++;continue;
+    }
+    if(remoteChanged){
+     // Null means a remote deletion. Do not destroy old local data if it has changed.
+     if(cloudValue===null)localStorage.removeItem(key);else localStorage.setItem(key,cloudValue);
+     meta[key]={value:cloudValue,revision:rev};updates++;continue;
+    }
+    if(localChanged){
+     // Avoid propagating deletions until a record-level tombstone protocol is implemented.
+     if(local===null){archive(key,null,cloudValue);conflicts++;continue;}
+     const uploaded=await put(key,local,rev);
+     if(!uploaded){conflicts++;continue;}
+     meta[key]={value:local,revision:uploaded.revision};updates++;
+    }
+   }
+   save(meta);
+   status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Contact support before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
+  }catch(e){status('Sync waiting: '+e.message);}finally{running=false;}
+ }
+ async function put(key,value,baseRevision){
+  const response=await fetch('/api/reader/sync',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({key,value,baseRevision}),cache:'no-store'});
+  if(response.status===409)return null;
+  if(!response.ok)throw Error('Could not upload '+key);
+  return response.json();
+ }
+ window.whdcSyncNow=tick;
+ window.addEventListener('online',tick);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
+ document.addEventListener('DOMContentLoaded',()=>{
+  const panel=document.getElementById('whdcAccountInline');
+  if(panel&&!document.getElementById('whdcSyncStatus')){
+   const p=document.createElement('p');p.id='whdcSyncStatus';p.setAttribute('role','status');p.textContent='Automatic syncing checks for changes while signed in.';panel.append(p);
+  }
+  tick();setInterval(tick,20000);
+ });
+})();
