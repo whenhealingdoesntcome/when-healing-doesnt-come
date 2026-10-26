@@ -87,7 +87,7 @@ if(mobileBook&&mobileChapter){
 const searchInput=$('bibleSearch'),clearSearch=$('clearBibleSearch');const syncClear=()=>{clearSearch.hidden=!searchInput.value};searchInput.addEventListener('input',syncClear);clearSearch.addEventListener('click',()=>{searchInput.value='';syncClear();searchInput.focus()});syncClear();$('bibleSearchForm').addEventListener('submit',async e=>{e.preventDefault();await runBibleSearch($('bibleSearch').value);const panel=$('bibleSearchPanel');panel?.classList.remove('whdc-mobile-search-open');if(panel)panel.style.display='none';$('mobileSearchToggle')?.setAttribute('aria-expanded','false');});await openBook(chosen,ch);const searchParam=params.get('search')||params.get('refs')||params.get('references');if(searchParam){const combinedReferences=searchParam.replace(/\r?\n+/g,'; ');$('bibleSearch').value=combinedReferences;syncClear();await runBibleSearch(combinedReferences)}await status();}catch(e){console.error('Bible initialization failed',e);const reading=$('reading');if(reading){
  const paragraph=document.createElement('p');paragraph.className='error';
  paragraph.append(document.createTextNode('Unable to load Bible navigation: '+(e&&e.message?e.message:String(e))+'. '));
- const link=document.createElement('a');link.href='/bible-reader.html';link.textContent='Open standalone Bible Reader';paragraph.append(link);
+ const link=document.createElement('a');link.href='/#bible';link.textContent='Open Bible Reader';paragraph.append(link);
  reading.replaceChildren(paragraph);
 }}}
 init();})();

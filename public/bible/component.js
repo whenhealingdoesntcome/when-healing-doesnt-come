@@ -1,7 +1,7 @@
 /* WHDC native PWA Bible section. No iframe. */
 (()=>{'use strict';
 let saved=null, loaded=false, loading=null;
-const scripts=['/bible/reader.js?v=20261024-mobile-diagnostic-v14','/bible/scripture-study.js?v=20261024-mobile-diagnostic-v14','/bible/study-notes.js?v=20261024-mobile-diagnostic-v14','/bible/verse-study.js?v=20261024-mobile-diagnostic-v14'];
+const scripts=['/bible/reader.js?v=20261026-native-study-v1','/bible/scripture-study.js?v=20261026-native-study-v1','/bible/study-notes.js?v=20261026-native-study-v1','/bible/verse-study.js?v=20261026-native-study-v1'];
 function script(src){return new Promise((resolve,reject)=>{const e=document.createElement('script');e.src=src;e.onload=resolve;e.onerror=reject;document.body.append(e)})}
 function setupSettings(root){
  const gear=root.querySelector('#mobileReaderSettings');
@@ -27,6 +27,13 @@ function setupSettings(root){
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.open)close()});
  window.addEventListener('resize',()=>{if(panel.open)position()});
 }
+function setupStudy(root){
+ const button=root.querySelector('#whdcNativeStudyButton');if(!button)return;
+ if(!button.querySelector('.whdc-study-label')){const label=document.createElement('span');label.className='whdc-study-label';label.textContent='Study';button.append(label)}
+ if(button.dataset.whdcBound)return;button.dataset.whdcBound='1';
+ button.removeAttribute('onclick');
+ button.addEventListener('click',()=>{if(typeof window.whdcOpenStudyMenu==='function'){window.whdcOpenStudyMenu();button.setAttribute('aria-expanded','true')}else{console.warn('Bible Study tools have not loaded')}});
+}
 function setupToolbar(root){
  const toolbar=root.querySelector('.mobile-bible-toolbar');if(!toolbar)return;
  const update=()=>{if(!root.isConnected)return;const header=document.querySelector('body > header, #app > header, .site-header, .whdc-header');const height=header?Math.max(0,header.getBoundingClientRect().bottom):0;root.style.setProperty('--whdc-shared-header-height',height+'px');root.style.setProperty('--whdc-bible-toolbar-height',toolbar.offsetHeight+'px')};
@@ -38,7 +45,7 @@ function showError(target, message){
  if(!target?.isConnected)return;
  const p=document.createElement('p');p.setAttribute('role','alert');
  p.textContent='Bible Reader could not load: '+message+'. ';
- const a=document.createElement('a');a.href='/bible-reader.html';a.textContent='Open the standalone Bible Reader';p.append(a);
+ const a=document.createElement('a');a.href='/#bible';a.textContent='Return to the Bible Reader';p.append(a);
  target.replaceChildren(p);
 }
 async function mount(target){
@@ -48,18 +55,18 @@ async function mount(target){
  if(saved){
   const root=saved;saved=null;target.replaceChildren(root);
   root.classList.toggle('dark',document.body.classList.contains('dark'));
-  setupToolbar(root);setupSettings(root);return;
+  setupToolbar(root);setupSettings(root);setupStudy(root);return;
  }
  if(loading){
   try{await loading}catch(e){showError(target,e.message||'initialization error')}
   if(activeTarget===target&&target.isConnected&&pendingRoot){
-   target.replaceChildren(pendingRoot);setupToolbar(pendingRoot);setupSettings(pendingRoot);pendingRoot=null;
+   target.replaceChildren(pendingRoot);setupToolbar(pendingRoot);setupSettings(pendingRoot);setupStudy(pendingRoot);pendingRoot=null;
   }
   return;
  }
  const timeout=(ms)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('timed out after '+Math.round(ms/1000)+' seconds')),ms));
  loading=(async()=>{
-  const response=await Promise.race([fetch('/bible/component-template.html?v=20261024-mobile-diagnostic-v14',{cache:'no-store'}),timeout(12000)]);
+  const response=await Promise.race([fetch('/bible/component-template.html?v=20261026-native-study-v1',{cache:'no-store'}),timeout(12000)]);
   if(!response.ok)throw new Error('interface request HTTP '+response.status);
   const html=await response.text();
   if(!html.includes('id="reading"'))throw new Error('Bible interface missing Scripture container');
@@ -80,7 +87,7 @@ async function mount(target){
    if(!root.isConnected)return;
    const reading=root.querySelector('#reading');
    if(reading && /Loading Scripture|Opening Scripture/i.test(reading.textContent||'')){
-    reading.innerHTML='<p role="alert">Bible Scripture initialization did not finish. <a href="/bible-reader.html">Open the standalone Bible Reader</a>.</p>';
+    reading.innerHTML='<p role="alert">Bible Scripture initialization did not finish. <a href="/bible-reader.html">Return to the Bible Reader</a>.</p>';
    }
   },12000);
  })();
