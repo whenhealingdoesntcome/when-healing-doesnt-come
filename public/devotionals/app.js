@@ -1334,10 +1334,27 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
  if(location.hostname!=='whdcdevotions.com'||!window.localStorage)return;
  const keys=WHDC_TRANSFER_KEYS.filter(k=>!['whdc-device-voice','whdc-access-reduce-motion'].includes(k));
  const META='whdc-sync-metadata-v1',CONFLICTS='whdc-sync-conflicts-v1';
- let running=false,authenticated=false;
+ let running=false,authenticated=false,lastMessage='Automatic syncing checks for changes while signed in.';
+ let lastSuccessfulSync=null;
  const read=()=>{try{return JSON.parse(localStorage.getItem(META)||'{}')}catch{return {}}};
  const save=x=>localStorage.setItem(META,JSON.stringify(x));
- const status=s=>{const el=document.getElementById('whdcSyncStatus');if(el)el.textContent=s;};
+ const ensureControls=()=>{
+  const panel=document.getElementById('whdcAccountInline');
+  if(!panel)return;
+  let wrap=document.getElementById('whdcSyncControls');
+  if(!wrap){
+   wrap=document.createElement('div');wrap.id='whdcSyncControls';wrap.style.cssText='margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center';
+   const button=document.createElement('button');button.type='button';button.className='btn';button.id='whdcSyncNowButton';button.textContent='Sync Now';
+   button.addEventListener('click',()=>tick());
+   const message=document.createElement('span');message.id='whdcSyncStatus';message.setAttribute('role','status');
+   const last=document.createElement('small');last.id='whdcSyncLastSuccessful';
+   wrap.append(button,message,last);panel.append(wrap);
+  }
+  const message=wrap.querySelector('#whdcSyncStatus');if(message)message.textContent=lastMessage;
+  const last=wrap.querySelector('#whdcSyncLastSuccessful');if(last)last.textContent=lastSuccessfulSync?'Last successful sync: '+lastSuccessfulSync.toLocaleString():'Not yet synced in this session';
+  const button=wrap.querySelector('#whdcSyncNowButton');if(button){button.disabled=running;button.textContent=running?'Syncing…':'Sync Now';}
+ };
+ const status=s=>{lastMessage=s;ensureControls();};
  const archive=(key,local,remote)=>{
   let entries=[];try{entries=JSON.parse(localStorage.getItem(CONFLICTS)||'[]')}catch{}
   if(!Array.isArray(entries))entries=[];
@@ -1346,8 +1363,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   localStorage.setItem(CONFLICTS,JSON.stringify(entries));
  };
  async function tick(){
-  if(running||!navigator.onLine)return;
-  running=true;
+  if(running)return;
+  if(!navigator.onLine){status('Offline. Changes will sync when connected.');return;}
+  running=true;ensureControls();
   try{
    const response=await fetch('/api/reader/sync',{credentials:'same-origin',cache:'no-store'});
    if(response.status===401){authenticated=false;status('Sign in to enable automatic syncing.');return;}
@@ -1386,8 +1404,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     }
    }
    save(meta);
+   if(!conflicts)lastSuccessfulSync=new Date();
    status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Contact support before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
-  }catch(e){status('Sync waiting: '+e.message);}finally{running=false;}
+  }catch(e){status('Sync waiting: '+e.message);}finally{running=false;ensureControls();}
  }
  async function put(key,value,baseRevision){
   const response=await fetch('/api/reader/sync',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({key,value,baseRevision}),cache:'no-store'});
@@ -1399,10 +1418,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
  window.addEventListener('online',tick);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});
  document.addEventListener('DOMContentLoaded',()=>{
-  const panel=document.getElementById('whdcAccountInline');
-  if(panel&&!document.getElementById('whdcSyncStatus')){
-   const p=document.createElement('p');p.id='whdcSyncStatus';p.setAttribute('role','status');p.textContent='Automatic syncing checks for changes while signed in.';panel.append(p);
-  }
+  ensureControls();
+  // Account panel is re-rendered during navigation; reattach controls when it appears.
+  const observer=new MutationObserver(()=>{if(document.getElementById('whdcAccountInline')&&!document.getElementById('whdcSyncControls'))ensureControls();});
+  observer.observe(document.body,{childList:true,subtree:true});
   tick();setInterval(tick,20000);
  });
 })();
