@@ -35,6 +35,26 @@ async function readerApi(req,env,path){
   }
   return new Response(null,{status:303,headers:{'location':'/api/reader/cookie-test?check=1','cache-control':'no-store','set-cookie':probeName+'=ok; Path=/api/reader/cookie-test; Secure; SameSite=Lax; Max-Age=60'}});
  }
+ if(path==='/api/reader/fetch-cookie-test'&&req.method==='GET'){
+  const html=`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Fetch Cookie Test</title><body style="font:18px system-ui;padding:2rem;max-width:38rem;margin:auto"><h1>WHDC Fetch Cookie Test</h1><p>This checks whether Safari accepts a temporary cookie from a JavaScript POST request.</p><button id="run" style="padding:12px 20px;font:inherit">Run test</button><p id="result" role="status"></p><script>document.getElementById('run').onclick=async()=>{const el=document.getElementById('result');el.textContent='Checking…';try{const set=await fetch('/api/reader/fetch-cookie-probe',{method:'POST',credentials:'same-origin',cache:'no-store'});if(!set.ok)throw Error('Set request failed: '+set.status);const check=await fetch('/api/reader/fetch-cookie-probe',{credentials:'same-origin',cache:'no-store'});if(!check.ok)throw Error('Check request failed: '+check.status);const data=await check.json();el.textContent=data.returned?'PASS: Cookie returned after JavaScript fetch.':'FAIL: Cookie not returned after JavaScript fetch.';}catch(e){el.textContent='ERROR: '+e.message;}};</script></body></html>`;
+  return new Response(html,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
+ }
+ if(path==='/api/reader/fetch-cookie-probe'){
+  const url=new URL(req.url);
+  const baseHeaders={'content-type':'application/json; charset=utf-8','cache-control':'no-store'};
+  if(req.method==='POST'){
+   const origin=req.headers.get('origin');
+   if(origin!==url.origin)return readerReply({error:'Invalid origin'},403);
+   const response=readerReply({ok:true});
+   response.headers.set('set-cookie','whdc_fetch_probe=ok; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120');
+   return response;
+  }
+  if(req.method==='GET'){
+   const cookies=req.headers.get('cookie')||'';
+   const present=cookies.split(';').some(part=>part.trim()==='whdc_fetch_probe=ok');
+   return readerReply({returned:present});
+  }
+ }
  if(path==='/api/reader/session-check'&&req.method==='GET'){
   const cookieHeader=req.headers.get('cookie')||'';
   const token=readerCookie(req);
