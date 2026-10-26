@@ -17,7 +17,6 @@ const THEMES=[
  ['spirit','#f2d86f','Holy Spirit','The Spirit’s character, attributes and actions']
 ];
 const css=document.createElement('style');css.textContent=`
-#whdcStudyToggle{position:fixed;right:15px;bottom:max(18px,env(safe-area-inset-bottom));z-index:150;border:1px solid #b8ae9f;border-radius:99px;background:#f7f5f0;color:#393f4a;padding:9px 13px;font:inherit;box-shadow:0 3px 14px #0002;cursor:pointer}
 #whdcStudyBar{position:fixed;bottom:max(65px,calc(env(safe-area-inset-bottom) + 65px));right:12px;z-index:151;max-width:min(430px,calc(100vw - 24px));padding:12px;border:1px solid #c5bcac;border-radius:14px;background:#f7f5f0;color:#393f4a;box-shadow:0 4px 22px #0003;font:inherit}
 #whdcStudyBar[hidden],#whdcStudyPalette[hidden]{display:none!important}
 #whdcStudyHeader{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
@@ -25,7 +24,7 @@ const css=document.createElement('style');css.textContent=`
 #whdcStudyClose{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0!important;border-radius:50%!important;font-size:21px!important;line-height:1!important}
 #whdcStudyActions button[aria-expanded="true"]{background:#e7e2d8;border-color:#827974}
 #whdcStudyBar button{font:inherit;font-size:.85rem;border:1px solid #c7c1b8;border-radius:8px;background:transparent;color:inherit;padding:7px 9px;cursor:pointer}
-#whdcStudyBar button:focus-visible,#whdcStudyToggle:focus-visible{outline:2px solid #393f4a}
+#whdcStudyBar button:focus-visible{outline:2px solid #393f4a}
 #whdcStudyActions{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap}
 #whdcStudyMarkActions,#whdcStudySaveActions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 #whdcStudySaveActions{margin-left:auto;padding-left:10px;border-left:1px solid #c7c1b8;justify-content:flex-end}
@@ -47,9 +46,8 @@ const css=document.createElement('style');css.textContent=`
 body.dark #reading .verse-unit.whdc-verse-selected{background:rgba(132,185,218,.30);outline-color:rgba(165,208,235,.65)}
 #reading .verse-unit:focus-visible{outline:2px solid #6486a0;outline-offset:2px}
 `;document.head.append(css);
-const toggle=document.createElement('button');toggle.id='whdcStudyToggle';toggle.type='button';toggle.textContent='✎ Study';toggle.setAttribute('aria-expanded','false');
 const bar=document.createElement('div');bar.id='whdcStudyBar';bar.hidden=true;bar.innerHTML='<div id="whdcStudyHeader"><p id="whdcStudyHint">Touch and hold or drag to select words. Only selected text is marked.</p><button type="button" id="whdcStudyClose" aria-label="Close Study menu" title="Close Study menu">×</button></div><div id="whdcStudyActions"><div id="whdcStudyMarkActions"><button type="button" data-action="highlight">Highlight ▾</button><button type="button" data-action="circle">◯ Circle</button><button type="button" data-action="underline">U̲ Underline</button><button type="button" data-action="erase">Remove All Marks</button><button type="button" data-action="undo" disabled aria-label="Undo last study mark">↶ Undo</button></div><div id="whdcStudySaveActions"><button type="button" data-action="favorite">♡ Save Verse</button><button type="button" data-action="note">▤ Add Note</button></div></div><div id="whdcStudyPalette" hidden></div><div id="whdcStudyNotice" role="status"></div>';
-document.body.append(toggle,bar);
+document.body.append(bar);
 const palette=bar.querySelector('#whdcStudyPalette');
 THEMES.forEach(([key,color,name,description])=>{const b=document.createElement('button');b.type='button';b.dataset.theme=key;b.title=description;b.innerHTML='<span class="whdcStudyDot" style="background:'+color+'"></span><span>'+name+'</span>';palette.append(b)});
 let active=null,restoring=false,loadedKey='',linkedDone=false,selectionTimer,markKind='highlight';
@@ -92,9 +90,9 @@ function selectedSegments(range){
 }
 function selection(){const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)return null;const r=s.getRangeAt(0);if(!root.querySelector('.scripture')?.contains(r.commonAncestorContainer))return null;const segments=selectedSegments(r);return segments.length?segments:null}
 function closePalette(){palette.hidden=true;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
-function show(open=true){bar.hidden=!open;toggle.setAttribute('aria-expanded',String(open));if(!open)closePalette()}
+function show(open=true){bar.hidden=!open;if(!open)closePalette()}
+window.whdcOpenStudyMenu=()=>show(true);
 bar.querySelector('#whdcStudyClose').addEventListener('click',()=>show(false));
-toggle.onclick=()=>show(bar.hidden);
 function selectedUpdate(){clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>{const found=selection();if(found){clearVerseSelection();active=found;show(true);bar.querySelector('#whdcStudyHint').textContent='Selected text: choose a study mark or save the complete verse(s).';bar.querySelector('#whdcStudyNotice').textContent=''}},180)}
 // Tap or click a verse to select it. Subsequent taps add verses; tapping again removes one.
 root.addEventListener('click',e=>{
