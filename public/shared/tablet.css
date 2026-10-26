@@ -1,22 +1,30 @@
-/* WHDC shared tablet presentation, 768-1199px.
-   One responsive app; mobile and desktop retain their existing styles. */
-@media (min-width: 768px) and (max-width: 1199px) {
-  main.wrap, .wrap { width: min(calc(100% - 64px), 1040px); }
-  main { padding-top: 28px; }
-  .reading, .reading-content, .devotional-content, .devotional-body {
-    max-width: 76ch;
-    margin-inline: auto;
-  }
-  .reading.card { width: 100%; }
-  .card { padding: clamp(24px, 3vw, 36px); }
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-  .grid > * { min-width: 0; }
-  .hero { max-width: 76ch; }
-  textarea { min-height: 160px; }
-  button, select, input, textarea { max-width: 100%; }
-  .actions { gap: 12px; }
+@media (min-width:768px) and (max-width:1199px) {
+ main.wrap, .wrap {width:min(calc(100% - 64px),1040px)}
+ .reading, .reading-content, .devotional-content, .devotional-body {max-width:76ch;margin-inline:auto}
+ textarea {min-height:160px}
 }
-/* Narrow portrait tablets retain readable one-column cards where needed. */
-@media (min-width: 768px) and (max-width: 850px) {
-  .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+/* WHDC tablets use the SAME shared bottom navigation as phones.
+   Preserve the header branding, hide only top navigation controls. */
+@media (min-width:768px) and (max-width:1199px) {
+  body #app > header #mainMenu,
+  body #app > header .whdc-menu-button,
+  body #app > header .whdc-nav {
+    display:none!important;
+  }
+  body #app > header > .top.whdc-header-top,
+  header .whdc-header-top {
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    max-width:100%!important;
+  }
+  #whdc-bottom-nav.whdc-bottom-nav {
+    display:grid!important;
+    width:min(calc(100% - 24px), 720px)!important;
+    left:50%!important;
+    right:auto!important;
+    transform:translateX(-50%)!important;
+  }
 }

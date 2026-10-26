@@ -129,7 +129,7 @@
     if(!document.getElementById('whdc-bottom-nav-css')){
       const css=document.createElement('style');css.id='whdc-bottom-nav-css';css.textContent=`
       .whdc-bottom-nav{display:none}
-      @media(max-width:767px){
+      @media(max-width:1199px){
         body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
         .whdc-bottom-nav{display:grid!important;gap:0!important;flex-wrap:nowrap!important;grid-template-columns:repeat(var(--whdc-tab-count,5),minmax(0,1fr));position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:1100;min-height:68px;padding:8px 10px;background:#fffefa;color:#393f4a;border:1px solid #deded8;border-radius:999px;box-shadow:0 5px 22px rgba(20,30,28,.16)}
         .whdc-bottom-nav a,.whdc-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;min-width:0;padding:4px 0;border:0;border-radius:9px;background:transparent;color:inherit!important;text-decoration:none;font:inherit;font-size:11px;line-height:1.2;cursor:pointer}
