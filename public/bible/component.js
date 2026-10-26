@@ -59,7 +59,7 @@ async function mount(target){
  }
  const timeout=(ms)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error('timed out after '+Math.round(ms/1000)+' seconds')),ms));
  loading=(async()=>{
-  const response=await Promise.race([fetch('/bible/component-template.html?v=20261026-native-study-v1',{cache:'no-store'}),timeout(12000)]);
+  const response=await Promise.race([fetch('/bible/component-template.html?v=20261026-ipad-study-visible-v2',{cache:'no-store'}),timeout(12000)]);
   if(!response.ok)throw new Error('interface request HTTP '+response.status);
   const html=await response.text();
   if(!html.includes('id="reading"'))throw new Error('Bible interface missing Scripture container');
