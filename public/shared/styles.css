@@ -647,3 +647,19 @@ body.dark .today-featured-banner-dark{display:block}
 html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo.whdc-logo-dark{display:none}
 html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-logo-light{display:none}
 html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-logo-dark{display:block}
+
+/* 2026-10-26: Phone-width home logo on phones and tablets, with floating share action. */
+@media (max-width:1199px){
+ html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand){position:relative!important;display:block!important;padding-top:0!important;padding-right:0!important;}
+ html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-brand{display:block!important;width:100%!important;max-width:420px!important;margin:0 auto!important;}
+ html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo{display:block!important;width:100%!important;max-width:none!important;height:auto!important;object-fit:contain!important;}
+ html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo.whdc-logo-dark{display:none!important;}
+ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-logo-light{display:none!important;}
+ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-logo-dark{display:block!important;}
+ html:not(.whdc-desktop-device) .home-hero .whdc-home-share-icon{position:absolute!important;top:4px!important;right:0!important;margin:0!important;z-index:5!important;min-width:44px!important;}
+ html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand)>h2,
+ html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand)>p{width:100%!important;}
+}
+@media(max-width:600px){
+ html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-brand{max-width:100%!important;}
+}
