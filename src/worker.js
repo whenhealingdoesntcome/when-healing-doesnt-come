@@ -1899,8 +1899,8 @@ export default {async fetch(request,env,ctx){
       if(!response.ok)return response;
       const manifest=await response.json();
       manifest.icons=[
-        {src:'/images/icons/new-domain/icon-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
-        {src:'/images/icons/new-domain/icon-512.png',sizes:'512x512',type:'image/png',purpose:'any'}
+        {src:'/images/icons/new-domain/icon-192.png?v=20261026-icon2',sizes:'192x192',type:'image/png',purpose:'any'},
+        {src:'/images/icons/new-domain/icon-512.png?v=20261026-icon2',sizes:'512x512',type:'image/png',purpose:'any'}
       ];
       return new Response(JSON.stringify(manifest),{headers:{'content-type':'application/manifest+json; charset=utf-8','cache-control':'no-store','vary':'Host'}});
     }
@@ -1908,8 +1908,9 @@ export default {async fetch(request,env,ctx){
       const response=await env.ASSETS.fetch(request);
       if(!response.ok)return response;
       let html=await response.text();
-      html=html.replace('/images/icons/apple-touch-icon.png','/images/icons/new-domain/apple-touch-icon.png')
-        .replace('/images/icons/favicon.png','/images/icons/new-domain/favicon.png');
+      html=html.replace('/manifest.webmanifest','/manifest.webmanifest?v=20261026-icon2')
+        .replace('/images/icons/apple-touch-icon.png','/images/icons/new-domain/apple-touch-icon.png?v=20261026-icon2')
+        .replace('/images/icons/favicon.png','/images/icons/new-domain/favicon.png?v=20261026-icon2');
       return new Response(html,{status:response.status,headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','vary':'Host'}});
     }
   }
