@@ -120,11 +120,11 @@ document.addEventListener('submit',async event=>{
   whdcAccountMessage('Sending code…');const result=await whdcReaderApi('request-code',{email:document.getElementById('whdcAccountEmail').value});
   whdcAccountShow('verify');whdcAccountMessage(result.message||'Check your email for a sign-in code.');
  }else{
-  whdcAccountMessage('Checking code…');const result=await whdcReaderApi('verify-code',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
+  whdcAccountMessage('Checking code…');const result=await whdcReaderApi('complete-signin',{email:document.getElementById('whdcAccountEmail').value,code:document.getElementById('whdcAccountCode').value});
   const check=await whdcReaderApi('session-check');
   if(!check.sessionValid){
    whdcAccountShow('request');
-   const detail=!check.readerCookiePresent?(check.verificationProbePresent?'The verification response test cookie arrived, but the account cookie did not.':'Neither cookie from the verification response was returned.') :!check.tokenFormatValid?'The returned session cookie was invalid.':'The cookie was sent, but the server could not validate the session.';
+   const detail=!check.readerCookiePresent?'The session cookie was not sent back to WHDC.':!check.tokenFormatValid?'The returned session cookie was invalid.':'The cookie was sent, but the server could not validate the session.';
    whdcAccountMessage('Your code was accepted, but sign-in verification failed. '+detail+' Please report this message; do not clear your saved data.');
   }else{
    document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');

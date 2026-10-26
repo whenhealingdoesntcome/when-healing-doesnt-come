@@ -35,26 +35,6 @@ async function readerApi(req,env,path){
   }
   return new Response(null,{status:303,headers:{'location':'/api/reader/cookie-test?check=1','cache-control':'no-store','set-cookie':probeName+'=ok; Path=/api/reader/cookie-test; Secure; SameSite=Lax; Max-Age=60'}});
  }
- if(path==='/api/reader/fetch-cookie-test'&&req.method==='GET'){
-  const html=`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Fetch Cookie Test</title><body style="font:18px system-ui;padding:2rem;max-width:38rem;margin:auto"><h1>WHDC Fetch Cookie Test</h1><p>This checks whether Safari accepts a temporary cookie from a JavaScript POST request.</p><button id="run" style="padding:12px 20px;font:inherit">Run test</button><p id="result" role="status"></p><script>document.getElementById('run').onclick=async()=>{const el=document.getElementById('result');el.textContent='Checking…';try{const set=await fetch('/api/reader/fetch-cookie-probe',{method:'POST',credentials:'same-origin',cache:'no-store'});if(!set.ok)throw Error('Set request failed: '+set.status);const check=await fetch('/api/reader/fetch-cookie-probe',{credentials:'same-origin',cache:'no-store'});if(!check.ok)throw Error('Check request failed: '+check.status);const data=await check.json();el.textContent=data.returned?'PASS: Cookie returned after JavaScript fetch.':'FAIL: Cookie not returned after JavaScript fetch.';}catch(e){el.textContent='ERROR: '+e.message;}};</script></body></html>`;
-  return new Response(html,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
- }
- if(path==='/api/reader/fetch-cookie-probe'){
-  const url=new URL(req.url);
-  const baseHeaders={'content-type':'application/json; charset=utf-8','cache-control':'no-store'};
-  if(req.method==='POST'){
-   const origin=req.headers.get('origin');
-   if(origin!==url.origin)return readerReply({error:'Invalid origin'},403);
-   const response=readerReply({ok:true});
-   response.headers.set('set-cookie','whdc_fetch_probe=ok; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120');
-   return response;
-  }
-  if(req.method==='GET'){
-   const cookies=req.headers.get('cookie')||'';
-   const present=cookies.split(';').some(part=>part.trim()==='whdc_fetch_probe=ok');
-   return readerReply({returned:present});
-  }
- }
  if(path==='/api/reader/session-check'&&req.method==='GET'){
   const cookieHeader=req.headers.get('cookie')||'';
   const token=readerCookie(req);
@@ -65,8 +45,7 @@ async function readerApi(req,env,path){
    sessionValid=!!found;
   }
   // Never return cookie contents, account email, or session token.
-  const probePresent=cookieHeader.split(';').some(part=>part.trim()==='whdc_verify_probe=1');
-  return readerReply({cookieHeaderPresent:!!cookieHeader,readerCookiePresent:!!token,tokenFormatValid:tokenValid,sessionValid,verificationProbePresent:probePresent,host:new URL(req.url).hostname});
+  return readerReply({cookieHeaderPresent:!!cookieHeader,readerCookiePresent:!!token,tokenFormatValid:tokenValid,sessionValid,host:new URL(req.url).hostname});
  }
  if(path==='/api/reader/me'&&req.method==='GET'){
   const token=readerCookie(req);if(!/^[0-9a-f]{64}$/.test(token))return readerReply({signedIn:false});
@@ -111,7 +90,7 @@ async function readerApi(req,env,path){
   if(!response?.ok){await env.DB.prepare('DELETE FROM reader_email_challenges WHERE id=?').bind(id).run();return readerReply({error:'Could not send the code. Please try again later.'},502)}
   return readerReply({ok:true,message:'Check your email for a six-digit code.'});
  }
- if(path==='/api/reader/verify-code'&&req.method==='POST'){
+ if((path==='/api/reader/complete-signin'||path==='/api/reader/verify-code')&&req.method==='POST'){
   const body=await req.json().catch(()=>({}));const email=String(body.email||'').trim().toLowerCase(),code=String(body.code||'').trim();
   if(email.length>254||!/^[0-9]{6}$/.test(code))return readerReply({error:'Invalid or expired code'},400);
   const challenge=await env.DB.prepare('SELECT * FROM reader_email_challenges WHERE email=? AND expires_at>? AND attempts<5 ORDER BY created_at DESC LIMIT 1').bind(email,now).first();
@@ -122,12 +101,7 @@ async function readerApi(req,env,path){
   const id=crypto.randomUUID();await env.DB.prepare('INSERT INTO reader_accounts (id,email,created_at) VALUES (?,?,?) ON CONFLICT(email) DO NOTHING').bind(id,email,now).run();
   const account=await env.DB.prepare('SELECT id FROM reader_accounts WHERE email=?').bind(email).first();
   const token=readerRandom();await env.DB.prepare('INSERT INTO reader_sessions (token_hash,account_id,created_at,expires_at) VALUES (?,?,?,?)').bind(await readerDigest(token),account.id,now,now+30*86400).run();
-  const verificationResponse=readerReply({ok:true,email});
-  verificationResponse.headers.append('set-cookie',readerSessionCookie(token,30*86400));
-  // Diagnostic cookie has no secret and expires shortly. Helps distinguish a
-  // rejected account cookie from an entire response losing Set-Cookie headers.
-  verificationResponse.headers.append('set-cookie','whdc_verify_probe=1; Path=/; Secure; SameSite=Lax; Max-Age=180');
-  return verificationResponse;
+  return readerReply({ok:true,email},200,{'set-cookie':readerSessionCookie(token,30*86400),'x-whdc-session-issued':'1'});
  }
  return readerReply({error:'Not found'},404);
 }
