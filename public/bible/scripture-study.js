@@ -92,6 +92,18 @@ function selection(){const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)
 function closePalette(){palette.hidden=true;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
 function show(open=true){bar.hidden=!open;if(!open)closePalette()}
 window.whdcOpenStudyMenu=()=>show(true);
+// Close the transient study controls when navigating away or switching app sections.
+window.whdcCloseStudyMenu=()=>show(false);
+window.addEventListener('pagehide',()=>show(false));
+window.addEventListener('popstate',()=>show(false));
+window.addEventListener('hashchange',()=>show(false));
+document.addEventListener('click',event=>{
+  const link=event.target.closest('a[href]');
+  if(!link)return;
+  try{const target=new URL(link.href,location.href);
+    if(target.origin===location.origin && (target.pathname!==location.pathname || (target.hash && target.hash!==location.hash)))show(false);
+  }catch(_error){}
+},true);
 bar.querySelector('#whdcStudyClose').addEventListener('click',()=>show(false));
 function selectedUpdate(){clearTimeout(selectionTimer);selectionTimer=setTimeout(()=>{const found=selection();if(found){clearVerseSelection();active=found;show(true);bar.querySelector('#whdcStudyHint').textContent='Selected text: choose a study mark or save the complete verse(s).';bar.querySelector('#whdcStudyNotice').textContent=''}},180)}
 // Tap or click a verse to select it. Subsequent taps add verses; tapping again removes one.
