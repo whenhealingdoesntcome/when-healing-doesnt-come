@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v40-devotion-banner-themes';
+const CACHE='whdc-public-shell-v41-mobile-home-logo';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/images/header-logo.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/images/todays-pick-banner-dark.png','/resources/resources.css','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible/reader.js','/bible/reader.css'];
 

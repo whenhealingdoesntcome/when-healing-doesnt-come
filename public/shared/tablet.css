@@ -27,3 +27,9 @@
    top:calc(22px + env(safe-area-inset-top, 0px))!important;
  }
 }
+
+/* Home brand row is below the iPad status-bar safe area. */
+@media(min-width:768px) and (max-width:1199px){
+ html.whdc-tablet-device body:has(#app) .home-hero:has(.whdc-mobile-home-brand){padding-top:calc(16px + env(safe-area-inset-top,0px))!important}
+ html.whdc-tablet-device body:has(#app) .home-hero .whdc-home-share-icon{top:auto!important}
+}

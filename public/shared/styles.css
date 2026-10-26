@@ -625,3 +625,15 @@ body:not(.dark) > #app > header { background:#F3EBDD!important; }
 .today-featured-banner-dark{display:none}
 body.dark .today-featured-banner-light{display:none}
 body.dark .today-featured-banner-dark{display:block}
+
+/* Home logo for phone and tablet: share button alongside, above introduction. */
+.whdc-mobile-home-brand{display:none}
+@media(max-width:1199px){
+  html:not(.whdc-desktop-device) .home-hero{padding-top:0!important;margin-top:0!important;padding-right:16px!important}
+  html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-brand{display:flex;align-items:center;justify-content:flex-start;min-width:0;flex:1 1 auto}
+  html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo{display:block;width:100%;max-width:340px;height:auto;object-fit:contain}
+  html:not(.whdc-desktop-device) .home-hero .whdc-home-share-icon{position:static!important;flex:0 0 auto;margin-left:auto;align-self:center;min-width:88px;top:auto!important;right:auto!important}
+  html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand){display:flex;flex-wrap:wrap;align-items:center;gap:12px 10px}
+  html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand)>h2,html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand)>p{flex-basis:100%;margin-left:0;margin-right:0}
+}
+@media(max-width:600px){html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo{max-width:230px}}
