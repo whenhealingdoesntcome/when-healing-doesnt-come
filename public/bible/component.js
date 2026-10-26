@@ -27,13 +27,6 @@ function setupSettings(root){
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.open)close()});
  window.addEventListener('resize',()=>{if(panel.open)position()});
 }
-function setupStudy(root){
- const button=root.querySelector('#whdcNativeStudyButton');if(!button)return;
- if(!button.querySelector('.whdc-study-label')){const label=document.createElement('span');label.className='whdc-study-label';label.textContent='Study';button.append(label)}
- if(button.dataset.whdcBound)return;button.dataset.whdcBound='1';
- button.removeAttribute('onclick');
- button.addEventListener('click',()=>{if(typeof window.whdcOpenStudyMenu==='function'){window.whdcOpenStudyMenu();button.setAttribute('aria-expanded','true')}else{console.warn('Bible Study tools have not loaded')}});
-}
 function setupToolbar(root){
  const toolbar=root.querySelector('.mobile-bible-toolbar');if(!toolbar)return;
  const update=()=>{if(!root.isConnected)return;const header=document.querySelector('body > header, #app > header, .site-header, .whdc-header');const height=header?Math.max(0,header.getBoundingClientRect().bottom):0;root.style.setProperty('--whdc-shared-header-height',height+'px');root.style.setProperty('--whdc-bible-toolbar-height',toolbar.offsetHeight+'px')};
@@ -55,12 +48,12 @@ async function mount(target){
  if(saved){
   const root=saved;saved=null;target.replaceChildren(root);
   root.classList.toggle('dark',document.body.classList.contains('dark'));
-  setupToolbar(root);setupSettings(root);setupStudy(root);return;
+  setupToolbar(root);setupSettings(root);return;
  }
  if(loading){
   try{await loading}catch(e){showError(target,e.message||'initialization error')}
   if(activeTarget===target&&target.isConnected&&pendingRoot){
-   target.replaceChildren(pendingRoot);setupToolbar(pendingRoot);setupSettings(pendingRoot);setupStudy(pendingRoot);pendingRoot=null;
+   target.replaceChildren(pendingRoot);setupToolbar(pendingRoot);setupSettings(pendingRoot);pendingRoot=null;
   }
   return;
  }
