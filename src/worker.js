@@ -35,6 +35,16 @@ async function readerApi(req,env,path){
   }
   return new Response(null,{status:303,headers:{'location':'/api/reader/cookie-test?check=1','cache-control':'no-store','set-cookie':probeName+'=ok; Path=/api/reader/cookie-test; Secure; SameSite=Lax; Max-Age=60'}});
  }
+ if(path==='/api/reader/cookie-attributes-test'&&req.method==='GET'){
+  const u=new URL(req.url), step=u.searchParams.get('step');
+  const name='whdc_attr_probe';
+  const present=(req.headers.get('cookie')||'').split(';').some(part=>part.trim()===name+'=ok');
+  const base={'cache-control':'no-store, private','x-content-type-options':'nosniff'};
+  if(step==='check'){
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Cookie Attributes Test</title><main style="font:18px system-ui;max-width:36rem;margin:2rem auto;padding:1rem"><h1>WHDC Cookie Attributes Test</h1><p><strong>'+(present?'PASS: Secure HttpOnly site-wide cookie returned.':'FAIL: Secure HttpOnly site-wide cookie was not returned.')+'</strong></p><p>This test does not modify your sign-in or saved data.</p></main>',{headers:{...base,'content-type':'text/html; charset=utf-8','set-cookie':name+'=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'}});
+  }
+  return new Response(null,{status:303,headers:{...base,'location':'/api/reader/cookie-attributes-test?step=check','set-cookie':name+'=ok; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120'}});
+ }
  if(path==='/api/reader/session-check'&&req.method==='GET'){
   const cookieHeader=req.headers.get('cookie')||'';
   const token=readerCookie(req);
