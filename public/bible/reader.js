@@ -17,7 +17,7 @@ async function get(url){
   if(!type.includes('json'))throw Error(url+' returned '+(type||'an unknown content type')+' instead of JSON');
   return await r.json();
  }catch(e){failure=e}
- try{if('caches' in window){const cached=await caches.match(url);if(cached)return await cached.json()}}catch(e){}
+ try{if(typeof window.caches!=='undefined'){const cached=await window.caches.match(url);if(cached)return await cached.json()}}catch(e){}
  throw failure;
 }
 function setChapterOptions(){const max=Object.keys(current).length;$('chapter').replaceChildren(...Array.from({length:max},(_,i)=>new Option(String(i+1),String(i+1))));chapter=Math.max(1,Math.min(chapter,max));$('chapter').value=String(chapter)}
@@ -40,11 +40,11 @@ function goChapter(ch){chapter=Number(ch);$('chapter').value=String(chapter);sto
 async function openBook(code,ch=1){const token=++loading;book=code;chapter=Number(ch)||1;$('reading').innerHTML='<p class="loading">Opening Scripture…</p>';$('book').value=book;
 try{const data=await get('/bible/'+code+'.json');if(token!==loading)return;current=data;setChapterOptions();if($('mobileBook'))$('mobileBook').value=book;if($('mobileChapter')){$('mobileChapter').replaceChildren(...Array.from($('chapter').options,o=>new Option(o.text,o.value)));$('mobileChapter').value=String(chapter)}render();store('book',book);goChapter(chapter);const ref=new URLSearchParams(document.getElementById('whdcBibleRoot')?(location.hash.split('?')[1]||''):location.search).get('references');const match=ref&&ref.match(/(\d+):(\d+)/);if(match){requestAnimationFrame(()=>setTimeout(()=>document.getElementById('verse-'+match[1]+'-'+match[2])?.scrollIntoView({block:'start',behavior:'auto'}),180))}updateButtons()}catch(e){if(token===loading)$('reading').innerHTML='<p class="error">This book is not available on this device. Connect to the internet or download the Bible for offline reading.</p>';}}
 function updateButtons(){}
-async function status(){const cache=await caches.open(CACHE);const keys=await cache.keys();const count=books.filter(b=>keys.some(r=>new URL(r.url).pathname==='/bible/'+b+'.json')).length;$('progress').value=count;$('progress').hidden=!downloading;$('offlineStatus').textContent=downloading?'Downloading '+count+' of '+books.length+' books…':count===books.length?'Complete Bible downloaded for offline reading.':count?'Downloaded '+count+' of '+books.length+' books.':'Bible not downloaded yet.';$('remove').disabled=!count||downloading;$('download').disabled=downloading||count===books.length;}
-async function download(){if(downloading)return;downloading=true;$('download').disabled=true;$('progress').hidden=false;const cache=await caches.open(CACHE);let failures=0;
+async function status(){const cache=typeof window.caches!=='undefined'?await window.caches.open(CACHE):null;const keys=cache?await cache.keys():[];const count=books.filter(b=>keys.some(r=>new URL(r.url).pathname==='/bible/'+b+'.json')).length;$('progress').value=count;$('progress').hidden=!downloading;$('offlineStatus').textContent=downloading?'Downloading '+count+' of '+books.length+' books…':count===books.length?'Complete Bible downloaded for offline reading.':count?'Downloaded '+count+' of '+books.length+' books.':'Bible not downloaded yet.';$('remove').disabled=!count||downloading;$('download').disabled=typeof window.caches==='undefined'||downloading||count===books.length;}
+async function download(){if(downloading)return;downloading=true;$('download').disabled=true;$('progress').hidden=false;const cache=typeof window.caches!=='undefined'?await window.caches.open(CACHE):null;if(!cache){downloading=false;$('progress').hidden=true;$('offlineStatus').textContent='Offline downloads are unavailable in this browser. Online Bible reading remains available.';$('download').disabled=true;return;}let failures=0;
 for(const code of books){const path='/bible/'+code+'.json';if(await cache.match(path))continue;try{const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw Error('Failed');await cache.put(path,r.clone())}catch{failures++}await status()}
 downloading=false;await status();if(failures)$('offlineStatus').textContent+=' Some books could not be downloaded. Reconnect and select Download Bible to retry.';}
-async function remove(){if(downloading||!confirm('Remove the downloaded Bible from this device?'))return;await caches.delete(CACHE);await status()}
+async function remove(){if(downloading||!confirm('Remove the downloaded Bible from this device?'))return;if(typeof window.caches!=='undefined')await window.caches.delete(CACHE);await status()}
 
 const aliasMap=new Map();
 function normName(s){return s.toLowerCase().replace(/[^a-z0-9]/g,'')}
