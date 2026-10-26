@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v38-restore-bottom-nav';
+const CACHE='whdc-public-shell-v39-desktop-gray-hover';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/images/header-logo.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/resources/resources.css','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible/reader.js','/bible/reader.css'];
 
