@@ -1,6 +1,17 @@
 /* Shared public navigation. Backend dashboards deliberately do not load this file. */
 (function(){
   'use strict';
+  // Device classification is independent of the browser window width.
+  // iPadOS may identify as Macintosh, so touch support is required as well.
+  const ua=navigator.userAgent||'';
+  const ipad=/iPad/i.test(ua)||(/Macintosh/i.test(ua)&&navigator.maxTouchPoints>1);
+  const androidTablet=/Android/i.test(ua)&&!/Mobile/i.test(ua);
+  const tablet=ipad||androidTablet;
+  const phone=/iPhone|iPod/i.test(ua)||(/Android/i.test(ua)&&/Mobile/i.test(ua));
+  const handheld=tablet||phone;
+  document.documentElement.classList.toggle('whdc-tablet-device',tablet);
+  document.documentElement.classList.toggle('whdc-handheld-device',handheld);
+  document.documentElement.classList.toggle('whdc-desktop-device',!handheld);
   const items=[
     {id:'home',label:'Home',href:'/#home'},
     {id:'today',label:'Today',href:'/#today'},
@@ -130,6 +141,8 @@
       const css=document.createElement('style');css.id='whdc-bottom-nav-css';css.textContent=`
       .whdc-bottom-nav{display:none}
       @media(max-width:1199px){
+        html.whdc-desktop-device body{padding-bottom:0!important}
+        html.whdc-desktop-device .whdc-bottom-nav{display:none!important}
         body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
         .whdc-bottom-nav{display:grid!important;gap:0!important;flex-wrap:nowrap!important;grid-template-columns:repeat(var(--whdc-tab-count,5),minmax(0,1fr));position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:1100;min-height:68px;padding:8px 10px;background:#fffefa;color:#393f4a;border:1px solid #deded8;border-radius:999px;box-shadow:0 5px 22px rgba(20,30,28,.16)}
         .whdc-bottom-nav a,.whdc-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;min-width:0;padding:4px 0;border:0;border-radius:9px;background:transparent;color:inherit!important;text-decoration:none;font:inherit;font-size:11px;line-height:1.2;cursor:pointer}

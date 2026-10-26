@@ -1,11 +1,20 @@
 /* WHDC tablet: same app navigation as phone, no top header or floating study shortcut. */
 @media (min-width:768px) and (max-width:1199px) {
- body:has(#app) .site-header,body:has(#app) header.whdc-header,
- body:has(#app) #app > header,body:has(#app) .whdc-header-top,
- body:has(#app) #whdcStudyToggle,
- body:has(#app) .mobile-study-guide,
- body:has(#app) .study-fab {display:none!important}
- body:has(#app) {padding-top:0!important}
- body:has(#app) #whdc-bottom-nav.whdc-bottom-nav {display:grid!important}
- body:has(#app) main {padding-top:12px}
+ html:not(.whdc-tablet-device) html.whdc-tablet-device body:has(#app) .site-header, html:not(.whdc-tablet-device) html.whdc-tablet-device body:has(#app) #app > header {display:revert!important}
+ html.whdc-tablet-device body:has(#app) .site-header,body:has(#app) header.whdc-header,
+ html.whdc-tablet-device body:has(#app) #app > header,body:has(#app) .whdc-header-top,
+ html.whdc-tablet-device body:has(#app) #whdcStudyToggle,
+ html.whdc-tablet-device body:has(#app) .mobile-study-guide,
+ html.whdc-tablet-device body:has(#app) .study-fab {display:none!important}
+ html.whdc-tablet-device body:has(#app) {padding-top:0!important}
+ html.whdc-tablet-device body:has(#app) #whdc-bottom-nav.whdc-bottom-nav {display:grid!important}
+ html.whdc-tablet-device body:has(#app) main {padding-top:12px}
+}
+
+/* Desktop retains its header even when Chrome is resized to tablet dimensions. */
+@media (max-width:1199px) {
+ html.whdc-desktop-device #whdc-bottom-nav {display:none!important}
+ html.whdc-desktop-device body:has(#app) .site-header,
+ html.whdc-desktop-device body:has(#app) #app > header {display:flex!important}
+ html.whdc-desktop-device body:has(#app) #whdcStudyToggle {display:revert!important}
 }
