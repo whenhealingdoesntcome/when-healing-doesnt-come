@@ -36,7 +36,8 @@
     "CLOUDFLARE_ACCESS_APP_ID": "9fb5734b-9ae9-4eb9-a3aa-e9d4ddd6d0cf",
     "CLOUDFLARE_WRITERS_POLICY_ID": "f85f3600-b202-459c-937d-50e934e679d1",
     "VAPID_PUBLIC_KEY": "BJbxVBaZRwybbW_Hb_87fKKsW15RD7Eh8k7lpghHBshsW8JTHvjKS4KxRQ6miwM6NU4fgoZFJ9ARzGKrmeHaa94",
-    "VAPID_SUBJECT": "mailto:whenhealingdoesntcome@gmail.com"
+    "VAPID_SUBJECT": "mailto:whenhealingdoesntcome@gmail.com",
+    "READER_EMAIL_FROM": "WHDC Accounts <accounts@whdcdevotions.com>"
   },
   "triggers": {
     "crons": [
