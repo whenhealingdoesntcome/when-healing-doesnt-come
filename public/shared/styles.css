@@ -638,11 +638,8 @@ body.dark .today-featured-banner-dark{display:block}
 }
 @media(max-width:600px){html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo{max-width:230px}}
 
-/* Compact Share App control beside the Home logo on phones only. */
-@media (max-width:600px){
- html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-brand{flex:1 1 0;min-width:0}
- html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-logo{max-width:100%;height:auto}
- html:not(.whdc-desktop-device) .home-hero .whdc-home-share-icon{min-width:0!important;width:auto!important;height:32px!important;padding:0 7px!important;gap:4px!important;font-size:.72rem!important;line-height:1!important;white-space:nowrap}
- html:not(.whdc-desktop-device) .home-hero .whdc-home-share-icon svg{width:14px;height:14px;flex-shrink:0}
- html:not(.whdc-desktop-device) .home-hero:has(.whdc-mobile-home-brand){column-gap:6px}
-}
+/* Mobile and iPad home branding: follow WHDC appearance setting */
+html:not(.whdc-desktop-device) .home-hero .whdc-logo-light{display:block}
+html:not(.whdc-desktop-device) .home-hero .whdc-logo-dark{display:none}
+html:not(.whdc-desktop-device) body.dark .home-hero .whdc-logo-light{display:none}
+html:not(.whdc-desktop-device) body.dark .home-hero .whdc-logo-dark{display:block}
