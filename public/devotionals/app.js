@@ -7,8 +7,8 @@ const $=s=>document.querySelector(s);const KEY='whdc-drafts-v1',FAV='whdc-favori
 const OPEN_DEVOTIONAL_KEY='whdc-open-devotional-tab-v1';
 const TOPIC_SESSION_KEY='whdc-topic-reading-session-v1';
 const TOPIC_IMAGE_KEY='whdc-topic-image-v1';
-const TOPIC_IMAGE_NAMES=new Set(['identity','rest','anxiety','peace','loneliness','community']);
-function topicImageHeader(){if(view!=='read'||selectedTopicReading()!==currentId)return '';let topic='';try{const stored=JSON.parse(sessionStorage.getItem(TOPIC_IMAGE_KEY)||'null');if(stored?.id===currentId)topic=stored.topic||'';}catch{}const key=topic.toLowerCase().trim();return TOPIC_IMAGE_NAMES.has(key)?`<div class="whdc-topic-header"><img src="/images/topic-headers/${key}.webp" alt="" loading="eager" decoding="async"></div>`:'';}
+const TOPIC_IMAGE_NAMES=new Set(['identity','rest','anxiety','peace','loneliness','community','depression','praise','frustration','contentment','fear','joy','grief','hope','suffering','surrender','waiting','healing','purpose','living-with-limits','working-through-chronic-illness']);
+function topicImageHeader(){if(view!=='read'||selectedTopicReading()!==currentId)return '';let topic='';try{const stored=JSON.parse(sessionStorage.getItem(TOPIC_IMAGE_KEY)||'null');if(stored?.id===currentId)topic=stored.topic||'';}catch{}const key=topic.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');return TOPIC_IMAGE_NAMES.has(key)?`<div class="whdc-topic-header"><img src="/images/topic-headers/${key}.webp" alt="" loading="eager" decoding="async"></div>`:'';}
 
 const selectedTopicReading=()=>{try{return sessionStorage.getItem(TOPIC_SESSION_KEY)||''}catch{return ''}};
 function setTopicReading(id){try{sessionStorage.setItem(TOPIC_SESSION_KEY,String(id))}catch{}}
