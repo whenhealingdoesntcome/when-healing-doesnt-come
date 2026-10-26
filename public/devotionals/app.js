@@ -14,7 +14,7 @@ function topicImageHeader(){if(view!=='read'||selectedTopicReading()!==currentId
 const selectedTopicReading=()=>{try{return sessionStorage.getItem(TOPIC_SESSION_KEY)||localStorage.getItem(TOPIC_SESSION_KEY)||''}catch{return ''}};
 function setTopicReading(id){try{sessionStorage.setItem(TOPIC_SESSION_KEY,String(id));localStorage.setItem(TOPIC_SESSION_KEY,String(id))}catch{}}
 function syncTopicReadingNav(){window.WHDCNav?.bottomNav(view==='topics'?'explore':view,true)}
-function closeTopicReading(){localStorage.removeItem(TOPIC_IMAGE_KEY);sessionStorage.removeItem(TOPIC_IMAGE_KEY);localStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(OPEN_DEVOTIONAL_KEY);currentId=dailyPick(data)?.id;view='explore';history.pushState(null,'','#explore');render();window.scrollTo(0,0)}
+function closeTopicReading(){localStorage.removeItem(TOPIC_IMAGE_KEY);sessionStorage.removeItem(TOPIC_IMAGE_KEY);localStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(TOPIC_SESSION_KEY);sessionStorage.removeItem(OPEN_DEVOTIONAL_KEY);currentId=dailyPick(data)?.id;view='topics';history.pushState(null,'','#topics');render();window.scrollTo(0,0)}
 const devotionalHash=id=>'#devotional/'+encodeURIComponent(id);
 function rememberOpenDevotional(id){sessionStorage.setItem(OPEN_DEVOTIONAL_KEY,String(id));history.pushState(null,'',devotionalHash(id))}
 async function shareDevotional(d){
