@@ -663,3 +663,21 @@ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-
 @media(max-width:600px){
  html:not(.whdc-desktop-device) .home-hero .whdc-mobile-home-brand{max-width:100%!important;}
 }
+
+/* Desktop only: dark-mode main navigation highlight must use dark, readable text. */
+@media (min-width: 801px) {
+  body.dark .whdc-nav .navbtn:hover,
+  body.dark .whdc-nav .navbtn:focus-visible,
+  body.dark .whdc-nav .navbtn[aria-current="page"],
+  body.dark .whdc-nav .navbtn.active {
+    background: #a2b3a5 !important;
+    color: #202832 !important;
+    -webkit-text-fill-color: #202832;
+  }
+  body.dark .whdc-nav .navbtn:hover svg,
+  body.dark .whdc-nav .navbtn:focus-visible svg,
+  body.dark .whdc-nav .navbtn[aria-current="page"] svg,
+  body.dark .whdc-nav .navbtn.active svg {
+    color: inherit !important;
+  }
+}
