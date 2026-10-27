@@ -1,4 +1,11 @@
 // Optional reader accounts: enabled only on whdcdevotions.com.
+const ADMIN_READER_ACCOUNTS_HTML = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Manage User Accounts</title><style>body{font:16px/1.6 system-ui;background:#f6f4ef;color:#303c42;max-width:850px;margin:24px auto;padding:16px}main{background:white;padding:24px;border-radius:14px}input,button{font:inherit;padding:10px}button{cursor:pointer;background:#dbe7de;border:1px solid #8ca595;border-radius:6px}li{border-bottom:1px solid #ddd;padding:12px}small{display:block;color:#52635c}</style><main><a href="/admin">← Admin Dashboard</a><h1>Manage User Accounts</h1><p>Deleting a reader account removes its cloud backup, synchronized items, and sessions. Device-only data is not deleted. Writer/editor records are separate.</p><form id="search"><input id="q" type="search" placeholder="Search email"><button>Search</button></form><p id="status" role="status"></p><ul id="results"></ul></main><script>
+const statusEl=document.getElementById('status'),results=document.getElementById('results');
+async function api(path,opts){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opts});const d=await r.json();if(!r.ok)throw Error(d.error||'Request failed');return d}
+async function load(){statusEl.textContent='Loading…';try{const d=await api('/api/admin/reader-accounts?q='+encodeURIComponent(document.getElementById('q').value));results.replaceChildren();for(const a of d.accounts){const li=document.createElement('li'),name=document.createElement('strong'),info=document.createElement('small'),btn=document.createElement('button');name.textContent=a.email;info.textContent='Created: '+new Date(a.created_at*1000).toLocaleDateString()+' | Cloud backups: '+a.backups+' | Synced items: '+a.synced_items;btn.textContent='Delete account';btn.onclick=async()=>{if(prompt('Enter the account email to confirm deletion:')!==a.email)return;if(prompt('Type DELETE to permanently remove this account:')!=='DELETE')return;btn.disabled=true;try{await api('/api/admin/reader-accounts/delete',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:a.id,email:a.email,confirm:'DELETE'})});await load();statusEl.textContent='Account deleted.'}catch(e){statusEl.textContent=e.message;btn.disabled=false}};li.append(name,info,btn);results.append(li)}statusEl.textContent=d.accounts.length+' account(s) shown (maximum 100).'}catch(e){statusEl.textContent=e.message}}
+document.getElementById('search').onsubmit=e=>{e.preventDefault();load()};load();
+</script></html>`;
+
 const readerAllowed = req => new URL(req.url).hostname === 'whdcdevotions.com';
 const readerHeaders = {'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'};
 const readerReply=(data,status=200,headers={})=>new Response(JSON.stringify(data),{status,headers:{...readerHeaders,...headers}});
@@ -7,6 +14,16 @@ const readerHex=bytes=>Array.from(new Uint8Array(bytes),x=>x.toString(16).padSta
 const readerDigest=async value=>readerHex(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)));
 const readerRandom=()=>readerHex(crypto.getRandomValues(new Uint8Array(32)));
 const readerSessionCookie=(value,maxAge)=>`whdc_reader_session=${value}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+
+async function deleteReaderAccount(db,id){
+ await db.batch([
+  db.prepare('DELETE FROM reader_sync_items WHERE account_id=?').bind(id),
+  db.prepare('DELETE FROM reader_saved_snapshots WHERE account_id=?').bind(id),
+  db.prepare('DELETE FROM reader_sessions WHERE account_id=?').bind(id),
+  db.prepare('DELETE FROM reader_accounts WHERE id=?').bind(id)
+ ]);
+}
+
 async function readerApi(req,env,path){
  if(!readerAllowed(req))return readerReply({error:'Not available on this domain'},404);
  if(!env.DB)return readerReply({error:'Account database unavailable'},503);
@@ -99,6 +116,17 @@ async function readerApi(req,env,path){
   }
   const current=await env.DB.prepare('SELECT payload,revision FROM reader_sync_items WHERE account_id=? AND item_key=?').bind(session.account_id,key).first();
   return readerReply({error:'Revision conflict',current:current?{value:current.payload,revision:current.revision}:null},409);
+ }
+
+ if(path==='/api/reader/delete-account'&&req.method==='POST'){
+  const token=readerCookie(req);
+  if(!/^[0-9a-f]{64}$/.test(token))return readerReply({error:'Sign in again to delete your account.'},401);
+  const session=await env.DB.prepare('SELECT a.id,a.email FROM reader_sessions s JOIN reader_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?').bind(await readerDigest(token),now).first();
+  if(!session)return readerReply({error:'Session expired. Sign in again.'},401);
+  const body=await req.json().catch(()=>({}));
+  if(body.email!==session.email||body.confirm!=='DELETE')return readerReply({error:'Account email and DELETE confirmation are required.'},400);
+  await deleteReaderAccount(env.DB,session.id);
+  return readerReply({ok:true},200,{'set-cookie':readerSessionCookie('',0)});
  }
  if(path==='/api/reader/logout'&&req.method==='POST'){
   const token=readerCookie(req);if(/^[0-9a-f]{64}$/.test(token))await env.DB.prepare('DELETE FROM reader_sessions WHERE token_hash=?').bind(await readerDigest(token)).run();
@@ -1235,6 +1263,30 @@ export default {async fetch(request,env,ctx){
     }
 
 
+
+    if(path==='/api/admin/reader-accounts'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const q=(url.searchParams.get('q')||'').trim().toLowerCase();
+      if(q.length>254)return fail('Search too long',400);
+      const rows=await env.DB.prepare('SELECT a.id,a.email,a.created_at,(SELECT COUNT(*) FROM reader_saved_snapshots b WHERE b.account_id=a.id) AS backups,(SELECT COUNT(*) FROM reader_sync_items i WHERE i.account_id=a.id) AS synced_items FROM reader_accounts a WHERE (? = ? OR a.email LIKE ?) ORDER BY a.created_at DESC LIMIT 100').bind(q,'','%'+q+'%').all();
+      return json({accounts:rows.results||[]});
+    }
+    if(path==='/api/admin/reader-accounts/delete'&&request.method==='POST'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const origin=request.headers.get('origin');if(origin!==url.origin)return fail('Invalid origin',403);
+      const body=await request.json().catch(()=>({}));
+      const id=String(body.id||'');
+      if(!/^[0-9a-f-]{36}$/i.test(id)||body.confirm!=='DELETE')return fail('Invalid deletion confirmation',400);
+      const account=await env.DB.prepare('SELECT id,email FROM reader_accounts WHERE id=?').bind(id).first();
+      if(!account)return fail('Account not found',404);
+      if(body.email!==account.email)return fail('Email confirmation does not match',400);
+      await deleteReaderAccount(env.DB,id);
+      return json({ok:true});
+    }
+    if(path==='/admin/reader-accounts'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(ADMIN_READER_ACCOUNTS_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    }
     if(path==='/api/admin/resource-image'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
       const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
@@ -1325,7 +1377,7 @@ export default {async fetch(request,env,ctx){
       }catch(e){console.error('Reading plan admin failed',e);return fail('Reading plans database unavailable; apply migration 0003',503)}
     }
     if(path==='/admin/preview'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return new Response(PREVIEW_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"frame-ancestors 'none'"}});}
-    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?adminDashboardForSection(url.searchParams).replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?adminDashboardForSection(url.searchParams).replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a> · <a href="/admin/reader-accounts">Manage User Accounts</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/admin/outline'&&request.method==='GET'&&user.role==='editor')return fail('Not available to editors',403);
     if(path==='/admin/outline'&&request.method==='GET')return new Response(isAdmin(user)?outlineWithDashboardNav():OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/outline.js'&&request.method==='GET')return new Response(isAdmin(user)?OUTLINE_JS:WRITER_OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});
