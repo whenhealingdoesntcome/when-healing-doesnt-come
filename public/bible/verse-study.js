@@ -2,6 +2,8 @@
    Existing paragraph annotations and notes remain untouched. */
 (()=>{'use strict';
 const root=document.getElementById('reading');if(!root)return;
+// Remove any old per-verse controls if the reader was already rendered.
+root.querySelectorAll('.whdc-verse-tools').forEach(el=>el.remove());
 const KEY='whdc-bible-verse-study-v1',FAV='whdc-favorite-verses-v1';
 const read=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch{return {}}};
 const save=data=>{try{localStorage.setItem(KEY,JSON.stringify(data));return true}catch{return false}};
@@ -28,12 +30,12 @@ let selected=null;
 function ref(el){const book=el.dataset.book,ch=Number(el.dataset.chapter),v=Number(el.dataset.verse);return book&&Number.isInteger(ch)&&Number.isInteger(v)?`${book}:${ch}:${v}`:null}
 function clean(el){el.classList.remove('whdc-verse-study-highlight','whdc-verse-study-underline','whdc-verse-study-circle');el.style.removeProperty('background-color');el.style.removeProperty('--whdc-verse-color');el.querySelector('.whdc-verse-study-note')?.remove()}
 function apply(){const all=read();root.querySelectorAll('.verse-unit[data-book][data-chapter][data-verse]').forEach(el=>{const id=ref(el);if(!id)return;clean(el);const data=all[id];if(data?.kind&&data.kind!=='none'){el.classList.add('whdc-verse-study-'+data.kind);if(data.kind==='highlight')el.style.backgroundColor=colors[data.theme]||colors.other;else el.style.setProperty('--whdc-verse-color',colors[data.theme]||colors.other)}if(data?.note){const note=document.createElement('span');note.className='whdc-verse-study-note';note.textContent=' 📝';note.title='Saved verse note';el.append(note)}
- const result=el.closest('.result-item');if((result||data)&&!el.parentElement.querySelector('.whdc-verse-tools[data-ref="'+id+'"]')){const holder=document.createElement('span');holder.className='whdc-verse-tools';holder.dataset.ref=id;const btn=document.createElement('button');btn.type='button';btn.textContent='✎ Study verse';btn.setAttribute('aria-label','Study '+id.replaceAll(':',' '));btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();open(el)});holder.append(btn);el.insertAdjacentElement('afterend',holder)}
+
  });}
 function open(el){selected=el;const id=ref(el),data=read()[id]||{};dialog.querySelector('#whdcVerseTitle').textContent='Study '+id.replaceAll(':',' ');dialog.querySelector('#whdcVerseKind').value=data.kind||'none';theme.value=data.theme||'god';dialog.querySelector('#whdcVerseNote').value=data.note||'';dialog.querySelector('#whdcVerseStatus').textContent='';dialog.showModal()}
 function commit(clear=false){if(!selected)return;const id=ref(selected),all=read();if(clear)delete all[id];else{const kind=dialog.querySelector('#whdcVerseKind').value,themeValue=theme.value,note=dialog.querySelector('#whdcVerseNote').value.trim();if(kind==='none'&&!note)delete all[id];else all[id]={kind,theme:themeValue,note}}if(save(all)){dialog.close();apply()}else dialog.querySelector('#whdcVerseStatus').textContent='Unable to save on this device.'}
 dialog.querySelector('#whdcVerseSave').onclick=()=>commit();dialog.querySelector('#whdcVerseRemove').onclick=()=>commit(true);
 dialog.querySelector('#whdcVerseFavorite').onclick=()=>{if(!selected)return;const id=ref(selected);const sup=selected.querySelector('sup.verse');const clone=selected.cloneNode(true);clone.querySelectorAll('sup.verse,.chapter,.whdc-verse-study-note').forEach(x=>x.remove());const text=clone.textContent.trim();const reference=sup?.title||id;try{const favorites=JSON.parse(localStorage.getItem(FAV)||'[]');const item={id:reference.toLowerCase(),reference,text,paragraphs:[text],source:'bible',createdAt:new Date().toISOString()};const i=favorites.findIndex(x=>x.id===item.id);if(i>=0)favorites[i]=item;else favorites.push(item);localStorage.setItem(FAV,JSON.stringify(favorites));dialog.querySelector('#whdcVerseStatus').textContent='Verse saved to Favorites.'}catch{dialog.querySelector('#whdcVerseStatus').textContent='Unable to save favorite.'}};
-// Search results receive a Study button; chapter annotations also follow the verse.
+// Preserve existing verse annotations without adding per-verse Study buttons.
 const observer=new MutationObserver(()=>{if(!root.querySelector('.scripture'))return;observer.disconnect();apply();observer.observe(root,{childList:true,subtree:false})});observer.observe(root,{childList:true,subtree:false});apply();
 })();
