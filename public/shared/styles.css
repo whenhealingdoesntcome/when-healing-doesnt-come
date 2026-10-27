@@ -681,3 +681,27 @@ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-
     color: inherit !important;
   }
 }
+
+/* Desktop dark mode: keep the selected main navigation tab visibly highlighted.
+   Override the desktop header rule that forces a transparent background. */
+@media (min-width:900px) {
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn:hover,
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn:focus-visible,
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn[aria-current="page"],
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn.active,
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown > .whdc-explore-trigger:hover,
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown > .whdc-explore-trigger:focus-visible,
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown > .whdc-explore-trigger[aria-current="page"],
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown > .whdc-explore-trigger.active,
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown:has(.whdc-explore-dropdown-list:not([hidden])) > .whdc-explore-trigger {
+    background-color:#a2b3a5!important;
+    color:#202832!important;
+    -webkit-text-fill-color:#202832!important;
+    text-decoration:none!important;
+  }
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn[aria-current="page"] svg,
+  body.dark #app > header #mainMenu.whdc-nav > .navbtn.active svg,
+  body.dark #app > header #mainMenu.whdc-nav > .whdc-explore-dropdown > .whdc-explore-trigger[aria-current="page"] svg {
+    color:#202832!important;
+  }
+}
