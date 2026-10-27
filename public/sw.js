@@ -1,4 +1,4 @@
-const CACHE='whdc-public-shell-v42-compact-share';
+const CACHE='whdc-public-shell-v43-topic-art-refresh';
 const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/images/header-logo.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/images/todays-pick-banner-dark.png','/resources/resources.css','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible/reader.js','/bible/reader.css'];
 
@@ -91,12 +91,30 @@ self.addEventListener('fetch',event=>{
    }catch{return cached||new Response('This page has not been saved for offline use.',{status:503,headers:{'Content-Type':'text/plain'}})}
   })());return;
  }
+ // Topic artwork is replaced frequently. Always check the network before using an offline copy.
+ if(path.startsWith('/images/topic-headers/')&&path.endsWith('.webp')){
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE);
+   try{
+    const response=await fetch(req,{cache:'no-store'});
+    if(response.ok&&response.type==='basic')await cache.put(req,response.clone());
+    return response;
+   }catch{return await cache.match(req)||await cacheLookup(path,req)||Response.error()}
+  })());return;
+ }
  // Bible integration code must update together. Keep Scripture downloads untouched.
  if(['/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/verse-study.js'].includes(path)){
   event.respondWith((async()=>{
    const cache=await caches.open(CACHE);
    try{const response=await fastNetwork(req,4000);if(response.ok&&response.type==='basic'){await cache.put(req,response.clone());return response}}catch{}
    return await cache.match(req)||Response.error();
+  })());return;
+ }
+ if(path==='/devotionals/app.js'){
+  event.respondWith((async()=>{
+   const cache=await caches.open(CACHE);
+   try{const response=await fetch(req,{cache:'no-store'});if(response.ok&&response.type==='basic')await cache.put(path,response.clone());return response}
+   catch{return await cacheLookup(path,req)||Response.error()}
   })());return;
  }
  if(SHELL.includes(path)){

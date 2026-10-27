@@ -6,6 +6,7 @@ const $=s=>document.querySelector(s);const KEY='whdc-drafts-v1',FAV='whdc-favori
 // The selected devotional survives reloads in this tab, but not a new browsing session.
 const OPEN_DEVOTIONAL_KEY='whdc-open-devotional-tab-v1';
 const TOPIC_SESSION_KEY='whdc-topic-reading-session-v1';
+const TOPIC_IMAGE_VERSION='20261026-topic-refresh-1';
 const TOPIC_IMAGE_KEY='whdc-topic-image-v1';
 const TOPIC_IMAGE_NAMES=new Set(["anxiety","community","contentment","depression","disappointment","fear","frustration","grace","grief","healing","hope","identity","joy","living-with-limits","loneliness","love","peace","praise","purpose","rest","sanctification","suffering","surrender","trust","waiting","working-through-chronic-illness"]);
 function topicImageKey(topic){return String(topic||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
@@ -14,7 +15,7 @@ function topicImageForDevotional(d,preferred=''){
  const topics=Array.isArray(d?.topics)?d.topics:[];
  const keyFor=t=>{const key=topicImageKey(t);const mapped=TOPIC_IMAGE_ALIASES[key]||key;return TOPIC_IMAGE_NAMES.has(mapped)?mapped:''};
  const preferredKey=keyFor(preferred);
- if(preferredKey&&topics.some(t=>topicImageKey(t)===topicImageKey(preferred)))return preferredKey;
+ if(preferredKey&&topics.some(t=>keyFor(t)===preferredKey))return preferredKey;
  for(const topic of topics){const key=keyFor(topic);if(key)return key}
  return '';
 }
@@ -27,7 +28,7 @@ function topicImageHeader(){
  if(view!=='read'||selectedTopicReading()!==currentId)return '';
  let preferred='';try{const stored=JSON.parse(sessionStorage.getItem(TOPIC_IMAGE_KEY)||localStorage.getItem(TOPIC_IMAGE_KEY)||'null');if(stored?.id===currentId)preferred=stored.topic||''}catch{}
  const key=topicImageForDevotional(current(),preferred);
- return key?`<div class="whdc-topic-header"><img src="/images/topic-headers/${key}.webp" alt="" loading="eager" decoding="async"></div>`:'';
+ return key?`<div class="whdc-topic-header"><img src="/images/topic-headers/${key}.webp?v=${TOPIC_IMAGE_VERSION}" alt="" loading="eager" decoding="async"></div>`:'';
 }
 
 // Keep Read available when the Bible Reader navigates through a separate page context.
