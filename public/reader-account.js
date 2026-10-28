@@ -7,4 +7,26 @@ $('verify').onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector
 $('restart').onclick=()=>{show('request');message.textContent=''};
 $('logout').onclick=async()=>{try{await api('logout',{});show('request');message.textContent='Signed out.'}catch(e){message.textContent=e.message}};
 
-$('deleteAccount').onclick=async()=>{const email=$('who').textContent;if(prompt('Enter your account email to confirm deletion:')!==email)return;if(prompt('Type DELETE to permanently delete your account:')!=='DELETE')return;const b=$('deleteAccount');b.disabled=true;message.textContent='Deleting account…';try{await api('delete-account',{email,confirm:'DELETE'});show('request');message.textContent='Account and cloud data deleted. Device-only data remains until cleared on each device.'}catch(e){message.textContent=e.message}finally{b.disabled=false}};
+const deleteDialog=$('deleteDialog');
+$('deleteAccount').onclick=()=>{$('deleteError').textContent='';deleteDialog.showModal()};
+$('cancelDelete').onclick=()=>deleteDialog.close();
+$('confirmDelete').onclick=async()=>{
+  const button=$('confirmDelete');
+  button.disabled=true;
+  $('cancelDelete').disabled=true;
+  $('deleteError').textContent='';
+  button.textContent='Deleting…';
+  try{
+    await api('delete-account',{email:$('who').textContent,confirm:'DELETE'});
+    deleteDialog.close();
+    show('request');
+    $('code').value='';
+    message.textContent='Your account and cloud-saved data were deleted. Data stored only on your devices remains until cleared separately.';
+  }catch(e){
+    $('deleteError').textContent=e.message;
+  }finally{
+    button.disabled=false;
+    $('cancelDelete').disabled=false;
+    button.textContent='Yes, Delete Account';
+  }
+};
