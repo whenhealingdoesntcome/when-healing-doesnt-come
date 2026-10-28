@@ -112,7 +112,7 @@ const WHDC_TRANSFER_KEYS=[
 ];
 function whdcReaderAccountPanel(){
  if(location.hostname!=='whdcdevotions.com')return '';
- return `<section class="card" style="max-width:760px;margin:14px auto 20px" id="whdcReaderAccountSection"><h2>Optional Reader Account</h2><p>Read WHDC without an account. Sign in to manage your reader account.</p><button type="button" class="btn" id="whdcManageReaderAccount" aria-expanded="false">Manage reader account</button><div id="whdcAccountInline" hidden style="margin-top:16px"><p id="whdcAccountStatus" role="status" aria-live="polite"></p><div id="whdcAccountSignedIn" hidden><p>Signed in as <strong id="whdcAccountWho"></strong>.</p><button type="button" class="btn" id="whdcAccountLogout">Sign out</button></div><form id="whdcAccountRequest" hidden><label>Email address <input id="whdcAccountEmail" type="email" autocomplete="email" maxlength="254" required style="display:block;max-width:100%;width:340px"></label><button class="btn" type="submit">Send sign-in code</button></form><form id="whdcAccountVerify" hidden><label>Six-digit code from your email <input id="whdcAccountCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="display:block;width:180px"></label><button class="btn" type="submit">Verify and sign in</button> <button class="btn" type="button" id="whdcAccountRestart">Use another email</button></form></div></section>`;
+ return `<section class="card" style="max-width:760px;margin:14px auto 20px" id="whdcReaderAccountSection"><h2>My Account</h2><p>Accounts are optional. Sign in to manage your account.</p><button type="button" class="btn" id="whdcManageReaderAccount" aria-expanded="false">Manage My Account</button><div id="whdcAccountInline" hidden style="margin-top:16px"><p id="whdcAccountStatus" role="status" aria-live="polite"></p><div id="whdcAccountSignedIn" hidden><p>Signed in as <strong id="whdcAccountWho"></strong>.</p><button type="button" class="btn" id="whdcAccountLogout">Sign out</button><div style="margin-top:20px;padding-top:15px;border-top:1px solid #b5c3bc"><button type="button" class="btn" id="whdcDeleteAccount" style="background:#823c3c;color:white">Delete My Account</button></div></div><form id="whdcAccountRequest" hidden><label>Email address <input id="whdcAccountEmail" type="email" autocomplete="email" maxlength="254" required style="display:block;max-width:100%;width:340px"></label><button class="btn" type="submit">Send sign-in code</button></form><form id="whdcAccountVerify" hidden><label>Six-digit code from your email <input id="whdcAccountCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required style="display:block;width:180px"></label><button class="btn" type="submit">Verify and sign in</button> <button class="btn" type="button" id="whdcAccountRestart">Use another email</button></form></div><dialog id="whdcDeleteDialog" aria-labelledby="whdcDeleteTitle" aria-describedby="whdcDeleteDescription" style="width:min(440px,calc(100% - 32px));max-width:100%;box-sizing:border-box;border:0;border-radius:14px;padding:24px;background:#fff;color:#303c42;box-shadow:0 14px 45px #0005"><h2 id="whdcDeleteTitle">Delete your account?</h2><div id="whdcDeleteDescription"><p>Deleting your account permanently removes your WHDC reader account, cloud backups, synced data, and active sign-in sessions.</p><p>Data saved only on your devices will not be deleted automatically. This cannot be undone.</p><p><strong>Are you sure you want to delete your account?</strong></p></div><p id="whdcDeleteError" role="alert" style="color:#823c3c"></p><div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" id="whdcCancelDelete">Cancel</button><button type="button" class="btn" id="whdcConfirmDelete" style="background:#823c3c;color:white">Yes, Delete Account</button></div></dialog></section>`;
 }
 async function whdcReaderApi(path,body){
  const response=await fetch('/api/reader/'+path,{method:body?'POST':'GET',credentials:'same-origin',headers:body?{'content-type':'application/json'}:{},body:body?JSON.stringify(body):undefined,cache:'no-store'});
@@ -126,8 +126,25 @@ function whdcAccountShow(which){
 function whdcAccountMessage(message){const el=document.getElementById('whdcAccountStatus');if(el)el.textContent=message;}
 // Use the existing Settings view rather than leaving the installed PWA for a separate HTML page.
 document.addEventListener('click',async event=>{
- const target=event.target.closest?.('#whdcManageReaderAccount,#whdcAccountLogout,#whdcAccountRestart');if(!target)return;
+ const target=event.target.closest?.('#whdcManageReaderAccount,#whdcAccountLogout,#whdcAccountRestart,#whdcDeleteAccount,#whdcCancelDelete,#whdcConfirmDelete');if(!target)return;
  event.preventDefault();
+ if(target.id==='whdcDeleteAccount'){
+  const dialog=document.getElementById('whdcDeleteDialog');if(!dialog)return;
+  document.getElementById('whdcDeleteError').textContent='';dialog.showModal();return;
+ }
+ if(target.id==='whdcCancelDelete'){document.getElementById('whdcDeleteDialog')?.close();return;}
+ if(target.id==='whdcConfirmDelete'){
+  const dialog=document.getElementById('whdcDeleteDialog');const errorEl=document.getElementById('whdcDeleteError');
+  target.disabled=true;const originalText=target.textContent;target.textContent='Deleting…';
+  try{
+   await whdcReaderApi('delete-account',{email:document.getElementById('whdcAccountWho').textContent,confirm:'DELETE'});
+   dialog.close();whdcAccountShow('request');
+   const code=document.getElementById('whdcAccountCode');if(code)code.value='';
+   whdcAccountMessage('Your account and cloud-saved data were deleted. Data stored only on your devices remains until cleared separately.');
+  }catch(error){errorEl.textContent=error.message||'Account deletion failed.';}
+  finally{target.disabled=false;target.textContent=originalText;}
+  return;
+ }
  if(target.id==='whdcManageReaderAccount'){
   const panel=document.getElementById('whdcAccountInline');if(!panel)return;
   panel.hidden=!panel.hidden;target.setAttribute('aria-expanded',String(!panel.hidden));if(panel.hidden)return;
@@ -153,7 +170,7 @@ document.addEventListener('submit',async event=>{
    const detail=!check.readerCookiePresent?'The session cookie was not sent back to WHDC.':!check.tokenFormatValid?'The returned session cookie was invalid.':'The cookie was sent, but the server could not validate the session.';
    whdcAccountMessage('Your code was accepted, but sign-in verification failed. '+detail+' Please report this message; do not clear your saved data.');
   }else{
-   document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in. You can now choose to back up saved data to your account.');
+   document.getElementById('whdcAccountWho').textContent=result.email;whdcAccountShow('account');whdcAccountMessage('Signed in.');
   }
  }}catch(error){whdcAccountMessage(error.message);}finally{button.disabled=false;}
 });
