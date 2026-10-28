@@ -6,7 +6,23 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const fail=(message,status=400)=>json({error:message},status);
 function parseObject(key,base){const rest=key.slice(base.length),m=/^(devotional|scripture|deeper)\/(sulafat|sadachbia)-([a-f0-9]{8,128})\.(wav|mp3)$/i.exec(rest);return m?{part:m[1].toLowerCase(),voice:m[2].toLowerCase(),hash:m[3].toLowerCase(),extension:m[4].toLowerCase(),key}:null}
 async function listFiles(bucket,id){const base=`devotionals/${id}/`;let cursor,objects=[],pages=0;do{const result=await bucket.list({prefix:base,cursor,limit:1000});objects.push(...result.objects);cursor=result.truncated?result.cursor:null;pages++;}while(cursor&&pages<20);return objects.map(o=>parseObject(o.key,base)).filter(Boolean)}
-async function catalog(bucket,id){const files=await listFiles(bucket,id);const sections={};for(const part of PARTS){sections[part]={};for(const voice of VOICES){const options=files.filter(f=>f.part===part&&f.voice===voice).sort((a,b)=>(a.extension==='wav'?0:1)-(b.extension==='wav'?0:1));if(options.length)sections[part][voice]={url:`/api/audio/file?devotional=${encodeURIComponent(id)}&part=${part}&voice=${voice}&hash=${options[0].hash}&format=${options[0].extension}`,count:options.length};}}const complete=PARTS.every(p=>VOICES.every(v=>!!sections[p][v]));return {devotionalId:id,sections:complete?sections:Object.fromEntries(PARTS.map(p=>[p,{}])),hasAudio:complete};}
+async function loadWordTiming(bucket,id,part,voice,hash){
+ // Sidecar timing belongs to the exact content-addressed recording.
+ const key=`devotionals/${id}/${part}/${voice}-${hash}.words.json`;
+ const object=await bucket.get(key);
+ if(!object||object.size>3000000)return null;
+ try{
+  const data=await object.json();
+  if(data?.version!==1||!Array.isArray(data.words)||data.words.length>20000)return null;
+  let last=0;
+  for(const w of data.words){
+   if(!Number.isFinite(w.start)||!Number.isFinite(w.end)||w.start<last||w.end<=w.start)return null;
+   last=w.end;
+  }
+  return data.words;
+ }catch{return null}
+}
+async function catalog(bucket,id){const files=await listFiles(bucket,id);const sections={};for(const part of PARTS){sections[part]={};for(const voice of VOICES){const options=files.filter(f=>f.part===part&&f.voice===voice).sort((a,b)=>(a.extension==='wav'?0:1)-(b.extension==='wav'?0:1));if(options.length){const selected=options[0];const entry={url:`/api/audio/file?devotional=${encodeURIComponent(id)}&part=${part}&voice=${voice}&hash=${selected.hash}&format=${selected.extension}`,count:options.length};const words=await loadWordTiming(bucket,id,part,voice,selected.hash);if(words)entry.words=words;sections[part][voice]=entry;}}}const complete=PARTS.every(p=>VOICES.every(v=>!!sections[p][v]));return {devotionalId:id,sections:complete?sections:Object.fromEntries(PARTS.map(p=>[p,{}])),hasAudio:complete};}
 // One virtual PCM WAV, assembled from the three existing R2 recordings on demand.
 // Nothing is synthesized, uploaded, or stored. Byte ranges support iOS background playback.
 async function continuousWav(request,bucket,id,voice){
