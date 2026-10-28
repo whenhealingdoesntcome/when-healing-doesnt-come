@@ -5,7 +5,24 @@ window.WHDCAudio=(()=>{
  let activeWord=null,wordSpans=[],wordTimings=[];
  const followEnabled=()=>localStorage.getItem(FOLLOW_KEY)!=='0';
  function clearHighlight(){if(activeWord)activeWord.classList.remove('whdc-word-active');activeWord=null;for(const span of wordSpans){if(span.isConnected)span.replaceWith(document.createTextNode(span.textContent));}wordSpans=[];wordTimings=[];}
- function setupHighlight(part,file){clearHighlight();if(!followEnabled()||!Array.isArray(file?.words)||!file.words.length)return;const root=part==='devotional'?document.querySelector('#quoteSelectableDevotional > .whdc-quote-text'):part==='deeper'?document.querySelector('#deepText > .whdc-quote-text'):null;if(!root)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);for(const node of nodes){const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;const frag=document.createDocumentFragment();let pos=0;for(const m of matches){frag.append(document.createTextNode(node.textContent.slice(pos,m.index)));const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=m[0];frag.append(span);wordSpans.push(span);pos=m.index+m[0].length;}frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag)}if(wordSpans.length!==file.words.length){clearHighlight();return;}wordTimings=file.words;}
+ function normalizeWord(s){return String(s||'').toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9']/g,'').replace(/'/g,'');}
+ function setupHighlight(part,file){
+  clearHighlight();if(!followEnabled()||!Array.isArray(file?.words)||!file.words.length)return;
+  const root=part==='devotional'?document.querySelector('#quoteSelectableDevotional > .whdc-quote-text'):part==='deeper'?document.querySelector('#deepText > .whdc-quote-text'):null;
+  if(!root)return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  const displayed=[];for(const node of nodes){for(const m of node.textContent.matchAll(/\S+/g))displayed.push(normalizeWord(m[0]));}
+  const spoken=file.words.map(w=>normalizeWord(w.word));
+  // Narration can include the title and Key Scripture before the Short Devotional.
+  // Match the actual displayed words as one consecutive passage, rather than assuming equal counts.
+  let offset=-1;const first=displayed.slice(0,Math.min(12,displayed.length));
+  for(let i=0;i<=spoken.length-displayed.length;i++){
+   if(first.every((w,j)=>w===spoken[i+j])&&displayed.every((w,j)=>w===spoken[i+j])){offset=i;break;}
+  }
+  if(offset<0)return; // Never highlight incorrect words when the published text differs.
+  for(const node of nodes){const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;const frag=document.createDocumentFragment();let pos=0;for(const m of matches){frag.append(document.createTextNode(node.textContent.slice(pos,m.index)));const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=m[0];frag.append(span);wordSpans.push(span);pos=m.index+m[0].length;}frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag)}
+  wordTimings=file.words.slice(offset,offset+displayed.length);
+ }
  function highlightAt(time){if(!followEnabled()||!wordTimings.length)return;let lo=0,hi=wordTimings.length-1,idx=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(Number(wordTimings[mid].start)<=time){idx=mid;lo=mid+1}else hi=mid-1}const next=idx>=0&&time<Number(wordTimings[idx].end)?wordSpans[idx]:null;if(activeWord!==next){activeWord?.classList.remove('whdc-word-active');activeWord=next||null;activeWord?.classList.add('whdc-word-active')}}
  const RESUME_KEY='whdc-recorded-audio-resume-v1';
  const saved=()=>{try{return JSON.parse(localStorage.getItem(RESUME_KEY)||'null')}catch{return null}};
@@ -28,7 +45,8 @@ window.WHDCAudio=(()=>{
   const status=player.querySelector('[data-follow-status]');
   const hasTimings=Array.isArray(available(part)[voice()]?.words)&&available(part)[voice()].words.length>0;
   follow.checked=followEnabled();
-  follow.disabled=false;
+  follow.disabled=!hasTimings;
+  if(!hasTimings)follow.checked=false;
   function refreshFollowStatus(){status.textContent=!hasTimings?'Word highlighting is waiting for audio timing data for this recording.':(!wordTimings.length&&follow.checked?'Timing data is available, but could not be matched to the displayed text.':'');}
   follow.addEventListener('change',()=>{localStorage.setItem(FOLLOW_KEY,follow.checked?'1':'0');if(!follow.checked)clearHighlight();else setupHighlight(activePart,available(activePart)[voice()]);highlightAt(audio?.currentTime||0);refreshFollowStatus()});
   refreshFollowStatus();
