@@ -12,7 +12,7 @@ on:
         required: false
         default: '3'
   schedule:
-    - cron: '17 * * * *' # Check hourly; GitHub scheduled starts may be delayed.
+    - cron: '8,38 * * * *' # Check hourly; GitHub scheduled starts may be delayed.
 
 permissions:
   contents: read
