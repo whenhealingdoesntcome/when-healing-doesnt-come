@@ -6,7 +6,7 @@ const json=(value,status=200)=>new Response(JSON.stringify(value),{status,header
 const fail=(message,status=400)=>json({error:message},status);
 function parseObject(key,base){const rest=key.slice(base.length),m=/^(devotional|scripture|deeper)\/(sulafat|sadachbia)-([a-f0-9]{8,128})\.(wav|mp3)$/i.exec(rest);return m?{part:m[1].toLowerCase(),voice:m[2].toLowerCase(),hash:m[3].toLowerCase(),extension:m[4].toLowerCase(),key}:null}
 async function listFiles(bucket,id){const base=`devotionals/${id}/`;let cursor,objects=[],pages=0;do{const result=await bucket.list({prefix:base,cursor,limit:1000});objects.push(...result.objects);cursor=result.truncated?result.cursor:null;pages++;}while(cursor&&pages<20);return objects.map(o=>parseObject(o.key,base)).filter(Boolean)}
-async function loadWordTiming(bucket,id,part,voice,hash){
+export async function loadWordTiming(bucket,id,part,voice,hash){
  // Report a safe diagnostic code when a matching R2 timing sidecar cannot be loaded.
  const key=`devotionals/${id}/${part}/${voice}-${hash}.words.json`;
  let object;
