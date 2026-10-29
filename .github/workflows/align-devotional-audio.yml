@@ -1,0 +1,48 @@
+name: Align WHDC devotional audio
+
+on:
+  workflow_dispatch:
+    inputs:
+      prefix:
+        description: 'Optional R2 prefix, e.g. devotionals/who-am-i/'
+        required: false
+        default: 'devotionals/'
+      limit:
+        description: 'Maximum new recordings per run'
+        required: false
+        default: '6'
+  schedule:
+    - cron: '17 * * * *' # Check hourly; GitHub scheduled starts may be delayed.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: whdc-audio-alignment
+  cancel-in-progress: false
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET_NAME: ${{ secrets.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/alignment-requirements.txt
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install alignment dependencies
+        run: python -m pip install -r scripts/alignment-requirements.txt
+      - name: Align missing R2 recordings
+        env:
+          ALIGN_PREFIX: ${{ inputs.prefix || 'devotionals/' }}
+          ALIGN_LIMIT: ${{ inputs.limit || '6' }}
+        run: python scripts/align_r2_audio.py --prefix "$ALIGN_PREFIX" --limit "$ALIGN_LIMIT"
