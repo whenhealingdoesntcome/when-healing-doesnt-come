@@ -13,17 +13,38 @@ window.WHDCAudio=(()=>{
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
   const displayed=[];for(const node of nodes){for(const m of node.textContent.matchAll(/\S+/g))displayed.push(normalizeWord(m[0]));}
   const spoken=file.words.map(w=>normalizeWord(w.word));
-  // Narration can include the title and Key Scripture before the Short Devotional.
-  // Match the actual displayed words as one consecutive passage, rather than assuming equal counts.
-  let offset=-1;const first=displayed.slice(0,Math.min(12,displayed.length));
-  for(let i=0;i<=spoken.length-displayed.length;i++){
-   if(first.every((w,j)=>w===spoken[i+j])&&displayed.every((w,j)=>w===spoken[i+j])){offset=i;break;}
+  // Use ordered word matching instead of requiring an identical complete passage.
+  // The recording may include an introduction, and published punctuation/text can differ.
+  const n=displayed.length,m=spoken.length;
+  if(!n||!m)return;
+  const dp=Array.from({length:n+1},()=>new Uint16Array(m+1));
+  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
+   dp[i][j]=displayed[i]&&displayed[i]===spoken[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
+  const pairs=[];let i=0,j=0;
+  while(i<n&&j<m){
+   if(displayed[i]&&displayed[i]===spoken[j]){pairs.push([i,j]);i++;j++;}
+   else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;
   }
-  if(offset<0)return; // Never highlight incorrect words when the published text differs.
-  for(const node of nodes){const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;const frag=document.createDocumentFragment();let pos=0;for(const m of matches){frag.append(document.createTextNode(node.textContent.slice(pos,m.index)));const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=m[0];frag.append(span);wordSpans.push(span);pos=m.index+m[0].length;}frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag)}
-  wordTimings=file.words.slice(offset,offset+displayed.length);
+  // Avoid highlighting a different version of a devotional by accident.
+  // Unmatched displayed words are left unhighlighted, rather than given incorrect times.
+  if(pairs.length<Math.min(8,n)||pairs.length/n<0.75)return;
+  const mapped=new Array(n).fill(null);
+  for(const [di,sj] of pairs)mapped[di]=file.words[sj];
+  for(const node of nodes){const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;const frag=document.createDocumentFragment();let pos=0;for(const match of matches){frag.append(document.createTextNode(node.textContent.slice(pos,match.index)));const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=match[0];frag.append(span);wordSpans.push(span);pos=match.index+match[0].length;}frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag)}
+  wordTimings=mapped;
+
  }
- function highlightAt(time){if(!followEnabled()||!wordTimings.length)return;let lo=0,hi=wordTimings.length-1,idx=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(Number(wordTimings[mid].start)<=time){idx=mid;lo=mid+1}else hi=mid-1}const next=idx>=0&&time<Number(wordTimings[idx].end)?wordSpans[idx]:null;if(activeWord!==next){activeWord?.classList.remove('whdc-word-active');activeWord=next||null;activeWord?.classList.add('whdc-word-active')}}
+ function highlightAt(time){
+  if(!followEnabled()||!wordTimings.length)return;
+  let next=null;
+  // Word timings can contain gaps for text that differs from the narration.
+  for(let i=0;i<wordTimings.length;i++){
+   const w=wordTimings[i];if(!w)continue;
+   if(Number(w.start)>time)break;
+   if(time<Number(w.end)){next=wordSpans[i];break;}
+  }
+  if(activeWord!==next){activeWord?.classList.remove('whdc-word-active');activeWord=next;activeWord?.classList.add('whdc-word-active')}
+ }
  const RESUME_KEY='whdc-recorded-audio-resume-v1';
  const saved=()=>{try{return JSON.parse(localStorage.getItem(RESUME_KEY)||'null')}catch{return null}};
  function remember(){if(!audio||!currentId||!activePart)return;try{localStorage.setItem(RESUME_KEY,JSON.stringify({id:currentId,part:activePart,voice:voice(),url:audio.currentSrc||audio.src,seconds:audio.currentTime||0,at:Date.now()}))}catch{}}
