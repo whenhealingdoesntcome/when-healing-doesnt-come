@@ -1,0 +1,26 @@
+{
+  "name": "whdc-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WHDC iOS and Android Capacitor development scaffold",
+  "scripts": {
+    "add:ios": "cap add ios",
+    "add:android": "cap add android",
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "stage:web": "node scripts/stage-web.mjs",
+    "audit:api": "node scripts/audit-api.mjs"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/android": "^7.0.0"
+  }
+}
