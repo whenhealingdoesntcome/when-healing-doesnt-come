@@ -1,0 +1,7 @@
+.whdc-native-account { max-width: 540px; margin: 0 auto; padding: 24px 18px; color: inherit; }
+.whdc-native-account form, .whdc-native-account label { display: grid; gap: 10px; margin: 18px 0; }
+.whdc-native-account input { padding: 12px; border: 1px solid #9ba99b; border-radius: 8px; font: inherit; }
+.whdc-native-account button { display: block; width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #738b77; border-radius: 8px; background: #e9efe8; color: #253b2b; font: inherit; cursor: pointer; }
+.whdc-native-account button:disabled { opacity: .55; }
+.whdc-native-account .danger { border-color: #a75a55; background: transparent; color: #a75a55; }
+.whdc-native-account [hidden] { display: none !important; }
