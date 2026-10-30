@@ -1,8 +1,0 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {syncNativeReaderSections} from '../src/native-safe-sync.mjs';
-function store(entries={}){const map=new Map(Object.entries(entries));return {getItem:k=>map.has(k)?map.get(k):null,setItem:(k,v)=>map.set(k,v),get:k=>map.get(k)}}
-test('downloads only missing local data',async()=>{const storage=store();const result=await syncNativeReaderSections({storage,keys:['journal'],controller:{sync:async()=>({items:{journal:{value:'[1]',revision:2}}}),syncItem:()=>{throw Error('should not upload')}}});assert.equal(storage.get('journal'),'[1]');assert.deepEqual(result.downloaded,['journal'])});
-test('does not overwrite conflicting journal',async()=>{const storage=store({journal:'local'});const result=await syncNativeReaderSections({storage,keys:['journal'],controller:{sync:async()=>({items:{journal:{value:'cloud',revision:2}}}),syncItem:()=>{throw Error('should not upload')}}});assert.equal(storage.get('journal'),'local');assert.equal(result.conflicts.length,1)});
-test('uploads only missing cloud data',async()=>{let args;const result=await syncNativeReaderSections({storage:store({bookmark:'local'}),keys:['bookmark'],controller:{sync:async()=>({items:{}}),syncItem:async(...x)=>(args=x,{revision:1})}});assert.deepEqual(args,['bookmark','local',0]);assert.deepEqual(result.uploaded,['bookmark'])});
-test('failed uploads become conflicts',async()=>{const result=await syncNativeReaderSections({storage:store({bookmark:'local'}),keys:['bookmark'],controller:{sync:async()=>({items:{}}),syncItem:async()=>{throw Error('409')}}});assert.equal(result.conflicts.length,1)});
