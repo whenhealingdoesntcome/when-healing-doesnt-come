@@ -1119,7 +1119,7 @@ function voiceSettings(prefix='',recordedVoices=[]){const aiVoices=recordedVoice
 function wireVoiceSettings(prefix=''){
  if(prefix==='settings'){
   const ai=$('#settingsAiVoiceChoice'),device=$('#settingsDeviceVoiceChoice'),speed=$('#settingsvoiceSpeed');
-  if(ai)ai.onchange=()=>{localStorage.setItem(RECORDED_VOICE_KEY,ai.value);localStorage.setItem(VOICE_KEY,'recorded:'+ai.value);window.WHDCAudio?.stop()};
+  if(ai)ai.onchange=()=>{if(window.WHDCAudio?.changeVoice?.(ai.value)===false){alert('This voice is not available for the current recording.');ai.value=localStorage.getItem(RECORDED_VOICE_KEY)||'sulafat';return}localStorage.setItem(RECORDED_VOICE_KEY,ai.value);localStorage.setItem(VOICE_KEY,'recorded:'+ai.value)};
   if(device)device.onchange=()=>{localStorage.setItem(DEVICE_VOICE_KEY,device.value);if('speechSynthesis' in window)speechSynthesis.cancel()};
   if(speed)speed.onchange=()=>{localStorage.setItem(RATE_KEY,speed.value);window.WHDCAudio?.setSpeed?.(Number(speed.value))};
   const aiButton=$('#sampleAiVoice'),deviceButton=$('#sampleDeviceVoice'),status=$('#aiSampleStatus');
@@ -1128,7 +1128,7 @@ function wireVoiceSettings(prefix=''){
   return;
  }
  const v=$('#voiceChoice'),r=$('#voiceSpeed');
- if(v)v.onchange=()=>{if(v.value.startsWith('recorded:'))localStorage.setItem(VOICE_KEY,v.value);else localStorage.setItem(DEVICE_VOICE_KEY,v.value);if('speechSynthesis' in window)speechSynthesis.cancel();window.WHDCAudio?.stop()};
+ if(v)v.onchange=()=>{if(v.value.startsWith('recorded:')){const selected=v.value.slice(9);if(window.WHDCAudio?.changeVoice?.(selected)===false){alert('This voice is not available for the current recording.');v.value=localStorage.getItem(VOICE_KEY)||'recorded:sulafat';return}localStorage.setItem(VOICE_KEY,v.value);localStorage.setItem(RECORDED_VOICE_KEY,selected)}else{localStorage.setItem(DEVICE_VOICE_KEY,v.value);if('speechSynthesis' in window)speechSynthesis.cancel();window.WHDCAudio?.stop()}};
  if(r)r.onchange=()=>{localStorage.setItem(RATE_KEY,r.value);window.WHDCAudio?.setSpeed?.(Number(r.value))};
 }
 if('speechSynthesis' in window){speechSynthesis.addEventListener('voiceschanged',()=>{const device=$('#settingsDeviceVoiceChoice');if(device){const selected=localStorage.getItem(DEVICE_VOICE_KEY)||'';device.innerHTML=deviceVoiceOptions();device.value=selected}const el=$('#voiceChoice');if(el&&!devotionalRecordedVoices().length){const temp=document.createElement('div');temp.innerHTML=voiceSettings('',[]);el.replaceChildren(...Array.from(temp.querySelector('select').options).map(o=>o.cloneNode(true)))}})}

@@ -1,6 +1,6 @@
 // Recorded narration controller. Uses the existing R2 manifest and reader preferences.
 window.WHDCAudio=(()=>{
- let audio=null,manifest=null,currentId=null,activePart=null,activeButton=null,player=null,sequence=null,sleepHandle=null,sleepDeadline=0;
+ let audio=null,manifest=null,currentId=null,activePart=null,activeButton=null,player=null,sequence=null,sleepHandle=null,sleepDeadline=0,continuous=false;
  const FOLLOW_KEY='whdc-follow-along';
  let activeWord=null,wordSpans=[],wordTimings=[];
  const followEnabled=()=>localStorage.getItem(FOLLOW_KEY)!=='0';
@@ -56,7 +56,7 @@ window.WHDCAudio=(()=>{
  function voice(){const v=localStorage.getItem('whdc-voice');return v?.startsWith('recorded:')?v.slice(9):(localStorage.getItem('whdc-recorded-voice')||'sulafat')}
  function available(part){return manifest?.sections?.[part]||{}}
  function setSpeed(rate){if(audio)audio.playbackRate=Number.isFinite(rate)&&rate>0?rate:1}
- function stop(){clearHighlight();clearRemembered();sequence=null;if('speechSynthesis' in window)speechSynthesis.cancel();if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}document.querySelectorAll('[data-whdc-recorded]').forEach(b=>b.textContent=b.dataset.originalLabel||'▶ Listen');activePart=null;activeButton=null}
+ function stop(){clearHighlight();clearRemembered();sequence=null;continuous=false;if('speechSynthesis' in window)speechSynthesis.cancel();if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}document.querySelectorAll('[data-whdc-recorded]').forEach(b=>b.textContent=b.dataset.originalLabel||'▶ Listen');activePart=null;activeButton=null}
  async function load(id){if(currentId===id&&manifest)return manifest;if(audio||sequence)return manifest;const previous=saved();stop();if(previous?.id===id){try{localStorage.setItem(RESUME_KEY,JSON.stringify(previous))}catch{}}currentId=id;manifest=null;try{const r=await fetch('/api/audio/manifest?devotional='+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)return null;const d=await r.json();if(currentId!==id)return null;manifest=d;return d}catch{return null}}
  function decorate(){for(const part of parts){const button=document.getElementById(part==='devotional'?'listen':part==='scripture'?'scriptureListen':'deeperListen');if(!button||!Object.keys(available(part)).length)continue;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.textContent;button.title='Recorded AI narration available'}}
  function mount(button,part){
@@ -64,7 +64,7 @@ window.WHDCAudio=(()=>{
   player.innerHTML=`<div class="whdc-recorded-transport"><button type="button" data-action="back" aria-label="Rewind 10 seconds" title="Rewind 10 seconds">↶</button><button type="button" data-action="toggle" aria-label="Pause" title="Play or pause">Ⅱ</button><button type="button" data-action="forward" aria-label="Skip forward 10 seconds" title="Forward 10 seconds">↷</button><span data-elapsed>0:00</span><input type="range" data-seek min="0" max="1000" value="0" step="1" aria-label="Audio position"><span data-duration>0:00</span><button type="button" data-action="close" aria-label="Close audio player" title="Close">×</button></div><label class="whdc-follow-toggle"><input type="checkbox" data-follow> Highlight words as read</label><div class="whdc-follow-status" data-follow-status role="status"></div>`;
   const follow=player.querySelector('[data-follow]');
   const status=player.querySelector('[data-follow-status]');
-  const hasTimings=Array.isArray(available(part)[voice()]?.words)&&available(part)[voice()].words.length>0;
+  const hasTimings=!continuous&&Array.isArray(available(part)[voice()]?.words)&&available(part)[voice()].words.length>0;
   follow.checked=followEnabled();
   follow.disabled=!hasTimings;
   if(!hasTimings)follow.checked=false;
@@ -77,8 +77,35 @@ window.WHDCAudio=(()=>{
   const seek=player.querySelector('[data-seek]');seek.addEventListener('input',()=>{if(audio&&Number.isFinite(audio.duration)&&audio.duration>0)audio.currentTime=audio.duration*Number(seek.value)/1000});
  }
  function update(){document.querySelectorAll('.whdc-icon-listen').forEach(b=>b.dispatchEvent(new Event('whdc-audio-state')));if(!audio||!player)return;const duration=Number.isFinite(audio.duration)?audio.duration:0;player.querySelector('[data-elapsed]').textContent=fmt(audio.currentTime);player.querySelector('[data-duration]').textContent=fmt(duration);const seek=player.querySelector('[data-seek]');seek.value=duration?String(Math.round(audio.currentTime/duration*1000)):'0';seek.disabled=!duration;const toggle=player.querySelector('[data-action=toggle]');toggle.textContent=audio.paused?'▶':'Ⅱ';toggle.setAttribute('aria-label',audio.paused?'Play':'Pause');if(activeButton?.isConnected)activeButton.textContent=audio.paused?'▶ Resume audio':'Ⅱ Pause audio';if('mediaSession' in navigator)navigator.mediaSession.playbackState=audio.paused?'paused':'playing'}
- function play(part,button,fromSequence=false){const file=available(part)[voice()];if(!file?.url)return false;if(audio&&activePart===part){if(audio.paused)audio.play().catch(()=>{audio.pause();update()});else audio.pause();return true}if(fromSequence){if(audio){audio.pause();audio.removeAttribute('src');audio=null}if(player){player.remove();player=null}}else {const previous=saved();stop();if(previous?.id===currentId&&previous?.part===part){try{localStorage.setItem(RESUME_KEY,JSON.stringify(previous))}catch{}}}if('speechSynthesis' in window)speechSynthesis.cancel();activePart=part;activeButton=button;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.dataset.originalLabel||button.textContent;audio=new Audio(file.url);audio.preload='metadata';const resume=saved();const resumeAt=resume?.id===currentId&&resume?.part===part&&resume?.voice===voice()&&resume?.seconds>0?resume.seconds:0;if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:labels[part],artist:'When Healing Doesn’t Come',album:'Devotional Narration'});navigator.mediaSession.setActionHandler('play',()=>audio?.play());navigator.mediaSession.setActionHandler('pause',()=>audio?.pause());navigator.mediaSession.setActionHandler('seekbackward',details=>{if(audio)audio.currentTime=Math.max(0,audio.currentTime-(details.seekOffset||10))});navigator.mediaSession.setActionHandler('seekforward',details=>{if(audio)audio.currentTime=Math.min(Number.isFinite(audio.duration)?audio.duration:Infinity,audio.currentTime+(details.seekOffset||10))});navigator.mediaSession.setActionHandler('stop',()=>stopAll())}catch(e){}}setSpeed(Number(localStorage.getItem('whdc-voice-rate')||'1'));mount(button,part);setupHighlight(part,file);const syncStatus=player?.querySelector('[data-follow-status]');if(syncStatus&&Array.isArray(file.words)&&file.words.length&&!wordTimings.length)syncStatus.textContent='Timing data could not be matched to the displayed text.';audio.addEventListener('loadedmetadata',()=>{if(resumeAt&&Number.isFinite(audio.duration))audio.currentTime=Math.min(resumeAt,Math.max(0,audio.duration-0.5));update()});audio.addEventListener('durationchange',update);audio.addEventListener('timeupdate',()=>{remember();highlightAt(audio.currentTime);update()});audio.addEventListener('play',update);audio.addEventListener('pause',()=>{remember();update()});audio.addEventListener('ended',()=>{clearRemembered();if(sequence){nextSequence();return}if(audio){audio.currentTime=0;update()}});audio.addEventListener('error',()=>{remember();if(audio)audio.pause();update()});audio.play().catch(()=>{if(audio)audio.pause();update()});update();return true}
+ function play(part,button,fromSequence=false){continuous=false;const file=available(part)[voice()];if(!file?.url)return false;if(audio&&activePart===part){if(audio.paused)audio.play().catch(()=>{audio.pause();update()});else audio.pause();return true}if(fromSequence){if(audio){audio.pause();audio.removeAttribute('src');audio=null}if(player){player.remove();player=null}}else {const previous=saved();stop();if(previous?.id===currentId&&previous?.part===part){try{localStorage.setItem(RESUME_KEY,JSON.stringify(previous))}catch{}}}if('speechSynthesis' in window)speechSynthesis.cancel();activePart=part;activeButton=button;button.dataset.whdcRecorded=part;button.dataset.originalLabel=button.dataset.originalLabel||button.textContent;audio=new Audio(file.url);audio.preload='metadata';const resume=saved();const resumeAt=resume?.id===currentId&&resume?.part===part&&resume?.voice===voice()&&resume?.seconds>0?resume.seconds:0;if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:labels[part],artist:'When Healing Doesn’t Come',album:'Devotional Narration'});navigator.mediaSession.setActionHandler('play',()=>audio?.play());navigator.mediaSession.setActionHandler('pause',()=>audio?.pause());navigator.mediaSession.setActionHandler('seekbackward',details=>{if(audio)audio.currentTime=Math.max(0,audio.currentTime-(details.seekOffset||10))});navigator.mediaSession.setActionHandler('seekforward',details=>{if(audio)audio.currentTime=Math.min(Number.isFinite(audio.duration)?audio.duration:Infinity,audio.currentTime+(details.seekOffset||10))});navigator.mediaSession.setActionHandler('stop',()=>stopAll())}catch(e){}}setSpeed(Number(localStorage.getItem('whdc-voice-rate')||'1'));mount(button,part);setupHighlight(part,file);const syncStatus=player?.querySelector('[data-follow-status]');if(syncStatus&&Array.isArray(file.words)&&file.words.length&&!wordTimings.length)syncStatus.textContent='Timing data could not be matched to the displayed text.';audio.addEventListener('loadedmetadata',()=>{if(resumeAt&&Number.isFinite(audio.duration))audio.currentTime=Math.min(resumeAt,Math.max(0,audio.duration-0.5));update()});audio.addEventListener('durationchange',update);audio.addEventListener('timeupdate',()=>{remember();highlightAt(audio.currentTime);update()});audio.addEventListener('play',update);audio.addEventListener('pause',()=>{remember();update()});audio.addEventListener('ended',()=>{clearRemembered();if(sequence){nextSequence();return}if(audio){audio.currentTime=0;update()}});audio.addEventListener('error',()=>{remember();if(audio)audio.pause();update()});audio.play().catch(()=>{if(audio)audio.pause();update()});update();return true}
 
+ // Swap the recording in place so the dock and transport remain mounted.
+ // Time is preserved proportionally when voice durations differ.
+ function changeVoice(newVoice){
+  if(!audio||!player||!activePart)return true;
+  const part=activePart,old=audio,wasPlaying=!old.paused;
+  const file=available(part)[newVoice];
+  if(!continuous&&!file?.url)return false;
+  if(continuous&&!['devotional','deeper','scripture'].every(p=>available(p)[newVoice]?.url?.includes('format=wav')))return false;
+  const oldDuration=Number.isFinite(old.duration)&&old.duration>0?old.duration:0;
+  const oldTime=old.currentTime||0;
+  const nextUrl=continuous?'/api/audio/continuous?devotional='+encodeURIComponent(currentId)+'&voice='+encodeURIComponent(newVoice):file.url;
+  const replacement=new Audio(nextUrl);replacement.preload='auto';replacement.playsInline=true;
+  replacement.playbackRate=Number(localStorage.getItem('whdc-voice-rate')||'1');
+  old.pause();audio=replacement;
+  if(continuous){clearHighlight();}else{setupHighlight(part,file)}
+  const follow=player.querySelector('[data-follow]'),status=player.querySelector('[data-follow-status]');
+  if(follow){const ready=!continuous&&Array.isArray(file?.words)&&file.words.length>0;follow.disabled=!ready;follow.checked=ready&&followEnabled();}
+  if(status)status.textContent=continuous?'To follow the words, play an individual section instead of Play All.':(!file?.words?.length?'Word highlighting is waiting for audio timing data for this recording.':(!wordTimings.length&&follow?.checked?'Timing data is available, but could not be matched to the displayed text.':''));
+  replacement.addEventListener('loadedmetadata',()=>{if(audio!==replacement)return;const d=replacement.duration;const target=oldDuration&&Number.isFinite(d)&&d>0?oldTime/oldDuration*d:oldTime;if(Number.isFinite(d)&&d>0)replacement.currentTime=Math.min(Math.max(0,target),Math.max(0,d-.1));else replacement.currentTime=Math.max(0,target);highlightAt(replacement.currentTime);update();if(wasPlaying)replacement.play().catch(()=>update());});
+  replacement.addEventListener('durationchange',update);
+  replacement.addEventListener('timeupdate',()=>{if(audio!==replacement)return;remember();highlightAt(replacement.currentTime);update()});
+  replacement.addEventListener('play',update);
+  replacement.addEventListener('pause',()=>{if(audio===replacement){remember();update()}});
+  replacement.addEventListener('ended',()=>{if(audio!==replacement)return;clearRemembered();if(continuous){stopAll();const el=document.getElementById('whdcAudioStatus');if(el)el.textContent='Finished all three sections.';}else if(sequence)nextSequence();else{replacement.currentTime=0;update()}});
+  replacement.addEventListener('error',()=>{if(audio!==replacement)return;const el=document.getElementById('whdcAudioStatus');if(el)el.textContent='Unable to load the selected voice.';update()});
+  replacement.load();update();return true;
+ }
  function setSleep(minutes){clearTimeout(sleepHandle);sleepHandle=null;sleepDeadline=0;if(minutes>0){sleepDeadline=Date.now()+minutes*60000;sleepHandle=setTimeout(()=>{stop();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Sleep timer finished. Audio stopped.'},minutes*60000)}}
  function stopAll(){clearTimeout(sleepHandle);sleepHandle=null;sleepDeadline=0;stop();const b=document.getElementById('whdcPlayAll');if(b)b.textContent='▷ Play All'}
  async function nextSequence(){if(!sequence)return;const seq=sequence;const part=seq.parts.shift();if(!part){stopAll();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Finished all three sections.';return}
@@ -89,7 +116,7 @@ window.WHDCAudio=(()=>{
   if(!content){nextSequence();return}if(!('speechSynthesis' in window)){nextSequence();return}
   const u=new SpeechSynthesisUtterance(content);u.rate=Number(localStorage.getItem('whdc-voice-rate')||'1');u.onend=()=>{if(sequence===seq)nextSequence()};u.onerror=()=>{if(sequence===seq)nextSequence()};speechSynthesis.speak(u)
  }
- function playContinuous(){
+ function playContinuous(){continuous=true;
   if(!currentId||!['devotional','deeper','scripture'].every(part=>available(part)[voice()]?.url?.includes('format=wav')))return false;
   const chosenVoice=voice(),button=document.getElementById('whdcPlayAll');if(!button)return false;
   activePart='devotional';activeButton=button;audio=new Audio('/api/audio/continuous?devotional='+encodeURIComponent(currentId)+'&voice='+encodeURIComponent(chosenVoice));
@@ -105,5 +132,5 @@ window.WHDCAudio=(()=>{
  }
  function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','deeper','scripture'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Audio playing.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
  window.addEventListener('pagehide',remember);document.addEventListener('visibilitychange',()=>{if(document.hidden)remember()});
- return {load,decorate,play,playAll,stopAll,setSleep,stop,available,setSpeed,state,isSequencing:()=>!!sequence};
+ return {load,decorate,play,playAll,changeVoice,stopAll,setSleep,stop,available,setSpeed,state,isSequencing:()=>!!sequence};
 })();
