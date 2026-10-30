@@ -4,15 +4,13 @@
   "private": true,
   "description": "WHDC iOS and Android Capacitor development scaffold",
   "scripts": {
+    "prepare": "node scripts/prepare-native.mjs ../when-healing-doesnt-come-main/public",
     "add:ios": "cap add ios",
     "add:android": "cap add android",
     "sync": "cap sync",
     "open:ios": "cap open ios",
     "open:android": "cap open android",
-    "stage:web": "node scripts/stage-web.mjs",
-    "audit:api": "node scripts/audit-api.mjs",
-    "check:auth": "node scripts/check-auth-contract.mjs",
-    "check:backend": "node scripts/check-native-backend.mjs"
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",

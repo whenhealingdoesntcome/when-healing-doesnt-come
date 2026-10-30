@@ -2,7 +2,13 @@
   "appId": "com.whenhealingdoesntcome.app",
   "appName": "When Healing Doesn't Come",
   "webDir": "www",
-  "ios": {
-    "contentInset": "automatic"
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    }
   }
 }
