@@ -1183,7 +1183,7 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 (async()=>{try{const ds=await api('/api/admin/devotionals');for(const d of ds.filter(x=>x.status==='published').sort((a,b)=>Number(a.day)-Number(b.day))){const o=document.createElement('option');o.value=d.id;o.textContent='Day '+d.day+': '+d.title;$('devotions').append(o)}await refresh()}catch(e){$('status').textContent=e.message}})();
 </script></html>`;
 
-export default {async fetch(request,env,ctx){
+const whdcWorker = {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
   if(path.startsWith('/api/reader/native/')&&request.method==='OPTIONS'){
     const origin=request.headers.get('origin');
@@ -2084,4 +2084,45 @@ export default {async fetch(request,env,ctx){
   return env.ASSETS.fetch(request);
 },
  async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env),pushScriptureMemoryReminders(env),pushDeferredAnnouncements(env)]).catch(e=>console.error('Scheduled notifications failed',e)))}
+};
+
+
+// Native-only cross-origin access for public, read-only APIs.
+// Existing same-origin web requests and reader account routes retain their behavior.
+const WHDC_NATIVE_PUBLIC_PATHS = new Set([
+  '/api/devotionals', '/api/scripture', '/api/reading-plans',
+  '/api/resources', '/api/announcement',
+  '/api/audio/manifest', '/api/audio/file', '/api/audio/sample'
+]);
+const WHDC_NATIVE_ORIGINS = new Set(['capacitor://localhost', 'http://localhost']);
+function whdcNativePublicPath(path) {
+  return WHDC_NATIVE_PUBLIC_PATHS.has(path);
+}
+function whdcNativePublicCors(request, path) {
+  const origin = request.headers.get('Origin');
+  if (!WHDC_NATIVE_ORIGINS.has(origin) || !whdcNativePublicPath(path)) return null;
+  return {
+    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '600',
+    'Vary': 'Origin'
+  };
+}
+export default {
+  async fetch(request, env, ctx) {
+    const path = new URL(request.url).pathname;
+    const cors = whdcNativePublicCors(request, path);
+    if (cors && request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: cors });
+    }
+    const response = await whdcWorker.fetch(request, env, ctx);
+    if (!cors || (request.method !== 'GET' && request.method !== 'HEAD')) return response;
+    const headers = new Headers(response.headers);
+    for (const [key, value] of Object.entries(cors)) headers.set(key, value);
+    return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  },
+  scheduled(event, env, ctx) {
+    return whdcWorker.scheduled(event, env, ctx);
+  }
 };
