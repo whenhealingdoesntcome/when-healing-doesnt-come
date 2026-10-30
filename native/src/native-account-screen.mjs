@@ -49,5 +49,5 @@ export async function mountNativeAccountScreen(root, { baseUrl = 'https://whdcde
     status('Your account has been deleted.');
   }));
   await run(refresh);
-  return { refresh };
+  return { refresh, controller };
 }
