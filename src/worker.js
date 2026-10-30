@@ -657,7 +657,7 @@ function dashboardAlertScript() {
  if (!match) return null;
  return match[0].replace(
    "hero=document.querySelector('.whdc-admin-hero')",
-   "hero=document.querySelector('.whdc-admin-hero')||headerTop"
+   "hero=document.querySelector('.whdc-admin-hero')||document.querySelector('.whdc-dashboard-tool-main')"
  );
 }
 
