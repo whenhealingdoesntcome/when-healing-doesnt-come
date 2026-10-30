@@ -1934,7 +1934,7 @@ export default {async fetch(request,env,ctx){
     if(path==='/api/admin/submissions'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
       const result=await env.DB.prepare(`${writerSelect} WHERE status='needs_approval' ORDER BY updated_at ASC`).all();
-      return json(await Promise.all((result.results||[]).map(r=>withSuggestions(env,writerRow(r)))));
+      return json(await scriptureExtras(env,await Promise.all((result.results||[]).map(r=>withSuggestions(env,writerRow(r))))));
     }
     if(path==='/api/admin/review'&&request.method==='POST'){
       if(!isAdmin(user))return fail('Administrator only',403);
