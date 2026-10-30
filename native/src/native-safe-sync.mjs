@@ -27,7 +27,28 @@ export async function syncNativeReaderSections({controller, storage, keys}) {
       } catch (error) { result.conflicts.push({key,reason:'Upload failed or changed on server'}); }
       continue;
     }
-    result.conflicts.push({key,reason:'Both device and cloud have different saved values'});
+    result.conflicts.push({key,reason:'Both device and cloud have different saved values',localValue:local,cloudValue:value,cloudRevision:revision});
   }
   return result;
+}
+
+/** Resolve one explicitly selected conflict. Never auto-resolve. */
+export async function resolveNativeSyncConflict({controller,storage,conflict,choice}) {
+  if (!conflict || typeof conflict.key !== 'string' || !['local','cloud'].includes(choice)) throw Error('Explicit conflict choice required');
+  const {key,localValue,cloudValue,cloudRevision}=conflict;
+  if (storage.getItem(key)!==localValue) throw Error('Local data changed. Sync again before resolving.');
+  // Recheck server because the original conflict may now be stale.
+  const latest=(await controller.sync()).items?.[key];
+  if ((latest?.revision||0)!==cloudRevision || (latest?.value??null)!==cloudValue) throw Error('Cloud data changed. Sync again before resolving.');
+  if(choice==='local') {
+    const saved=await controller.syncItem(key,localValue,cloudRevision);
+    if (!saved?.revision) throw Error('Cloud did not confirm the update');
+    return {key,choice,revision:saved.revision};
+  }
+  // Preserve a recoverable copy of the local version before replacing it.
+  const backupKey=`whdc-native-conflict-backup:${encodeURIComponent(key)}:${Date.now()}`;
+  storage.setItem(backupKey,localValue);
+  try { storage.setItem(key,cloudValue); }
+  catch(error) { throw new Error(`Backup saved at ${backupKey}, but local replacement failed: ${error.message}`); }
+  return {key,choice,backupKey};
 }
