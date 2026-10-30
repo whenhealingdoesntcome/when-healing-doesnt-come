@@ -653,7 +653,11 @@ function dashboardBellMarkup() {
 }
 
 function dashboardAlertScript() {
- const match = ADMIN_HTML.match(/<script>\(function\(\)\{[\s\S]*?<\/script>/);
+ // The shared header already includes the real dashboard menu's event handler.
+ // Select ONLY the dashboard notification script; selecting the first script
+ // would duplicate the menu click handler and instantly close the menu.
+ const scripts = [...ADMIN_HTML.matchAll(/<script(?:\s[^>]*)?>[\s\S]*?<\/script>/gi)];
+ const match = scripts.find(item => item[0].includes("document.getElementById('whdcAdminAlert')"));
  if (!match) return null;
  return match[0].replace(
    "hero=document.querySelector('.whdc-admin-hero')",
