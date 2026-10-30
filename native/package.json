@@ -10,7 +10,9 @@
     "open:ios": "cap open ios",
     "open:android": "cap open android",
     "stage:web": "node scripts/stage-web.mjs",
-    "audit:api": "node scripts/audit-api.mjs"
+    "audit:api": "node scripts/audit-api.mjs",
+    "check:auth": "node scripts/check-auth-contract.mjs",
+    "check:backend": "node scripts/check-native-backend.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
