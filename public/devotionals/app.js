@@ -1621,6 +1621,40 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   }
   return {ok:false};
  }
+ // Favorites and read history are additive collections across devices.
+ // Keep every saved devotional and every recorded read, including when the
+ // devices have no common sync baseline. Never merge unknown data shapes.
+ const additiveMerge=(key,local,remote)=>{
+  try{
+   const a=JSON.parse(local),b=JSON.parse(remote);
+   if(key==='whdc-favorites-v1'){
+    const valid=x=>Array.isArray(x)&&x.every(v=>typeof v==='string'&&v.length>0);
+    if(!valid(a)||!valid(b))return null;
+    return JSON.stringify([...new Set([...a,...b])]);
+   }
+   if(key==='whdc-read-history-v1'){
+    const valid=x=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.entries(x).every(([id,date])=>
+     id.length>0&&typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date));
+    if(!valid(a)||!valid(b))return null;
+    const merged={...a};
+    for(const [id,date] of Object.entries(b)){
+     // When both devices marked the same devotional read, preserve the
+     // earliest recorded date rather than creating a conflict.
+     if(!Object.prototype.hasOwnProperty.call(merged,id)||date<merged[id])merged[id]=date;
+    }
+    return JSON.stringify(merged);
+   }
+  }catch{}
+  return null;
+ };
+ const mergeSaved=(key,base,local,remote,initial=false)=>
+  additiveMerge(key,local,remote)??mergeStrings(base,local,remote,initial);
+ const clearResolvedConflict=key=>{
+  const entries=readConflicts();
+  if(entries.some(entry=>entry.key===key)){
+   localStorage.setItem(CONFLICTS,JSON.stringify(entries.filter(entry=>entry.key!==key)));
+  }
+ };
  const mergeStrings=(base,local,remote,initial=false)=>{
   try{
    const l=JSON.parse(local),r=JSON.parse(remote),b=base===null?undefined:JSON.parse(base);
@@ -1644,12 +1678,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     // First connection: preserve both independently created versions.
     if(!previous){
      if(local!==null&&cloudValue!==null&&local!==cloudValue){
-      const merged=mergeStrings(null,local,cloudValue,true);
+      const merged=mergeSaved(key,null,local,cloudValue,true);
       if(merged===null){archive(key,local,cloudValue);conflicts++;continue;}
       const uploaded=await put(key,merged,rev);
       if(!uploaded){archive(key,local,cloudValue);conflicts++;continue;}
       if(local!==merged)localStorage.setItem(key,merged);
-      meta[key]={value:merged,revision:uploaded.revision};updates++;continue;
+      meta[key]={value:merged,revision:uploaded.revision};clearResolvedConflict(key);updates++;continue;
      }
      if(local===null&&cloudValue!==null){localStorage.setItem(key,cloudValue);updates++;}
      if(local!==null&&cloudValue===null){
@@ -1658,13 +1692,29 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
      }
      meta[key]={value:cloudValue,revision:rev};continue;
     }
+    // For additive sections, synchronize the union even if only one side
+    // changed since the last sync. This protects previously saved items.
+    if((key==='whdc-favorites-v1'||key==='whdc-read-history-v1')&&local!==null&&cloudValue!==null){
+     const merged=additiveMerge(key,local,cloudValue);
+     if(merged!==null){
+      const sameContents=merged===cloudValue;
+      if(!sameContents){
+       const uploaded=await put(key,merged,rev);
+       if(!uploaded){archive(key,local,cloudValue);conflicts++;continue;}
+       if(local!==merged)localStorage.setItem(key,merged);
+       meta[key]={value:merged,revision:uploaded.revision};clearResolvedConflict(key);updates++;continue;
+      }
+      if(local!==merged){localStorage.setItem(key,merged);updates++;}
+      meta[key]={value:merged,revision:rev};clearResolvedConflict(key);continue;
+     }
+    }
     const localChanged=local!==previous.value,remoteChanged=rev!==previous.revision;
     if(localChanged&&remoteChanged){
      if(local===cloudValue){meta[key]={value:local,revision:rev};continue;}
-     const merged=local!==null&&cloudValue!==null?mergeStrings(previous.value,local,cloudValue):null;
+     const merged=local!==null&&cloudValue!==null?mergeSaved(key,previous.value,local,cloudValue):null;
      if(merged!==null){
       const uploaded=await put(key,merged,rev);
-      if(uploaded){if(local!==merged)localStorage.setItem(key,merged);meta[key]={value:merged,revision:uploaded.revision};updates++;continue;}
+      if(uploaded){if(local!==merged)localStorage.setItem(key,merged);meta[key]={value:merged,revision:uploaded.revision};clearResolvedConflict(key);updates++;continue;}
      }
      archive(key,local,cloudValue);conflicts++;continue;
     }
