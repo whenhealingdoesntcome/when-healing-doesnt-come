@@ -1235,7 +1235,7 @@ function admin(){let drafts=load(KEY,null);return `<section class="hero"><div cl
 function aboutPage(){return `<style>
 .whdc-about{max-width:780px;margin:0 auto 2rem}.whdc-about .whdc-about-story{padding:clamp(22px,5vw,44px);line-height:1.75}.whdc-about h1{margin-bottom:8px}.whdc-about h2{margin:1.6em 0 .55em;font-size:1.35rem}.whdc-about p{max-width:64ch;margin:.75em 0 1.05em}.whdc-about .whdc-about-highlight{font-weight:700;border-left:3px solid #86754a;padding:.3em 0 .3em 15px}.whdc-about-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:18px}.whdc-about-actions .btn{flex:1 1 150px;text-align:center;justify-content:center;min-height:46px;display:inline-flex;align-items:center}.whdc-about .whdc-about-intro{margin-bottom:20px}@media(max-width:480px){.whdc-about-actions{flex-direction:column}.whdc-about-actions .btn{flex:0 0 auto;width:100%}}
 </style><div class="whdc-about"><section class="hero whdc-about-intro" aria-labelledby="aboutTitle"><div class="eyebrow">The heart behind WHDC</div><h1 id="aboutTitle">About Me</h1><p>My story and why I created When Healing Doesn't Come.</p></section><article class="card whdc-about-story"><h2>Hi, I'm Heather!</h2><p>For thirteen years, I worked as a NICU nurse, caring for some of the tiniest and most vulnerable patients. I loved my job, but in November 2021, my life changed when I became sick with Long COVID.</p><p>What I hoped would be a temporary illness became years of fatigue, brain fog, physical limitations, and the loss of so much of the life I once knew.</p><p>I could no longer work as a nurse, and I began wrestling with difficult questions.</p><p><em>How do I trust God when He doesn't answer my prayers the way I hope? Can I still glorify Him when I can do so little? Where do I find joy when my circumstances don't change?</em></p><p>God hasn't healed me the way I've prayed He would, but He continues to meet me in His Word, teaching me to trust His character and find my hope in Jesus rather than my circumstances.</p><h2>Why I Created When Healing Doesn't Come</h2><p>I created <em>When Healing Doesn't Come</em> for people who are suffering and wondering how to keep trusting God when life doesn't get better.</p><p>I also wanted to create something that was accessible on both good days and bad days.</p><p>Because of Long COVID, I sometimes struggle to read or understand what I'm reading. On particularly difficult days, even opening and holding a book can be exhausting.</p><p class="whdc-about-highlight">And yet, those are often the days when I most need to be reminded of God's truth.</p><p>That's why this app includes short devotionals, audio narration, adjustable text, and easy access to Scripture. Whether you have the energy for deeper study or can only listen for a few minutes while resting in bed, my hope is that God's Word will be accessible to you.</p><p>I'm still learning to trust God in the middle of suffering. I don't write as someone who has all the answers, but as someone who needs these reminders just as much as you do.</p><p>My prayer is that this app helps you know God more deeply, trust His character, and remember that <strong>even when healing doesn't come, Jesus is still enough.</strong></p><p>Thank you for being here!</p><h2>Connect &amp; Support</h2><div class="whdc-about-actions"><button type="button" class="btn primary" data-nav="support">♡ Donate</button><button type="button" class="btn" data-nav="contact">✉ Contact</button><button type="button" class="btn" id="aboutShareApp">↗ Share App</button></div></article></div>`}
-function supportPage(){return `<section class="hero" aria-labelledby="supportTitle" style="text-align:center;margin:0 auto;max-width:780px"><div class="eyebrow">A note from the author</div><h1 id="supportTitle">Support This Ministry</h1><p style="margin-left:auto;margin-right:auto;text-align:center">Helping share hope and encouragement through life's hardest seasons.</p></section><section class="card" style="max-width:780px;margin:0 auto 2rem;padding:clamp(20px,4vw,42px)"><h2>Thank you for being here</h2><p>In November 2021, my life changed when I became sick with Long COVID. After thirteen years of working as a NICU nurse, I was no longer able to work, and much of the life I had known came to a sudden halt. These past five years have been filled with unexpected challenges, physical limitations, and the ongoing process of learning to trust God when healing doesn't come the way I hoped. While I continue to pray for healing and celebrate the small improvements along the way, I am also learning that God can use me right where I am, even in my weakness.</p><p><em>When Healing Doesn't Come</em> grew out of that journey. My hope is that these devotionals will encourage others who are walking through chronic illness, suffering, or difficult seasons of waiting, reminding them that God has not forgotten them and that their lives still have purpose.</p><p>If these devotionals have encouraged you and you would like to support me personally or help me continue creating resources like this, you can do so through Venmo or Square. There is absolutely no obligation to give. Your prayers, encouragement, and willingness to share these devotionals with others mean so much to me.</p><p>Thank you for being part of this journey and for helping me share the hope we have in Christ, even when healing doesn't come.</p><h2 style="margin-top:2rem">Ways to Give</h2><div class="actions" style="display:flex;gap:12px;flex-wrap:wrap;margin:1rem 0">${SUPPORT_VENMO_URL?`<a class="btn primary" href="${safe(SUPPORT_VENMO_URL)}" target="_blank" rel="noopener noreferrer">Give with Venmo ↗</a>`:`<span class="btn" aria-label="Venmo donation link coming soon" style="opacity:.65;cursor:default">Venmo · Coming soon</span>`}${SUPPORT_SQUARE_URL?`<a class="btn" href="${safe(SUPPORT_SQUARE_URL)}" target="_blank" rel="noopener noreferrer">Give with Square ↗</a>`:`<span class="btn" aria-label="Square donation link coming soon" style="opacity:.65;cursor:default">Square · Coming soon</span>`}</div><p class="muted small">Gifts are personal support and are not represented as tax-deductible charitable donations.</p><p class="muted small">Not able to give? Sharing a devotional with a friend and praying for this ministry are wonderful ways to help.</p></section>`}
+function supportPage(){return `<section class="hero" aria-labelledby="supportTitle" style="text-align:center;margin:0 auto;max-width:780px"><h1 id="supportTitle">Support This Ministry</h1><p style="margin-left:auto;margin-right:auto;text-align:center">Helping keep hope free and accessible.</p></section><section class="card" style="max-width:780px;margin:0 auto 2rem;padding:clamp(20px,4vw,42px)"><h2>Helping Keep Hope Free and Accessible</h2><p><em>When Healing Doesn't Come: Hope for the Journey</em> was created with a simple mission: to offer biblical encouragement, hope, and practical resources to those walking through life's difficult seasons.</p><p>We believe that access to God's Word and biblical encouragement shouldn't depend on someone's ability to pay. That's why our devotional app is completely free, with no subscriptions or paid content.</p><p><strong>But keeping it free is only possible through the generosity of people like you.</strong></p><p>Your support helps cover the ongoing costs of maintaining and improving the app, providing Scripture and devotional audio, developing new content, and making these resources available to more people.</p><p>Whether someone is navigating chronic illness, grief, disappointment, uncertainty, or another difficult season, we want them to have a place where they can turn to God's Word and be reminded of His faithfulness.</p><h2 style="margin-top:2rem">Your Gift Makes a Difference</h2><p>Every contribution, regardless of size, helps us continue this work. Your generosity allows us to keep developing resources, improving the app, and reaching people who need encouragement along the way.</p><p>If this ministry has encouraged you, or if you believe in helping others find hope through God's Word, would you prayerfully consider supporting <em>When Healing Doesn't Come</em>?</p><p>Thank you for being part of this ministry and helping us keep these resources free for everyone.</p><div class="actions" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin:1.5rem 0">${SUPPORT_VENMO_URL?`<a class="btn primary" href="${safe(SUPPORT_VENMO_URL)}" target="_blank" rel="noopener noreferrer">Give with Venmo</a>`:`<span class="btn" aria-label="Venmo donation link coming soon" style="opacity:.65;cursor:default">Venmo · Coming soon</span>`}<a class="btn" href="https://patreon.heatherkusunoki.photography" target="_blank" rel="noopener noreferrer">Join My Patreon</a></div><p class="muted small">Support is voluntary and is not represented as a tax-deductible charitable donation.</p></section>`}
 const ANNOUNCEMENT_SEEN_KEY='whdc-announcement-seen-revision';
 async function checkNewAnnouncementOnArrival(){
  try{const r=await fetch('/api/announcement',{cache:'no-store'});if(!r.ok)return;const a=await r.json();if(!a.visible||!Number(a.revision))return;
@@ -1670,47 +1670,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   }catch{}
   return null;
  };
-function canonicalBibleMark(mark){const x={};for(const k of Object.keys(mark).sort())if(k!=='id')x[k]=mark[k];return JSON.stringify(x)}
-function planDeletionSafeBibleMerge(baseRaw,localRaw,cloudRaw) {
-  const parse = raw => {try {const v=JSON.parse(raw);return v&&typeof v==='object'&&!Array.isArray(v)?v:null;}catch{return null;}};
-  const base=parse(baseRaw),local=parse(localRaw),cloud=parse(cloudRaw);
-  if(!base||!local||!cloud)return {possible:false,reason:'No common synchronized Bible annotation copy is available. Review changes before merging.'};
-  const eq=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
-  const markKey=m=>m&&typeof m==='object'&&m.id!=null&&String(m.id)!==''?'id:'+String(m.id):'content:'+canonicalBibleMark(m);
-  const indexed=arr=>{
-    if(!Array.isArray(arr))return null;
-    const map=new Map();for(const mark of arr){
-      if(!mark||typeof mark!=='object'||Array.isArray(mark))return null;
-      const id=markKey(mark);if(map.has(id))return null;map.set(id,mark);
-    }return map;
-  };
-  const result={};
-  for(const passage of new Set([...Object.keys(base),...Object.keys(local),...Object.keys(cloud)])){
-    const b=indexed(base[passage]??[]),l=indexed(local[passage]??[]),r=indexed(cloud[passage]??[]);
-    if(!b||!l||!r)return {possible:false,reason:'Unexpected Bible annotation format. Review before merging.'};
-    const merged=[];
-    for(const id of new Set([...b.keys(),...l.keys(),...r.keys()])){
-      const bv=b.get(id),lv=l.get(id),rv=r.get(id);
-      let chosen;
-      if(eq(lv,rv))chosen=lv;
-      else if(eq(lv,bv))chosen=rv;
-      else if(eq(rv,bv))chosen=lv;
-      else return {possible:false,reason:`A marking in ${passage} was edited differently on both devices. Review it before merging.`};
-      if(chosen!==undefined)merged.push(chosen);
-    }
-    if(merged.length)result[passage]=merged;
-  }
-  return {possible:true,value:JSON.stringify(result),summary:'Combine new markings and preserve previously synchronized deletions.'};
-}
-
- const mergeSaved=(key,base,local,remote,initial=false)=>{
-  if(key==='whdc-bible-annotations-v1'){
-   if(initial)return null; // Cannot infer which previously unsynced marks were removed.
-   const plan=planDeletionSafeBibleMerge(base,local,remote);
-   return plan.possible?plan.value:null;
-  }
-  return collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
- };
+ const mergeSaved=(key,base,local,remote,initial=false)=>
+  collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
  const clearResolvedConflict=key=>{
   const entries=readConflicts();
   if(entries.some(entry=>entry.key===key)){
@@ -1778,9 +1739,6 @@ function planDeletionSafeBibleMerge(baseRaw,localRaw,cloudRaw) {
     }
    }
    save(meta);
-   // Same-document localStorage updates do not emit the browser's storage event.
-   // Notify the mounted Bible Reader after a sync so its painted marks match storage.
-   window.dispatchEvent(new CustomEvent('whdc:bible-annotations-synced'));
    if(!conflicts)lastSuccessfulSync=new Date();
    status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Review the saved-data conflict below before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
   }catch(e){status('Sync waiting: '+e.message);}finally{running=false;ensureControls();}
