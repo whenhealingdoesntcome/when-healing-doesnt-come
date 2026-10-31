@@ -98,6 +98,15 @@ window.addEventListener('pagehide',()=>show(false));
 window.addEventListener('popstate',()=>show(false));
 window.addEventListener('hashchange',()=>show(false));
 document.addEventListener('click',event=>{
+  const nav=event.target.closest('nav a, nav button, [role="tab"], [data-tab], [data-view], .bottom-nav a, .bottom-nav button');
+  if(nav && !root.contains(nav)) show(false);
+},true);
+// The native/PWA tab router can hide the Bible without changing the URL.
+const studyVisibilityObserver=new MutationObserver(()=>{
+  if(!bar.hidden && (!root.isConnected || root.getClientRects().length===0))show(false);
+});
+studyVisibilityObserver.observe(document.body,{attributes:true,attributeFilter:['class','style','hidden','aria-hidden'],subtree:true,childList:true});
+document.addEventListener('click',event=>{
   const link=event.target.closest('a[href]');
   if(!link)return;
   try{const target=new URL(link.href,location.href);
