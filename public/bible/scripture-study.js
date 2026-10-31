@@ -31,7 +31,7 @@ const css=document.createElement('style');css.textContent=`
 @media(max-width:440px){#whdcStudyActions{gap:8px}#whdcStudySaveActions{width:100%;border-left:0;border-top:1px solid #c7c1b8;padding:8px 0 0;margin-left:0}}
 #whdcStudyPalette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px;max-height:38vh;overflow:auto}
 #whdcStudyPalette button{text-align:left;display:flex;align-items:center;gap:7px}
-.whdcStudyDot{display:inline-block;width:15px;height:15px;border-radius:50%;flex:none}
+.whdcStudyNoneDot{display:inline-flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important}.whdcStudyNoneDot svg{display:block;flex:none}.whdcStudyDot{display:inline-block;width:15px;height:15px;border-radius:50%;flex:none}
 #whdcStudyHint{font-size:.78rem;margin:0 0 8px;color:#686257}
 ::highlight(whdc-linked-scripture){background:#f9e8a6;color:inherit}#reading .scripture{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}
 .whdc-study-mark{box-decoration-break:clone;-webkit-box-decoration-break:clone}
@@ -49,7 +49,7 @@ body.dark #reading .verse-unit.whdc-verse-selected{background:rgba(132,185,218,.
 const bar=document.createElement('div');bar.id='whdcStudyBar';bar.hidden=true;bar.innerHTML='<div id="whdcStudyHeader"><p id="whdcStudyHint">Touch and hold or drag to select words. Only selected text is marked.</p><button type="button" id="whdcStudyClose" aria-label="Close Study menu" title="Close Study menu">×</button></div><div id="whdcStudyActions"><div id="whdcStudyMarkActions"><button type="button" data-action="highlight">Highlight ▾</button><button type="button" data-action="circle">◯ Circle</button><button type="button" data-action="underline">U̲ Underline</button><button type="button" data-action="erase">Remove All Marks</button><button type="button" data-action="undo" disabled aria-label="Undo last study mark">↶ Undo</button></div><div id="whdcStudySaveActions"><button type="button" data-action="favorite">♡ Save Verse</button><button type="button" data-action="note">▤ Add Note</button></div></div><div id="whdcStudyPalette" hidden></div><div id="whdcStudyNotice" role="status"></div>';
 document.body.append(bar);
 const palette=bar.querySelector('#whdcStudyPalette');
-const noneButton=document.createElement('button');noneButton.type='button';noneButton.dataset.theme='none';noneButton.title='Remove only the selected marking type';noneButton.innerHTML='<span class="whdcStudyDot whdcStudyNoneDot" aria-hidden="true">×</span><span>None</span>';palette.append(noneButton);
+const noneButton=document.createElement('button');noneButton.type='button';noneButton.dataset.theme='none';noneButton.title='Remove only the selected marking type';noneButton.innerHTML='<span class="whdcStudyDot whdcStudyNoneDot" aria-hidden="true"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M5.6 18.4 18.4 5.6"/></svg></span><span>None</span>';palette.append(noneButton);
 THEMES.forEach(([key,color,name,description])=>{const b=document.createElement('button');b.type='button';b.dataset.theme=key;b.title=description;b.innerHTML='<span class="whdcStudyDot" style="background:'+color+'"></span><span>'+name+'</span>';palette.append(b)});
 let active=null,restoring=false,loadedKey='',linkedDone=false,selectionTimer,markKind='highlight';
 const selectedVerses=new Set();
