@@ -72,6 +72,12 @@ window.addEventListener('whdc:native-sync-resolved',refreshSyncedBibleMarks);
 window.addEventListener('storage',event=>{if(event.key===STORE)refreshSyncedBibleMarks()});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshSyncedBibleMarks()});
 window.addEventListener('focus',refreshSyncedBibleMarks);
+window.addEventListener('pageshow',refreshSyncedBibleMarks);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshSyncedBibleMarks()});
+// A same-tab localStorage update does not trigger a storage event.
+// Refresh visible Bible annotations after the account sync finishes, without reloading the page.
+setInterval(()=>{if(!document.hidden&&!root.hidden&&root.getClientRects().length)refreshSyncedBibleMarks()},1800);
+
 
 function undoLast(){const action=undoHistory[undoHistory.length-1];if(!action)return;const all=read(),current=all[action.key]||[];if(action.type==='add'){const ids=new Set(action.ids);all[action.key]=current.filter(item=>!ids.has(item.id))}else if(action.type==='erase'){all[action.key]=[...current,...action.removed]}if(!write(all)){bar.querySelector('#whdcStudyNotice').textContent='Unable to undo on this device.';return}undoHistory.pop();updateUndo();active=null;clearVerseSelection();getSelection()?.removeAllRanges();repaint();bar.querySelector('#whdcStudyNotice').textContent='Last study mark undone.'}
 
@@ -105,6 +111,25 @@ function selectedSegments(range){
  return result;
 }
 function selection(){const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)return null;const r=s.getRangeAt(0);if(!root.querySelector('.scripture')?.contains(r.commonAncestorContainer))return null;const segments=selectedSegments(r);return segments.length?segments:null}
+
+// Keep the current passage in view when the fixed study palette grows.
+function keepStudySelectionVisible(){
+ if(bar.hidden||palette.hidden)return;
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  if(bar.hidden||palette.hidden)return;
+  const target=[...selectedVerses].find(el=>el.isConnected)||document.getSelection()?.rangeCount&&document.getSelection().getRangeAt(0).commonAncestorContainer;
+  const element=target?.nodeType===1?target:target?.parentElement;
+  const passage=element?.closest?.('.verse-unit,.scripture p')|| (active?.length?paragraphs()[active[0].p]:null);
+  if(!passage)return;
+  const rect=passage.getBoundingClientRect(), menu=bar.getBoundingClientRect();
+  const overlap=rect.bottom-(menu.top-22);
+  if(overlap<=0||rect.top<0)return;
+  const scroller=[...function*(el){for(let p=el.parentElement;p;p=p.parentElement)yield p}(passage)].find(el=>{const style=getComputedStyle(el);return /(auto|scroll)/.test(style.overflowY)&&el.scrollHeight>el.clientHeight+4});
+  if(scroller)scroller.scrollBy({top:overlap,behavior:'smooth'});
+  else window.scrollBy({top:overlap,behavior:'smooth'});
+ }));
+}
+
 function closePalette(){palette.hidden=true;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
 function show(open=true){bar.hidden=!open;if(!open)closePalette()}
 window.whdcOpenStudyMenu=()=>show(true);
@@ -228,7 +253,7 @@ function updateStudyPalette(){
  other.querySelector('.whdcStudyDot').style.backgroundColor=color;
  other.title=markKind==='highlight'?'Other: cool gray highlight':'Other: black '+markKind;
 }
-bar.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.theme){if(t.dataset.theme==='none'){removeKind(markKind);closePalette();return;}const x=THEMES.find(a=>a[0]===t.dataset.theme);if(x)add(markKind,x[0]==='other'&&markKind!=='highlight'?'#000000':x[1]);closePalette();return}switch(t.dataset.action){case'highlight':case'circle':case'underline':{const kind=t.dataset.action;const closing=!palette.hidden&&markKind===kind;if(closing){closePalette();}else{markKind=kind;updateStudyPalette();palette.hidden=false;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded',String(b===t)));bar.querySelector('#whdcStudyHint').textContent='Choose a theme color for '+markKind+'.';}break;}case'note':{const idx=active?.[0]?.p;document.dispatchEvent(new CustomEvent('whdc-open-study-note',{detail:{paragraphIndex:Number.isInteger(idx)?idx:null}}));break;}case'favorite':saveFavorite();break;case'erase':erase();break}});
+bar.addEventListener('click',e=>{const t=e.target.closest('button');if(!t)return;if(t.dataset.theme){if(t.dataset.theme==='none'){removeKind(markKind);closePalette();return;}const x=THEMES.find(a=>a[0]===t.dataset.theme);if(x)add(markKind,x[0]==='other'&&markKind!=='highlight'?'#000000':x[1]);closePalette();return}switch(t.dataset.action){case'highlight':case'circle':case'underline':{const kind=t.dataset.action;const closing=!palette.hidden&&markKind===kind;if(closing){closePalette();}else{markKind=kind;updateStudyPalette();palette.hidden=false;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded',String(b===t)));bar.querySelector('#whdcStudyHint').textContent='Choose a theme color for '+markKind+'.';keepStudySelectionVisible();}break;}case'note':{const idx=active?.[0]?.p;document.dispatchEvent(new CustomEvent('whdc-open-study-note',{detail:{paragraphIndex:Number.isInteger(idx)?idx:null}}));break;}case'favorite':saveFavorite();break;case'erase':erase();break}});
 const observer=new MutationObserver(()=>{if(restoring)return;if([...selectedVerses].some(el=>!el.isConnected)){selectedVerses.clear();active=null}root.querySelectorAll('.verse-unit:not([tabindex])').forEach(el=>{el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-selected','false')});const ps=paragraphs();if(!ps.length){loadedKey='';return}if(!root.querySelector('.whdc-study-mark')){loadedKey='';restore()}});
 observer.observe(root,{childList:true,subtree:false});
 function linked(){
