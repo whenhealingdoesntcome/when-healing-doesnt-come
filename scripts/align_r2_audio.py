@@ -52,6 +52,7 @@ def main():
     p.add_argument('--limit', type=int, default=6, help='Maximum recordings to align per run')
     p.add_argument('--model', default='small')
     p.add_argument('--dry-run', action='store_true')
+    p.add_argument('--force', action='store_true', help='Rebuild existing word timing sidecars without changing audio')
     args = p.parse_args()
     bucket = os.environ['R2_BUCKET_NAME']
     s3 = make_client()
@@ -71,8 +72,10 @@ def main():
         try:
             try:
                 s3.head_object(Bucket=bucket, Key=sidecar)
-                print(f'SKIP existing: {sidecar}', flush=True)
-                continue
+                if not args.force:
+                    print(f'SKIP existing: {sidecar}', flush=True)
+                    continue
+                print(f'REALIGN existing: {sidecar}', flush=True)
             except s3.exceptions.ClientError as exc:
                 if exc.response['Error']['Code'] not in ('404', 'NoSuchKey', 'NotFound'):
                     raise
