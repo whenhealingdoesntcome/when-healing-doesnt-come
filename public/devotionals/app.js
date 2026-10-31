@@ -825,10 +825,10 @@ function myReadingPlans(){
 }
 function planOverview(){
  const enrolled=planEnrollments();
- return `<section class="hero"><div class="eyebrow">Read at your own pace</div><h1>Reading Plans</h1><p>Follow a series or choose a guided plan. There are no deadlines, streaks, or missed days to make up.</p></section>${myReadingPlans()}${completedPlansLibrary()}<details class="card" open style="margin-top:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">Explore Reading Plans</summary><div class="grid" style="margin-top:16px">${planItems().map(p=>{
+ return `<section class="hero"><div class="eyebrow">Read at your own pace</div><h1>Reading Plans</h1><p>Follow a series or choose a guided plan. There are no deadlines, streaks, or missed days to make up.</p></section>${myReadingPlans()}${completedPlansLibrary()}<details class="card" open style="margin-top:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">Explore Reading Plans</summary><div class="grid" style="margin-top:16px">${planItems().filter(p=>!enrolled.includes(p.id)&&!syncPlanCompletions()[p.id]).map(p=>{
  const done=p.devotional_ids.filter(id=>readDate(id)).length,total=p.devotional_ids.length;
  return `<article class="card" style="text-align:center"><div class="eyebrow">${p.source==='custom'?'Guided plan':'Devotional series'}</div><h2>${safe(p.title)}</h2><p>${safe(p.description||'')}</p><p class="muted small">${done} of ${total} read</p><progress max="${total}" value="${done}" style="display:block;width:100%;height:14px;margin-inline:auto" aria-label="${safe(p.title)} reading progress"></progress><div class="actions" style="margin-top:14px;justify-content:center"><button class="btn primary" data-plan-open="${safe(p.id)}">${enrolled.includes(p.id)?'View plan':'View plan'}</button></div></article>`;
- }).join('')||'<p>Reading plans will appear as devotionals are published.</p>'}</div></details><p class="muted small">Your progress stays on this device. Clearing browser data can erase it.</p>`;
+ }).join('')||'<p>There are no unstarted reading plans available right now.</p>'}</div></details><p class="muted small">Your progress stays on this device. Clearing browser data can erase it.</p>`;
 }
 function planReaderNavigation(){
  if(!activeReadingPlan)return '';
