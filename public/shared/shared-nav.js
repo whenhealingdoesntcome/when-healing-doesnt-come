@@ -134,7 +134,7 @@
     bookmark:'<path d="M6 3h12v18l-6-4-6 4V3Z"/>',
     clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 3"/>',
     flask:'<path d="M9 3h6m-5 0v7l-6 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-6-9V3M7 16h10"/>',
-    settings:'<path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l-1.91 1.91A1.65 1.65 0 0 0 16 18.4a1.65 1.65 0 0 0-1.6 1.6h-2.8A1.65 1.65 0 0 0 10 18.4a1.65 1.65 0 0 0-1.82.33l-1.91-1.91A1.65 1.65 0 0 0 6.6 15 1.65 1.65 0 0 0 5 13.4v-2.8A1.65 1.65 0 0 0 6.6 9a1.65 1.65 0 0 0-.33-1.82l1.91-1.91A1.65 1.65 0 0 0 10 5.6 1.65 1.65 0 0 0 11.6 4h2.8A1.65 1.65 0 0 0 16 5.6a1.65 1.65 0 0 0 1.82-.33l1.91 1.91A1.65 1.65 0 0 0 19.4 9 1.65 1.65 0 0 0 21 10.6v2.8a1.65 1.65 0 0 0-1.6 1.6Z"/>'
+    settings:'<polygon points="12.00,3.90 13.99,2.00 15.90,2.58 16.50,5.27 17.73,6.27 20.48,6.33 21.42,8.10 19.94,10.42 20.10,12.00 22.00,13.99 21.42,15.90 18.73,16.50 17.73,17.73 17.67,20.48 15.90,21.42 13.58,19.94 12.00,20.10 10.01,22.00 8.10,21.42 7.50,18.73 6.27,17.73 3.52,17.67 2.58,15.90 4.06,13.58 3.90,12.00 2.00,10.01 2.58,8.10 5.27,7.50 6.27,6.27 6.33,3.52 8.10,2.58 10.42,4.06"/><circle cx="12" cy="12" r="3.5"/>'
   };
   function bottomNav(current,inApp){
     if(!document.getElementById('whdc-bottom-nav-css')){
@@ -146,8 +146,8 @@
         body{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))!important}
         .whdc-bottom-nav{display:grid!important;gap:0!important;flex-wrap:nowrap!important;grid-template-columns:repeat(var(--whdc-tab-count,5),minmax(0,1fr));position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));left:12px;right:12px;z-index:1100;min-height:68px;padding:8px 10px;background:#fffefa;color:#393f4a;border:1px solid #deded8;border-radius:999px;box-shadow:0 5px 22px rgba(20,30,28,.16)}
         .whdc-bottom-nav a,.whdc-bottom-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;min-width:0;padding:4px 0;border:0;border-radius:9px;background:transparent;color:inherit!important;text-decoration:none;font:inherit;font-size:11px;line-height:1.2;cursor:pointer}
-        .whdc-bottom-nav svg{height:23px;width:23px;min-height:23px;min-width:23px;flex:0 0 23px;aspect-ratio:1/1;transform:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-        .whdc-bottom-nav [aria-current="page"]{background:rgba(115,151,137,.18);font-weight:700;color:inherit!important}
+        .whdc-bottom-nav svg{height:23px;width:23px;min-height:23px;min-width:23px;flex:none!important;max-width:23px!important;max-height:23px!important;aspect-ratio:1/1;transform:none;display:block;box-sizing:border-box;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+        .whdc-bottom-nav [data-nav="settings"] svg{width:23px!important;height:23px!important;min-width:23px!important;min-height:23px!important;flex:none!important;transform:none!important;display:block!important;overflow:visible!important}\n        .whdc-bottom-nav [aria-current="page"]{background:rgba(115,151,137,.18);font-weight:700;color:inherit!important}
         /* Identical palette across the app and the standalone Bible Reader. */
         body.dark .whdc-bottom-nav{background:#2a3335!important;color:#f0eee8!important;border-color:#4d5959!important}
         body.dark .whdc-bottom-nav a,body.dark .whdc-bottom-nav button{color:#f0eee8!important}
@@ -169,7 +169,7 @@
     bar.style.setProperty('--whdc-tab-count',String(chosen.length));
     bar.innerHTML=chosen.map(item=>{
       const active=(item.id==='read'?current==='read':item.id===current)?' aria-current="page"':'';
-      const inner=`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[item.icon]}</svg><span>${item.label}</span>`;
+      const inner=`<svg viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" width="23" height="23" aria-hidden="true">${icons[item.icon]}</svg><span>${item.label}</span>`;
       return inApp?`<button type="button" data-nav="${item.id}"${active}>${inner}</button>`:`<a href="${item.href}" data-nav="${item.id}"${active}>${inner}</a>`;
     }).join('');
     if(inApp)bar.querySelectorAll('button[data-nav]').forEach(button=>button.addEventListener('click',()=>{
