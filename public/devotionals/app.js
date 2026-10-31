@@ -1621,34 +1621,52 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   }
   return {ok:false};
  }
- // Favorites and read history are additive collections across devices.
- // Keep every saved devotional and every recorded read, including when the
- // devices have no common sync baseline. Never merge unknown data shapes.
- const additiveMerge=(key,local,remote)=>{
+ // Merge favorites and reading history using the last successful common copy.
+ // A baseline item removed on either device stays removed. New items on
+ // either device are retained. Without a baseline, do not infer deletions.
+ const collectionMerge=(key,base,local,remote,initial=false)=>{
   try{
-   const a=JSON.parse(local),b=JSON.parse(remote);
+   const l=JSON.parse(local),r=JSON.parse(remote);
+   const b=initial||base===null?null:JSON.parse(base);
    if(key==='whdc-favorites-v1'){
-    const valid=x=>Array.isArray(x)&&x.every(v=>typeof v==='string'&&v.length>0);
-    if(!valid(a)||!valid(b))return null;
-    return JSON.stringify([...new Set([...a,...b])]);
+    const valid=x=>Array.isArray(x)&&x.every(v=>typeof v==='string'&&v.length>0)&&new Set(x).size===x.length;
+    if(!valid(l)||!valid(r)||(!initial&&!valid(b)))return null;
+    const baseline=new Set(initial?[]:b),ls=new Set(l),rs=new Set(r);
+    const result=[];
+    for(const id of [...l,...r]){
+     if(result.includes(id))continue;
+     if(!baseline.has(id)||(ls.has(id)&&rs.has(id)))result.push(id);
+    }
+    return JSON.stringify(result);
    }
    if(key==='whdc-read-history-v1'){
     const valid=x=>x&&typeof x==='object'&&!Array.isArray(x)&&Object.entries(x).every(([id,date])=>
      id.length>0&&typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date));
-    if(!valid(a)||!valid(b))return null;
-    const merged={...a};
-    for(const [id,date] of Object.entries(b)){
-     // When both devices marked the same devotional read, preserve the
-     // earliest recorded date rather than creating a conflict.
-     if(!Object.prototype.hasOwnProperty.call(merged,id)||date<merged[id])merged[id]=date;
+    if(!valid(l)||!valid(r)||(!initial&&!valid(b)))return null;
+    const result={};
+    for(const id of new Set([...Object.keys(l),...Object.keys(r)])){
+     // A missing baseline record is a new read; a missing existing record
+     // is an intentional unread action unless both devices changed it.
+     if(!initial&&Object.prototype.hasOwnProperty.call(b,id)&&
+        (!Object.prototype.hasOwnProperty.call(l,id)||!Object.prototype.hasOwnProperty.call(r,id))){
+      const other=Object.prototype.hasOwnProperty.call(l,id)?l[id]:r[id];
+      if(other!==undefined&&other!==b[id])return null;
+      continue;
+     }
+     if(l[id]&&r[id]){
+      // Different dates for an existing record can be resolved only when
+      // one side is unchanged from the baseline.
+      if(!initial&&b[id]&&l[id]!==r[id]&&l[id]!==b[id]&&r[id]!==b[id])return null;
+      result[id]=l[id]===b?.[id]?r[id]:r[id]===b?.[id]?l[id]:(l[id]<r[id]?l[id]:r[id]);
+     }else result[id]=l[id]||r[id];
     }
-    return JSON.stringify(merged);
+    return JSON.stringify(result);
    }
   }catch{}
   return null;
  };
  const mergeSaved=(key,base,local,remote,initial=false)=>
-  additiveMerge(key,local,remote)??mergeStrings(base,local,remote,initial);
+  collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
  const clearResolvedConflict=key=>{
   const entries=readConflicts();
   if(entries.some(entry=>entry.key===key)){
@@ -1688,25 +1706,9 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
      if(local===null&&cloudValue!==null){localStorage.setItem(key,cloudValue);updates++;}
      if(local!==null&&cloudValue===null){
       const uploaded=await put(key,local,0);if(!uploaded){conflicts++;continue;}
-      meta[key]={value:local,revision:uploaded.revision};updates++;continue;
+      meta[key]={value:local,revision:uploaded.revision};clearResolvedConflict(key);updates++;continue;
      }
      meta[key]={value:cloudValue,revision:rev};continue;
-    }
-    // For additive sections, synchronize the union even if only one side
-    // changed since the last sync. This protects previously saved items.
-    if((key==='whdc-favorites-v1'||key==='whdc-read-history-v1')&&local!==null&&cloudValue!==null){
-     const merged=additiveMerge(key,local,cloudValue);
-     if(merged!==null){
-      const sameContents=merged===cloudValue;
-      if(!sameContents){
-       const uploaded=await put(key,merged,rev);
-       if(!uploaded){archive(key,local,cloudValue);conflicts++;continue;}
-       if(local!==merged)localStorage.setItem(key,merged);
-       meta[key]={value:merged,revision:uploaded.revision};clearResolvedConflict(key);updates++;continue;
-      }
-      if(local!==merged){localStorage.setItem(key,merged);updates++;}
-      meta[key]={value:merged,revision:rev};clearResolvedConflict(key);continue;
-     }
     }
     const localChanged=local!==previous.value,remoteChanged=rev!==previous.revision;
     if(localChanged&&remoteChanged){
@@ -1721,14 +1723,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     if(remoteChanged){
      // Null means a remote deletion. Do not destroy old local data if it has changed.
      if(cloudValue===null)localStorage.removeItem(key);else localStorage.setItem(key,cloudValue);
-     meta[key]={value:cloudValue,revision:rev};updates++;continue;
+     meta[key]={value:cloudValue,revision:rev};clearResolvedConflict(key);updates++;continue;
     }
     if(localChanged){
      // Avoid propagating deletions until a record-level tombstone protocol is implemented.
      if(local===null){archive(key,null,cloudValue);conflicts++;continue;}
      const uploaded=await put(key,local,rev);
      if(!uploaded){conflicts++;continue;}
-     meta[key]={value:local,revision:uploaded.revision};updates++;
+     meta[key]={value:local,revision:uploaded.revision};clearResolvedConflict(key);updates++;
     }
    }
    save(meta);
