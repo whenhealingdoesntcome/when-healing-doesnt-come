@@ -903,7 +903,7 @@ loadPronunciations().catch(e=>status.textContent=e.message);
 async function api(path,opts){
  const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);let r;try{r=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'follow',...opts,signal:controller.signal});}catch(e){throw Error('Audio API '+path+' request failed: '+(e?.name==='AbortError'?'timed out after 20 seconds':e.message));}finally{clearTimeout(timeout);}
  const type=r.headers.get('content-type')||'';
- if(!/\bjson\b|\+json\b/i.test(type)){
+ if(!/\\bjson\\b|\\+json\\b/i.test(type)){
   const finalUrl=new URL(r.url||path,location.href);
   const redirected=finalUrl.pathname!==new URL(path,location.href).pathname;
   const hint=redirected?' The request was redirected to '+finalUrl.pathname+'. Check your admin session or Cloudflare Access.':r.status===404?' The API route may be missing from the deployed Worker.':' Check Cloudflare Access, Worker routing, and deployment.';
