@@ -105,7 +105,7 @@ const WHDC_TRANSFER_KEYS=[
  'whdc-bible-annotations-v1','whdc-devotional-annotations-v1',
  'whdc-favorite-verses-v1','whdc-saved-quotes-v1','whdc-saved-resources-v1',
  'whdc-inductive-paragraph-notes-v1','whdc-reading-plan-completions-v1',
- 'whdc-reading-plans-enrolled-v1','whdc-opening-page-v1',
+ 'whdc-reading-plans-enrolled-v1','whdc-reading-plan-enrollment-actions-v1','whdc-opening-page-v1',
  'whdc-appearance','whdc-reading-size','whdc-device-voice',
  'whdc-access-high-contrast','whdc-access-reduce-motion',
  'whdc-access-simplified-reading'
@@ -346,6 +346,41 @@ async function syncReadingPlanPush(){
 }
 // Reading plans are public; progress and enrollment are kept only on this device.
 const PLAN_ENROLL_KEY='whdc-reading-plans-enrolled-v1';
+
+// Versioned per-plan enrollment actions. Tombstones remain in this record so
+// older devices cannot silently restore an intentionally removed enrollment.
+const PLAN_ACTION_KEY='whdc-reading-plan-enrollment-actions-v1';
+const PLAN_ACTION_DEVICE_KEY='whdc-reading-plan-action-device-v1';
+function planActionDevice(){
+ let id=localStorage.getItem(PLAN_ACTION_DEVICE_KEY);
+ if(!id){id=(globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2));localStorage.setItem(PLAN_ACTION_DEVICE_KEY,id)}
+ return id;
+}
+function readPlanActions(){
+ try{const v=JSON.parse(localStorage.getItem(PLAN_ACTION_KEY)||'{}');return v&&typeof v==='object'&&!Array.isArray(v)?v:{}}catch{return {}}
+}
+function recordPlanEnrollment(id,enrolled){
+ const actions=readPlanActions(),old=actions[id],now=Date.now();
+ const time=Math.max(now,Number(old?.at||0)+1);
+ actions[id]={enrolled:!!enrolled,at:time,device:planActionDevice()};
+ localStorage.setItem(PLAN_ACTION_KEY,JSON.stringify(actions));
+ const current=new Set(planEnrollments());
+ if(enrolled)current.add(id);else current.delete(id);
+ localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify([...current]));
+}
+function applyPlanEnrollmentActions(){
+ const actions=readPlanActions(),current=new Set(planEnrollments());let changed=false;
+ for(const [id,action] of Object.entries(actions)){
+  if(!action||typeof action.enrolled!=='boolean'||!Number.isSafeInteger(action.at)||action.at<=0)continue;
+  if(action.enrolled&&!current.has(id)){current.add(id);changed=true}
+  if(!action.enrolled&&current.has(id)){current.delete(id);changed=true}
+ }
+ if(changed){localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify([...current]));if(typeof render==='function'&&['plans','plan-detail'].includes(view))render()}
+}
+window.addEventListener('whdc:plan-actions-synced',applyPlanEnrollmentActions);
+window.addEventListener('whdc:native-sync',applyPlanEnrollmentActions);
+window.addEventListener('whdc:native-sync-resolved',applyPlanEnrollmentActions);
+
 let customReadingPlans=[];
 const planEnrollments=()=>load(PLAN_ENROLL_KEY,[]);
 function planItems(){
@@ -916,10 +951,10 @@ function wirePlans(){
  document.getElementById('planBack')?.addEventListener('click',()=>nav('plans'));
  document.getElementById('planStart')?.addEventListener('click',()=>{
   const p=planItems().find(x=>x.id===selectedReadingPlan);if(!p)return;
-  localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify([...new Set([...planEnrollments(),p.id])]));
+  recordPlanEnrollment(p.id,true);
   openWHDCReminderPopup('plan',()=>openFromReadingPlan(p.devotional_ids.find(id=>!readDate(id))||p.devotional_ids[0],p.id));
  });
- document.getElementById('planLeave')?.addEventListener('click',()=>{localStorage.setItem(PLAN_ENROLL_KEY,JSON.stringify(planEnrollments().filter(id=>id!==selectedReadingPlan)));syncReadingPlanPush().catch(()=>{});render()});
+ document.getElementById('planLeave')?.addEventListener('click',()=>{recordPlanEnrollment(selectedReadingPlan,false);syncReadingPlanPush().catch(()=>{});render()});
  document.querySelectorAll('[data-plan-read]').forEach(b=>b.onclick=()=>afterPlanReadingMarked(b.dataset.planRead));
 }
 async function loadCustomReadingPlans(){
@@ -1670,8 +1705,26 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
   }catch{}
   return null;
  };
+ const mergeEnrollmentActions=(local,remote)=>{
+  try{
+   const a=JSON.parse(local),b=JSON.parse(remote);
+   if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)||Array.isArray(b))return null;
+   const result={};
+   for(const id of new Set([...Object.keys(a),...Object.keys(b)])){
+    const x=a[id],y=b[id];
+    const valid=v=>v&&typeof v.enrolled==='boolean'&&Number.isSafeInteger(v.at)&&v.at>0&&typeof v.device==='string';
+    if(x&&!valid(x)||y&&!valid(y))return null;
+    if(!x||!y){result[id]=x||y;continue}
+    if(x.at===y.at&&x.enrolled!==y.enrolled)return null;
+    // An implausible clock skew requires human review rather than silent loss.
+    if(Math.abs(x.at-y.at)>7*86400000&&x.device!==y.device)return null;
+    result[id]=x.at>y.at?x:y.at>x.at?y:(x.device>=y.device?x:y);
+   }
+   return JSON.stringify(result);
+  }catch{return null}
+ };
  const mergeSaved=(key,base,local,remote,initial=false)=>
-  collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
+  (key==='whdc-reading-plan-enrollment-actions-v1'?mergeEnrollmentActions(local,remote):null)??collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
  const clearResolvedConflict=key=>{
   const entries=readConflicts();
   if(entries.some(entry=>entry.key===key)){
@@ -1739,6 +1792,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
     }
    }
    save(meta);
+   window.dispatchEvent(new Event('whdc:plan-actions-synced'));
    if(!conflicts)lastSuccessfulSync=new Date();
    status(conflicts?`Sync paused for ${conflicts} conflicting saved sections. No data was overwritten. Review the saved-data conflict below before restoring or clearing data.`:updates?'Saved data synchronized.':'Saved data is up to date.');
   }catch(e){status('Sync waiting: '+e.message);}finally{running=false;ensureControls();}
