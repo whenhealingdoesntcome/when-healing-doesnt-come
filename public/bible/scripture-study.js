@@ -30,7 +30,7 @@ const css=document.createElement('style');css.textContent=`
 #whdcStudySaveActions{margin-left:auto;padding-left:10px;border-left:1px solid #c7c1b8;justify-content:flex-end}
 @media(max-width:440px){#whdcStudyActions{gap:8px}#whdcStudySaveActions{width:100%;border-left:0;border-top:1px solid #c7c1b8;padding:8px 0 0;margin-left:0}}
 #whdcStudyPalette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:10px;max-height:38vh;overflow:auto}
-#whdcStudyPalette button{text-align:left;display:flex;align-items:center;gap:7px}
+#whdcStudyPalette button{text-align:left;display:flex;align-items:center;justify-content:flex-start;gap:7px;line-height:1.25;min-height:32px;vertical-align:middle}#whdcStudyPalette button>span{display:inline-flex;align-items:center;line-height:1.25}#whdcStudyPalette button>.whdcStudyDot{width:15px;height:15px;min-width:15px;min-height:15px;flex:0 0 15px;align-self:center;box-sizing:border-box}#whdcStudyPalette button>span:last-child{flex:1;align-self:center}
 .whdcStudyNoneDot{display:inline-flex!important;align-items:center;justify-content:center;background:transparent!important;border:0!important}.whdcStudyNoneDot svg{display:block;flex:none}.whdcStudyDot{display:inline-block;width:15px;height:15px;border-radius:50%;flex:none}
 #whdcStudyHint{font-size:.78rem;margin:0 0 8px;color:#686257}
 ::highlight(whdc-linked-scripture){background:#f9e8a6;color:inherit}#reading .scripture{user-select:text;-webkit-user-select:text;-webkit-touch-callout:default}
