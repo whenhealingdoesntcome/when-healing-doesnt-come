@@ -900,7 +900,19 @@ async function loadPronunciations(){const entries=await api('/api/admin/audio/pr
 document.getElementById('pronunciationForm').onsubmit=async e=>{e.preventDefault();const f=e.currentTarget;try{await api('/api/admin/audio/pronunciations',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({written:f.elements.written.value.trim(),spoken:f.elements.spoken.value.trim()})});f.reset();f.elements.written.readOnly=false;await loadPronunciations();status.textContent='Pronunciation saved. New recordings will use it.'}catch(err){status.textContent=err.message}};
 document.getElementById('pronunciationPreviewButton').onclick=async()=>{const b=document.getElementById('pronunciationPreviewButton'),player=document.getElementById('pronunciationPlayer'),message=document.getElementById('pronunciationPreviewStatus');b.disabled=true;b.textContent='Generating…';message.textContent='Generating pronunciation preview…';player.pause();player.removeAttribute('src');player.load();try{const out=await api('/api/admin/audio/pronunciation-preview',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:document.getElementById('pronunciationPreviewText').value,voice:document.getElementById('pronunciationVoice').value})});if(typeof out.audio!=='string'||!out.audio.length)throw Error('The voice service returned no playable audio.');player.src='data:audio/mpeg;base64,'+out.audio;player.load();message.textContent='Preview ready. Press Play to listen. No devotional recording was saved.'}catch(err){message.textContent='Preview failed: '+err.message}finally{b.disabled=false;b.textContent='Generate test'}};
 loadPronunciations().catch(e=>status.textContent=e.message);
-async function api(path,opts){const r=await fetch(path,{credentials:'same-origin',cache:'no-store',...opts});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');return j}
+async function api(path,opts){
+ const r=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'follow',...opts});
+ const type=r.headers.get('content-type')||'';
+ if(!/\bjson\b|\+json\b/i.test(type)){
+  const finalUrl=new URL(r.url||path,location.href);
+  const redirected=finalUrl.pathname!==new URL(path,location.href).pathname;
+  const hint=redirected?' The request was redirected to '+finalUrl.pathname+'. Check your admin session or Cloudflare Access.':r.status===404?' The API route may be missing from the deployed Worker.':' Check Cloudflare Access, Worker routing, and deployment.';
+  throw Error('Audio API '+path+' returned '+(r.status||'unknown status')+' '+(type||'unknown content type')+' instead of JSON.'+hint);
+ }
+ let j;try{j=await r.json()}catch{throw Error('Audio API '+path+' returned invalid JSON (HTTP '+r.status+').')}
+ if(!r.ok)throw Error('Audio API '+path+': '+(j?.error||'HTTP '+r.status));
+ return j;
+}
 async function audioAction(path,payload,method='POST'){return api(path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(payload)})}
 (async()=>{try{const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
 const batchButton=document.createElement('button');batchButton.type='button';batchButton.textContent='Generate All Audio';batchButton.style.cssText='margin:8px 0 12px;padding:10px 14px';
