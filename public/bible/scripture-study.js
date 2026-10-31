@@ -58,11 +58,26 @@ function syncVerseSelection(){active=[...selectedVerses].filter(el=>el.isConnect
 const undoHistory=[];const undoButton=bar.querySelector('[data-action="undo"]');
 function updateUndo(){undoButton.disabled=!undoHistory.length;undoButton.title=undoHistory.length?'Undo last study marking':'No study markings to undo'}
 function repaint(){loadedKey='';root.querySelectorAll('.whdc-study-mark').forEach(el=>el.replaceWith(...el.childNodes));root.normalize();restore()}
+function refreshSyncedBibleMarks(){
+  if(!root.isConnected||!root.querySelector('.scripture p'))return;
+  const current=JSON.stringify(read()[key()]||[]);
+  if(current===lastRenderedBibleMarks)return;
+  lastRenderedBibleMarks=current;
+  repaint();
+}
+let lastRenderedBibleMarks=null;
+window.addEventListener('whdc:bible-annotations-synced',refreshSyncedBibleMarks);
+window.addEventListener('whdc:native-sync',refreshSyncedBibleMarks);
+window.addEventListener('whdc:native-sync-resolved',refreshSyncedBibleMarks);
+window.addEventListener('storage',event=>{if(event.key===STORE)refreshSyncedBibleMarks()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshSyncedBibleMarks()});
+window.addEventListener('focus',refreshSyncedBibleMarks);
+
 function undoLast(){const action=undoHistory[undoHistory.length-1];if(!action)return;const all=read(),current=all[action.key]||[];if(action.type==='add'){const ids=new Set(action.ids);all[action.key]=current.filter(item=>!ids.has(item.id))}else if(action.type==='erase'){all[action.key]=[...current,...action.removed]}if(!write(all)){bar.querySelector('#whdcStudyNotice').textContent='Unable to undo on this device.';return}undoHistory.pop();updateUndo();active=null;clearVerseSelection();getSelection()?.removeAllRanges();repaint();bar.querySelector('#whdcStudyNotice').textContent='Last study mark undone.'}
 
 function key(){const p=new URLSearchParams(location.search);return p.get('book')||document.getElementById('book')?.value||'unknown'}
 function read(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch{return {}}}
-function write(all){try{localStorage.setItem(STORE,JSON.stringify(all));return true}catch{return false}}
+function write(all){try{localStorage.setItem(STORE,JSON.stringify(all));lastRenderedBibleMarks=JSON.stringify(all[key()]||[]);return true}catch{return false}}
 function paragraphs(){return [...root.querySelectorAll('.scripture p')]}
 function textNodes(p){const walker=document.createTreeWalker(p,NodeFilter.SHOW_TEXT,{acceptNode(n){return n.parentElement?.closest('sup.verse,.chapter,.whdc-note-icon,#whdcStudyBar')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT}});const a=[];while(walker.nextNode())a.push(walker.currentNode);return a}
 function offsetAt(p,node,offset){let total=0;const point=document.createRange();point.setStart(node,offset);point.collapse(true);for(const t of textNodes(p)){const end=document.createRange();end.selectNodeContents(t);if(point.compareBoundaryPoints(Range.START_TO_END,end)>=0){total+=t.length;continue}const start=document.createRange();start.setStart(t,0);start.collapse(true);if(point.compareBoundaryPoints(Range.START_TO_START,start)<=0)break;if(node===t){total+=offset;break}try{const r=document.createRange();r.setStart(t,0);r.setEnd(node,offset);total+=r.toString().length}catch{}break}return total}
