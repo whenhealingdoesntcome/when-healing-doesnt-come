@@ -392,7 +392,7 @@ function readingMilestones(){
 }
 function completedPlansLibrary(){
  const finished=syncPlanCompletions(),plans=planItems().filter(p=>finished[p.id]);
- return `<section class="card"><h2>Completed Plans</h2>${plans.length?`<div class="grid">${plans.map(p=>`<article class="card" style="text-align:center"><h3>${safe(p.title)}</h3><p class="muted small">Completed ${safe(finished[p.id])}</p><button class="btn" data-plan-open="${safe(p.id)}">Revisit plan</button></article>`).join('')}</div>`:'<p class="muted">Your completed reading plans will appear here.</p>'}</section>`;
+ return `<details class="card" style="margin-bottom:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">Completed Plans (${plans.length})</summary><div style="margin-top:16px">${plans.length?`<div class="grid">${plans.map(p=>`<article class="card" style="text-align:center"><h3>${safe(p.title)}</h3><p class="muted small">Completed ${safe(finished[p.id])}</p><button class="btn" data-plan-open="${safe(p.id)}">Revisit plan</button></article>`).join('')}</div>`:'<p class="muted">Your completed reading plans will appear here.</p>'}</div></details>`;
 }
 function afterPlanReadingMarked(id){
  const planId=activeReadingPlan||selectedReadingPlan;
@@ -815,20 +815,20 @@ function wireDevotionalQuoteSelection(){
 }
 
 function myReadingPlans(){
- const enrolled=planEnrollments(),plans=planItems().filter(p=>enrolled.includes(p.id));
- if(!plans.length)return `<section class="card"><h2>My Reading Plans</h2><p>You haven't started a plan yet. Explore the plans below and start whenever you're ready.</p></section>`;
- return `<section class="card"><h2>My Reading Plans</h2><p class="muted">Pick up where you left off. No deadlines and no pressure.</p><div class="grid">${plans.map(p=>{
+ const enrolled=planEnrollments(),finished=syncPlanCompletions(),plans=planItems().filter(p=>enrolled.includes(p.id)&&!finished[p.id]);
+ if(!plans.length)return `<details class="card" open style="margin-bottom:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">My Reading Plans (0)</summary><p style="margin-top:16px">You have no active plans. Explore the plans below or revisit a completed plan.</p></details>`;
+ return `<details class="card" open style="margin-bottom:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">My Reading Plans (${plans.length})</summary><div style="margin-top:16px"><p class="muted">Pick up where you left off. No deadlines and no pressure.</p><div class="grid">${plans.map(p=>{
  const total=p.devotional_ids.length,done=p.devotional_ids.filter(id=>readDate(id)).length;
  const next=p.devotional_ids.find(id=>!readDate(id));
  return `<article class="card" style="text-align:center"><h3>${safe(p.title)}</h3><p>${done} of ${total} completed${done===total?' · Plan complete!':''}</p><progress max="${total}" value="${done}" style="display:block;width:100%;height:14px;margin-inline:auto" aria-label="${safe(p.title)} progress"></progress><div class="actions" style="margin-top:12px;justify-content:center"><button class="btn primary" data-plan-continue="${safe(p.id)}">${next?'Continue reading':'Review plan'}</button><button class="btn" data-plan-open="${safe(p.id)}">View readings</button></div></article>`;
- }).join('')}</div></section>`;
+ }).join('')}</div></div></details>`;
 }
 function planOverview(){
  const enrolled=planEnrollments();
- return `<section class="hero"><div class="eyebrow">Read at your own pace</div><h1>Reading Plans</h1><p>Follow a series or choose a guided plan. There are no deadlines, streaks, or missed days to make up.</p></section>${myReadingPlans()}${completedPlansLibrary()}<h2>Explore Reading Plans</h2><div class="grid">${planItems().map(p=>{
+ return `<section class="hero"><div class="eyebrow">Read at your own pace</div><h1>Reading Plans</h1><p>Follow a series or choose a guided plan. There are no deadlines, streaks, or missed days to make up.</p></section>${myReadingPlans()}${completedPlansLibrary()}<details class="card" open style="margin-top:16px"><summary style="cursor:pointer;font-size:1.25rem;font-weight:700;padding:4px 0">Explore Reading Plans</summary><div class="grid" style="margin-top:16px">${planItems().map(p=>{
  const done=p.devotional_ids.filter(id=>readDate(id)).length,total=p.devotional_ids.length;
  return `<article class="card" style="text-align:center"><div class="eyebrow">${p.source==='custom'?'Guided plan':'Devotional series'}</div><h2>${safe(p.title)}</h2><p>${safe(p.description||'')}</p><p class="muted small">${done} of ${total} read</p><progress max="${total}" value="${done}" style="display:block;width:100%;height:14px;margin-inline:auto" aria-label="${safe(p.title)} reading progress"></progress><div class="actions" style="margin-top:14px;justify-content:center"><button class="btn primary" data-plan-open="${safe(p.id)}">${enrolled.includes(p.id)?'View plan':'View plan'}</button></div></article>`;
- }).join('')||'<p>Reading plans will appear as devotionals are published.</p>'}</div><p class="muted small">Your progress stays on this device. Clearing browser data can erase it.</p>`;
+ }).join('')||'<p>Reading plans will appear as devotionals are published.</p>'}</div></details><p class="muted small">Your progress stays on this device. Clearing browser data can erase it.</p>`;
 }
 function planReaderNavigation(){
  if(!activeReadingPlan)return '';
