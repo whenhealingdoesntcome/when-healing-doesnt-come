@@ -7,6 +7,11 @@ on:
         description: 'Optional R2 prefix, e.g. devotionals/who-am-i/'
         required: false
         default: 'devotionals/'
+      force:
+        description: 'Realign existing recordings (replaces timing JSON only, never audio)'
+        type: boolean
+        required: false
+        default: false
       limit:
         description: 'Maximum new recordings per run'
         required: false
@@ -45,4 +50,5 @@ jobs:
         env:
           ALIGN_PREFIX: ${{ inputs.prefix || 'devotionals/' }}
           ALIGN_LIMIT: ${{ inputs.limit || '6' }}
-        run: python scripts/align_r2_audio.py --prefix "$ALIGN_PREFIX" --limit "$ALIGN_LIMIT"
+          ALIGN_FORCE: ${{ inputs.force || 'false' }}
+        run: python scripts/align_r2_audio.py --prefix "$ALIGN_PREFIX" --limit "$ALIGN_LIMIT" $([ "$ALIGN_FORCE" = "true" ] && echo --force)
