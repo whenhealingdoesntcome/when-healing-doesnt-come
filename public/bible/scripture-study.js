@@ -114,24 +114,38 @@ function selection(){const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)
 
 // Keep the current passage in view when the fixed study palette grows.
 function keepStudySelectionVisible(){
- if(bar.hidden||palette.hidden)return;
+ if(bar.hidden)return;
  requestAnimationFrame(()=>requestAnimationFrame(()=>{
-  if(bar.hidden||palette.hidden)return;
-  const target=[...selectedVerses].find(el=>el.isConnected)||document.getSelection()?.rangeCount&&document.getSelection().getRangeAt(0).commonAncestorContainer;
-  const element=target?.nodeType===1?target:target?.parentElement;
-  const passage=element?.closest?.('.verse-unit,.scripture p')|| (active?.length?paragraphs()[active[0].p]:null);
+  if(bar.hidden)return;
+  const selected=[...selectedVerses].filter(el=>el.isConnected);
+  const range=window.getSelection()?.rangeCount?window.getSelection().getRangeAt(0):null;
+  const node=selected[0]||range?.startContainer;
+  const element=node?.nodeType===1?node:node?.parentElement;
+  const passage=element?.closest?.('.verse-unit,.scripture p')||(active?.length?paragraphs()[active[0].p]:null);
   if(!passage)return;
-  const rect=passage.getBoundingClientRect(), menu=bar.getBoundingClientRect();
-  const overlap=rect.bottom-(menu.top-22);
-  if(overlap<=0||rect.top<0)return;
+  // Respect the actual visible Bible navigation, including its sticky position.
+  // Only count headers intersecting the top of the viewport; ignore the study toolbar.
+  let top=12;
+  const selectors=['.bible-nav','.bible-navigation','.bible-toolbar','.bible-header','.reader-nav','.reader-toolbar','header','nav','[data-bible-nav]'];
+  document.querySelectorAll(selectors.join(',')).forEach(el=>{
+   if(el===bar||bar.contains(el)||el.closest('#whdcStudyBar'))return;
+   const r=el.getBoundingClientRect();const css=getComputedStyle(el);
+   if(r.height>0&&r.height<180&&r.top<=top+16&&r.bottom>0&&r.bottom<innerHeight*.45&&css.visibility!=='hidden'&&css.display!=='none')top=Math.max(top,r.bottom+12);
+  });
   const scroller=[...function*(el){for(let p=el.parentElement;p;p=p.parentElement)yield p}(passage)].find(el=>{const style=getComputedStyle(el);return /(auto|scroll)/.test(style.overflowY)&&el.scrollHeight>el.clientHeight+4});
-  if(scroller)scroller.scrollBy({top:overlap,behavior:'smooth'});
-  else window.scrollBy({top:overlap,behavior:'smooth'});
+  const rect=passage.getBoundingClientRect();
+  // Place the selected passage just below the Bible navigation, rather than
+  // merely moving it far enough to clear the expanded color menu.
+  if(scroller){
+   const sr=scroller.getBoundingClientRect();
+   const desired=Math.max(top,sr.top+12);
+   if(Math.abs(rect.top-desired)>8)scroller.scrollBy({top:rect.top-desired,behavior:'smooth'});
+  }else if(Math.abs(rect.top-top)>8){window.scrollBy({top:rect.top-top,behavior:'smooth'});}
  }));
 }
 
 function closePalette(){palette.hidden=true;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
-function show(open=true){bar.hidden=!open;if(!open)closePalette()}
+function show(open=true){bar.hidden=!open;if(!open)closePalette();else keepStudySelectionVisible()}
 window.whdcOpenStudyMenu=()=>show(true);
 // Close the transient study controls when navigating away or switching app sections.
 window.whdcCloseStudyMenu=()=>show(false);
