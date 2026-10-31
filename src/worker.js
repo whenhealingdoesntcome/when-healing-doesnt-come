@@ -901,7 +901,7 @@ document.getElementById('pronunciationForm').onsubmit=async e=>{e.preventDefault
 document.getElementById('pronunciationPreviewButton').onclick=async()=>{const b=document.getElementById('pronunciationPreviewButton'),player=document.getElementById('pronunciationPlayer'),message=document.getElementById('pronunciationPreviewStatus');b.disabled=true;b.textContent='Generating…';message.textContent='Generating pronunciation preview…';player.pause();player.removeAttribute('src');player.load();try{const out=await api('/api/admin/audio/pronunciation-preview',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:document.getElementById('pronunciationPreviewText').value,voice:document.getElementById('pronunciationVoice').value})});if(typeof out.audio!=='string'||!out.audio.length)throw Error('The voice service returned no playable audio.');player.src='data:audio/mpeg;base64,'+out.audio;player.load();message.textContent='Preview ready. Press Play to listen. No devotional recording was saved.'}catch(err){message.textContent='Preview failed: '+err.message}finally{b.disabled=false;b.textContent='Generate test'}};
 loadPronunciations().catch(e=>status.textContent=e.message);
 async function api(path,opts){
- const r=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'follow',...opts});
+ const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),20000);let r;try{r=await fetch(path,{credentials:'same-origin',cache:'no-store',redirect:'follow',...opts,signal:controller.signal});}catch(e){throw Error('Audio API '+path+' request failed: '+(e?.name==='AbortError'?'timed out after 20 seconds':e.message));}finally{clearTimeout(timeout);}
  const type=r.headers.get('content-type')||'';
  if(!/\bjson\b|\+json\b/i.test(type)){
   const finalUrl=new URL(r.url||path,location.href);
@@ -914,7 +914,7 @@ async function api(path,opts){
  return j;
 }
 async function audioAction(path,payload,method='POST'){return api(path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(payload)})}
-(async()=>{try{const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
+(async()=>{try{const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';if(!ds.some(d=>d.status==='published')){alignmentOverall.textContent='No published devotionals to check.';audioFilterStatus.textContent='No published devotionals.';}for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
 const batchButton=document.createElement('button');batchButton.type='button';batchButton.textContent='Generate All Audio';batchButton.style.cssText='margin:8px 0 12px;padding:10px 14px';
 const batchProgress=document.createElement('p');batchProgress.setAttribute('role','status');batchProgress.setAttribute('aria-live','polite');
 const audioTasks=[];let batchRunning=false;devotionalEntries.push({section,tasks:audioTasks,title:'Day '+d.day+': '+d.title});applyAudioFilter();updateAlignment();
@@ -952,7 +952,7 @@ for(const part of ['devotional','deeper','scripture']){const row=document.create
  },
  showError(error){message.textContent=' Failed: '+(error?.message||'Unknown error');}
 });
-box.append(name,generate,remove,message,player);row.append(box);refresh()}section.append(row)}items.append(section);applyAudioFilter()}}catch(e){status.textContent=e.message}})();
+box.append(name,generate,remove,message,player);row.append(box);refresh()}section.append(row)}items.append(section);applyAudioFilter()}}catch(e){status.textContent=e.message;alignmentOverall.textContent='Unable to check recordings: '+e.message;audioFilterStatus.textContent='Audio status checks could not start.'}})();
 </script></body></html>`;
 // Experimental Gemini 3.8 Flash TTS through Vertex AI, separate from production audio.
 const GEMINI38_MODEL='gemini-3.8-flash-tts';
