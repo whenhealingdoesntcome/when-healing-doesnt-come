@@ -7,32 +7,47 @@ window.WHDCAudio=(()=>{
  function clearHighlight(){if(activeWord)activeWord.classList.remove('whdc-word-active');activeWord=null;for(const span of wordSpans){if(span.isConnected)span.replaceWith(document.createTextNode(span.textContent));}wordSpans=[];wordTimings=[];}
  function normalizeWord(s){return String(s||'').toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9']/g,'').replace(/'/g,'');}
  function setupHighlight(part,file){
-  clearHighlight();if(!followEnabled()||!Array.isArray(file?.words)||!file.words.length)return;
-  const root=part==='devotional'?document.querySelector('#quoteSelectableDevotional > .whdc-quote-text'):part==='deeper'?document.querySelector('#deepText > .whdc-quote-text'):null;
-  if(!root)return;
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
-  const displayed=[];for(const node of nodes){for(const m of node.textContent.matchAll(/\S+/g))displayed.push(normalizeWord(m[0]));}
+  clearHighlight();
+  if(!followEnabled()||!Array.isArray(file?.words)||!file.words.length)return;
+  const roots=part==='devotional'?[document.querySelector('#quoteSelectableDevotional > .whdc-quote-text')]:
+    part==='deeper'?[document.querySelector('#deepText > .whdc-quote-text')]:
+    part==='scripture'?[...document.querySelectorAll('#inlineScripture .whdc-context-text'),document.querySelector('#quoteSelectableDevotional .whdc-main-verse em')]:[];
   const spoken=file.words.map(w=>normalizeWord(w.word));
-  // Use ordered word matching instead of requiring an identical complete passage.
-  // The recording may include an introduction, and published punctuation/text can differ.
-  const n=displayed.length,m=spoken.length;
-  if(!n||!m)return;
-  const dp=Array.from({length:n+1},()=>new Uint16Array(m+1));
-  for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
-   dp[i][j]=displayed[i]&&displayed[i]===spoken[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
-  const pairs=[];let i=0,j=0;
-  while(i<n&&j<m){
-   if(displayed[i]&&displayed[i]===spoken[j]){pairs.push([i,j]);i++;j++;}
-   else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;
+  // Scripture and the Key Scripture are separate display regions, but share the
+  // same recording. Match each region independently to the same timing data.
+  for(const root of roots){
+   if(!root||!root.isConnected)continue;
+   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);const nodes=[];
+   while(walker.nextNode())nodes.push(walker.currentNode);
+   const displayed=[];
+   for(const node of nodes)for(const match of node.textContent.matchAll(/\S+/g))displayed.push(normalizeWord(match[0]));
+   const n=displayed.length,m=spoken.length;
+   if(!n||!m)continue;
+   const dp=Array.from({length:n+1},()=>new Uint16Array(m+1));
+   for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)
+    dp[i][j]=displayed[i]&&displayed[i]===spoken[j]?1+dp[i+1][j+1]:Math.max(dp[i+1][j],dp[i][j+1]);
+   const pairs=[];let i=0,j=0;
+   while(i<n&&j<m){
+    if(displayed[i]&&displayed[i]===spoken[j]){pairs.push([i,j]);i++;j++}
+    else if(dp[i+1][j]>=dp[i][j+1])i++;else j++;
+   }
+   // Refuse unrelated text rather than displaying incorrect highlights.
+   if(pairs.length<Math.min(4,n)||pairs.length/n<(part==='scripture'?0.6:0.75))continue;
+   const mapped=new Array(n).fill(null);
+   for(const [di,sj] of pairs)mapped[di]=file.words[sj];
+   let offset=0;
+   for(const node of nodes){
+    const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;
+    const frag=document.createDocumentFragment();let pos=0;
+    for(const match of matches){
+     frag.append(document.createTextNode(node.textContent.slice(pos,match.index)));
+     const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=match[0];
+     frag.append(span);wordSpans.push(span);wordTimings.push(mapped[offset++]);
+     pos=match.index+match[0].length;
+    }
+    frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag);
+   }
   }
-  // Avoid highlighting a different version of a devotional by accident.
-  // Unmatched displayed words are left unhighlighted, rather than given incorrect times.
-  if(pairs.length<Math.min(8,n)||pairs.length/n<0.75)return;
-  const mapped=new Array(n).fill(null);
-  for(const [di,sj] of pairs)mapped[di]=file.words[sj];
-  for(const node of nodes){const matches=[...node.textContent.matchAll(/\S+/g)];if(!matches.length)continue;const frag=document.createDocumentFragment();let pos=0;for(const match of matches){frag.append(document.createTextNode(node.textContent.slice(pos,match.index)));const span=document.createElement('span');span.className='whdc-sync-word';span.textContent=match[0];frag.append(span);wordSpans.push(span);pos=match.index+match[0].length;}frag.append(document.createTextNode(node.textContent.slice(pos)));node.replaceWith(frag)}
-  wordTimings=mapped;
-
  }
  function highlightAt(time){
   if(!followEnabled()||!wordTimings.length)return;
@@ -40,7 +55,7 @@ window.WHDCAudio=(()=>{
   // Word timings can contain gaps for text that differs from the narration.
   for(let i=0;i<wordTimings.length;i++){
    const w=wordTimings[i];if(!w)continue;
-   if(Number(w.start)>time)break;
+   if(Number(w.start)>time)continue;
    if(time<Number(w.end)){next=wordSpans[i];break;}
   }
   if(activeWord!==next){activeWord?.classList.remove('whdc-word-active');activeWord=next;activeWord?.classList.add('whdc-word-active')}
