@@ -146,6 +146,14 @@ function keepStudySelectionVisible(){
  }));
 }
 
+// When the color palette expands, the fixed menu grows after the click handler.
+// Observe its rendered height so the selected verse remains above the menu.
+if(typeof ResizeObserver!=='undefined'){
+ const studyMenuSizeObserver=new ResizeObserver(()=>{
+  if(!bar.hidden && selectedVerses.size)keepStudySelectionVisible();
+ });
+ studyMenuSizeObserver.observe(bar);
+}
 function closePalette(){palette.hidden=true;bar.querySelectorAll('[data-action="highlight"],[data-action="circle"],[data-action="underline"]').forEach(b=>b.setAttribute('aria-expanded','false'))}
 function show(open=true){bar.hidden=!open;if(!open)closePalette();else keepStudySelectionVisible()}
 window.whdcOpenStudyMenu=()=>show(true);
