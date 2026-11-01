@@ -28,7 +28,7 @@ async function catalog(bucket,id){const files=await listFiles(bucket,id);const s
 // One virtual PCM WAV, assembled from the three existing R2 recordings on demand.
 // Nothing is synthesized, uploaded, or stored. Byte ranges support iOS background playback.
 async function continuousWav(request,bucket,id,voice){
- const order=['devotional','deeper','scripture'];const files=await listFiles(bucket,id);
+ const order=['devotional','scripture','deeper'];const files=await listFiles(bucket,id);
  const chunks=[];
  for(const part of order){
   const file=files.filter(f=>f.part===part&&f.voice===voice&&f.extension==='wav')[0];
