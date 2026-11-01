@@ -1197,9 +1197,21 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 
 const whdcWorker = {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
-  // Dedicated administrative hostname. The existing public admin URLs remain
-  // available temporarily until the new Access application has been tested.
-  if(url.hostname==='admin.whdcdevotions.com' && (path==='/'||path==='/index.html')){
+  // Stage 2: administrative pages and APIs are only available on the
+  // dedicated Cloudflare Access-protected admin hostname.
+  const adminHost='admin.whdcdevotions.com';
+  const adminRoute=path==='/admin'||path.startsWith('/admin/')||
+    path==='/editor'||path.startsWith('/editor/')||
+    path==='/api/admin'||path.startsWith('/api/admin/');
+  if(url.hostname!==adminHost && adminRoute){
+    // Never redirect administrative API requests or state-changing operations.
+    // Returning 404 also prevents old clients from silently reusing the public host.
+    if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
+    if(path==='/api/admin'||path.startsWith('/api/admin/'))return new Response('Not found',{status:404,headers:{'cache-control':'no-store'}});
+    const destination=new URL(path+url.search,'https://'+adminHost);
+    return Response.redirect(destination.toString(),302);
+  }
+  if(url.hostname===adminHost && (path==='/'||path==='/index.html')){
     return Response.redirect(url.origin+'/admin',302);
   }
   if(path.startsWith('/api/reader/native/')&&request.method==='OPTIONS'){
