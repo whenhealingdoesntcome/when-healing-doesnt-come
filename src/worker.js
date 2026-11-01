@@ -652,7 +652,7 @@ async function resourcesTable(db){
 function resourceRecord(row){return {...row,featured:!!row.featured,published:!!row.published,topics:row.topics?row.topics.split(',').map(x=>x.trim()).filter(Boolean):[]}}
 function resourceLinkValid(v){if(!v)return true;try{const u=new URL(v);return ['https:','http:'].includes(u.protocol)}catch{return false}}
 
-const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><div class="whdc-tool-actions"><div class="whdc-tool-menu-wrap"><button type="button" id="dashboardMenuToggle" class="whdc-menu-button" aria-label="Open admin menu" aria-controls="dashboardMenu" aria-expanded="false"><span aria-hidden="true" style="font-size:30px;line-height:1;font-weight:600;display:block!important;color:#293d37!important">☰</span></button><nav id="dashboardMenu" class="whdc-tool-nav" aria-label="Admin navigation" hidden><a class="navbtn" href="/admin">Home</a><a class="navbtn" href="/admin/audio">Audio Library</a><a class="navbtn" href="/admin?submissions=1">Guest Writers</a><a class="navbtn" href="/admin?editorNotes=1">Editors</a><a class="navbtn" href="/admin/outline">Master Outline</a><a class="navbtn" href="/admin/reading-plans">Reading Plans</a><a class="navbtn" href="/admin/resources">Resources</a><a class="navbtn" href="/admin/reader-accounts">User Accounts</a></nav></div><span class="whdc-tool-separator" aria-hidden="true"></span><a class="whdc-tool-logout" href="/cdn-cgi/access/logout">Log Out</a></div></div><script>(function(){const button=document.getElementById('dashboardMenuToggle'),menu=document.getElementById('dashboardMenu');if(!button||!menu)return;function close(){menu.hidden=true;button.setAttribute('aria-expanded','false')}button.addEventListener('click',function(){const open=menu.hidden;menu.hidden=!open;button.setAttribute('aria-expanded',String(open))});document.addEventListener('click',function(e){if(!menu.hidden&&!menu.contains(e.target)&&!button.contains(e.target))close()});document.addEventListener('keydown',function(e){if(e.key==='Escape')close()})})();</script></header>`;
+const ADMIN_TOOL_NAV = `<header class="whdc-tool-header"><div class="whdc-tool-header-inner"><a class="whdc-tool-brand" href="/" aria-label="When Healing Doesn't Come, home"><img src="/images/header-logo.png" alt="When Healing Doesn't Come"></a><div class="whdc-tool-actions"><div class="whdc-tool-menu-wrap"><button type="button" id="dashboardMenuToggle" class="whdc-menu-button" aria-label="Open admin menu" aria-controls="dashboardMenu" aria-expanded="false"><span aria-hidden="true" style="font-size:30px;line-height:1;font-weight:600;display:block!important;color:#293d37!important">☰</span></button><nav id="dashboardMenu" class="whdc-tool-nav" aria-label="Admin navigation" hidden><a class="navbtn" href="/admin">Home</a><a class="navbtn" href="/admin/audio">Audio Library</a><a class="navbtn" href="/admin?submissions=1">Guest Writers</a><a class="navbtn" href="/admin?editorNotes=1">Editors</a><a class="navbtn" href="/admin/outline">Master Outline</a><a class="navbtn" href="/admin/reading-plans">Reading Plans</a><a class="navbtn" href="/admin/daily-rotation">Devotion of the Day Rotation</a><a class="navbtn" href="/admin/resources">Resources</a><a class="navbtn" href="/admin/reader-accounts">User Accounts</a></nav></div><span class="whdc-tool-separator" aria-hidden="true"></span><a class="whdc-tool-logout" href="/cdn-cgi/access/logout">Log Out</a></div></div><script>(function(){const button=document.getElementById('dashboardMenuToggle'),menu=document.getElementById('dashboardMenu');if(!button||!menu)return;function close(){menu.hidden=true;button.setAttribute('aria-expanded','false')}button.addEventListener('click',function(){const open=menu.hidden;menu.hidden=!open;button.setAttribute('aria-expanded',String(open))});document.addEventListener('click',function(e){if(!menu.hidden&&!menu.contains(e.target)&&!button.contains(e.target))close()});document.addEventListener('keydown',function(e){if(e.key==='Escape')close()})})();</script></header>`;
 const ADMIN_TOOL_CSS = `<style>
 body.whdc-admin-tool{max-width:none!important;margin:0!important;padding:0!important;background:#f3f5f2;color:#303b3c;font:16px system-ui;line-height:1.5}
 .whdc-tool-header{position:sticky;top:0;z-index:1500;background:#fff;box-shadow:0 2px 12px #00000012}
@@ -1461,6 +1461,66 @@ async function dailyRotation(env){
          .bind(id,type,title,creator,description,content,link,image,topics,b.featured?1:0,b.published?1:0,Number.isFinite(Number(b.sort_order))?Math.trunc(Number(b.sort_order)):0,cropX,cropY).run();
         return json({ok:true});
       }catch(e){console.error('Resources admin',e);return fail('Unable to save resources',503)}
+    }
+const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Devotion of the Day Rotation</title><style>
+.whdc-rotation{max-width:1000px;margin:25px auto 65px;padding:0 20px;color:#293d37}
+.whdc-rotation h1{font-size:1.75rem;margin-bottom:8px}
+.whdc-rotation .muted{color:#61716b}
+.whdc-rotation .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin:20px 0}
+.whdc-rotation .stat,.whdc-rotation .panel{border:1px solid #d5dfd8;border-radius:12px;background:#fff;padding:18px}
+.whdc-rotation .stat strong{display:block;font-size:1.7rem;margin-top:7px}
+.whdc-rotation .progress{height:12px;border-radius:20px;background:#e5ece8;overflow:hidden;margin-bottom:22px}
+.whdc-rotation .progress>div{height:100%;width:0;background:#799b87}
+.whdc-rotation .columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.whdc-rotation ul{padding-left:22px;max-height:360px;overflow:auto}
+.whdc-rotation li{padding:5px 0}
+.whdc-rotation table{width:100%;border-collapse:collapse}
+.whdc-rotation th,.whdc-rotation td{text-align:left;padding:10px;border-bottom:1px solid #e3e9e5}
+.whdc-rotation .history{margin-top:16px;overflow:auto}
+.whdc-rotation button{padding:9px 16px;border-radius:8px;border:1px solid #aebeb4;background:#eff5f0;cursor:pointer}
+</style></head><body><main class="wrap whdc-dashboard-tool-main"><div class="whdc-rotation">
+<h1>Devotion of the Day Rotation</h1><p class="muted">Random selection without repeats within each cycle. New published devotionals join the remaining pool.</p>
+<p id="rotation-status" role="status">Loading rotation history…</p>
+<button id="rotation-refresh" type="button">Refresh history</button>
+<div class="summary"><div class="stat">Current cycle<strong id="rotation-cycle">—</strong></div><div class="stat">Displayed<strong id="rotation-displayed">—</strong></div><div class="stat">Remaining<strong id="rotation-remaining">—</strong></div><div class="stat">Published inventory<strong id="rotation-total">—</strong></div></div>
+<div class="progress" role="progressbar" aria-label="Rotation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="rotation-progress"><div id="rotation-bar"></div></div>
+<div class="columns"><section class="panel"><h2>Already displayed this cycle</h2><ul id="rotation-seen"></ul></section><section class="panel"><h2>Still waiting</h2><ul id="rotation-waiting"></ul></section></div>
+<section class="panel history"><h2>Recent selection history</h2><table><thead><tr><th>Date</th><th>Devotional</th><th>Cycle</th></tr></thead><tbody id="rotation-history"></tbody></table></section>
+</div></main><script>
+(function(){
+ const el=id=>document.getElementById(id);
+ const appendList=(id,items,empty)=>{const target=el(id);target.replaceChildren();if(!items.length){const li=document.createElement('li');li.textContent=empty;target.append(li);return}for(const item of items){const li=document.createElement('li');li.textContent=item.title||item.id||'Untitled';target.append(li)}};
+ async function load(){
+  el('rotation-status').textContent='Loading rotation history…';
+  try{
+   const response=await fetch('/api/admin/daily-rotation',{credentials:'same-origin',cache:'no-store'});
+   if(!response.ok)throw new Error('Unable to load rotation history (HTTP '+response.status+').');
+   const data=await response.json(),displayed=data.displayed||[],remaining=data.remaining||[],history=data.history||[];
+   const total=displayed.length+remaining.length,percent=total?Math.round(displayed.length/total*100):0;
+   el('rotation-cycle').textContent=data.current?.cycle||'—';
+   el('rotation-displayed').textContent=displayed.length;
+   el('rotation-remaining').textContent=remaining.length;
+   el('rotation-total').textContent=total;
+   el('rotation-bar').style.width=percent+'%';
+   el('rotation-progress').setAttribute('aria-valuenow',String(percent));
+   const titleById=new Map([...displayed,...remaining].map(item=>[String(item.id),item.title]));
+   const recentById=new Map();
+   for(const entry of history){if(Number(entry.cycle)===Number(data.current?.cycle)&&!recentById.has(String(entry.devotional_id)))recentById.set(String(entry.devotional_id),entry.day)}
+   appendList('rotation-seen',displayed.map(item=>({title:item.title+(recentById.has(String(item.id))?' · '+recentById.get(String(item.id)):'')})),'None displayed yet.');
+   appendList('rotation-waiting',remaining,'All published devotionals have been displayed.');
+   const body=el('rotation-history');body.replaceChildren();
+   for(const entry of history){const row=document.createElement('tr');for(const value of [entry.day,titleById.get(String(entry.devotional_id))||entry.devotional_id,'Cycle '+entry.cycle]){const td=document.createElement('td');td.textContent=String(value??'');row.append(td)}body.append(row)}
+   if(!history.length){const row=document.createElement('tr'),td=document.createElement('td');td.colSpan=3;td.textContent='No selections recorded yet.';row.append(td);body.append(row)}
+   el('rotation-status').textContent='Showing '+percent+'% of the current published inventory.';
+  }catch(error){el('rotation-status').textContent=error.message||'Unable to load rotation history.'}
+ }
+ el('rotation-refresh').addEventListener('click',load);load();
+})();
+</script></body></html>`;
+
+    if(path==='/admin/daily-rotation'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(withSharedDashboardNav(DAILY_ROTATION_ADMIN_HTML,'/admin/daily-rotation'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     }
     if(path==='/admin/reading-plans'&&request.method==='GET'){
       if(!isAdmin(user))return fail('Administrator only',403);
