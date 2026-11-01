@@ -705,3 +705,20 @@ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-
     color:#202832!important;
   }
 }
+
+
+/* Phone landscape: keep reader content clear of the camera cutout on either side.
+   CSS safe-area values are zero on devices without a cutout. */
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  html { --whdc-landscape-safe-left: env(safe-area-inset-left, 0px);
+         --whdc-landscape-safe-right: env(safe-area-inset-right, 0px); }
+  body { padding-left: var(--whdc-landscape-safe-left) !important;
+         padding-right: var(--whdc-landscape-safe-right) !important; }
+  /* Keep the background spanning the screen, but constrain fixed navigation. */
+  body #whdcBottomNav, body .whdc-bottom-nav, body .mobile-bottom-nav,
+  body #mobileBottomNav, body .bottom-nav {
+    left: var(--whdc-landscape-safe-left) !important;
+    right: var(--whdc-landscape-safe-right) !important;
+    width: auto !important;
+  }
+}
