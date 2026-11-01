@@ -32,6 +32,8 @@
     }
   ],
   "vars": {
+    "ADMIN_ACCESS_AUD": "c7e439e73bd3474dba63ca76a8c3783755d3c6748e8e2d478e3db1102822465e",
+    "DASHBOARD_URL": "https://admin.whdcdevotions.com/admin",
     "CLOUDFLARE_ACCOUNT_ID": "a35cbba1e96e87a6894089a02df4c5da",
     "CLOUDFLARE_ACCESS_APP_ID": "9fb5734b-9ae9-4eb9-a3aa-e9d4ddd6d0cf",
     "CLOUDFLARE_WRITERS_POLICY_ID": "f85f3600-b202-459c-937d-50e934e679d1",

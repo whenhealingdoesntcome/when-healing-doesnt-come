@@ -225,7 +225,7 @@ const fail = (message,status=400) => json({error:message},status);
 const b64url = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(s.length/4)*4,'=')), c=>c.charCodeAt(0));
 function teamDomain(env){let d=(env.ACCESS_TEAM_DOMAIN||'').trim().replace(/^https?:\/\//,'').replace(/\/$/,'');return /^[a-zA-Z0-9.-]+\.cloudflareaccess\.com$/.test(d)?d:null}
 async function accessIdentity(request,env){
-  const domain=teamDomain(env),aud=(env.ACCESS_AUD||'').trim();
+  const domain=teamDomain(env),aud=(new URL(request.url).hostname==='admin.whdcdevotions.com'?(env.ADMIN_ACCESS_AUD||''):(env.ACCESS_AUD||'')).trim();
   if(!domain||!aud) return null; // Fail closed until all three settings are supplied
   const cookie=request.headers.get('cookie')||'';
   const token=request.headers.get('cf-access-jwt-assertion')||cookie.match(/(?:^|;\s*)CF_Authorization=([^;]+)/)?.[1];
@@ -306,7 +306,7 @@ async function notifyEmail(env,event,d,writer,request,feedback="",onFailure=()=>
         secret,event,id:d.id,title:d.title,feedback,
         writer:writer.displayName,writerEmail:writer.email,
         submittedAt:new Date().toISOString(),
-        dashboardUrl:dashboardOverride||env.DASHBOARD_URL||origin+'/admin',
+        dashboardUrl:dashboardOverride||env.DASHBOARD_URL||'https://admin.whdcdevotions.com/admin',
         appUrl:origin+'/',bannerUrl:origin+'/images/email-banner.png'
       })
     });
@@ -1197,6 +1197,11 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 
 const whdcWorker = {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
+  // Dedicated administrative hostname. The existing public admin URLs remain
+  // available temporarily until the new Access application has been tested.
+  if(url.hostname==='admin.whdcdevotions.com' && (path==='/'||path==='/index.html')){
+    return Response.redirect(url.origin+'/admin',302);
+  }
   if(path.startsWith('/api/reader/native/')&&request.method==='OPTIONS'){
     const origin=request.headers.get('origin');
     if(origin!=='capacitor://localhost'&&origin!=='http://localhost')return new Response(null,{status:403});
