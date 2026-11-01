@@ -1327,6 +1327,29 @@ const whdcWorker = {async fetch(request,env,ctx){
       return await audioPlaybackResponse(request,env,recording.key,'public, max-age=300')||fail('Recording not yet available',404);
     }catch{return fail('Audio unavailable',503)}
   }
+  if(path==='/api/devotion-of-the-day'&&request.method==='GET'){
+    try{return json(await dailyRotation(env))}catch(e){console.error('Daily rotation error',e);return fail('Daily devotional unavailable',503)}
+  }
+// Shared Devotion of the Day rotation. Persisted in D1, not derived from inventory size.
+async function dailyRotation(env){
+ const date=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ await env.DB.prepare(`CREATE TABLE IF NOT EXISTS daily_devotion_rotation (day TEXT PRIMARY KEY, devotional_id TEXT NOT NULL, cycle INTEGER NOT NULL, selected_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`).run();
+ await env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_daily_devotion_rotation_cycle ON daily_devotion_rotation(cycle,devotional_id)`).run();
+ const existing=await env.DB.prepare('SELECT day, devotional_id, cycle FROM daily_devotion_rotation WHERE day=?').bind(date).first();
+ const eligible=(await list(env,false)).map(d=>String(d.id));
+ if(existing)return {...existing,eligible:eligible.length};
+ if(!eligible.length)return {day:date,devotional_id:null,cycle:0,eligible:0};
+ const last=await env.DB.prepare('SELECT MAX(cycle) AS cycle FROM daily_devotion_rotation').first();
+ let cycle=Number(last?.cycle||1);
+ const shown=await env.DB.prepare('SELECT devotional_id FROM daily_devotion_rotation WHERE cycle=?').bind(cycle).all();
+ const seen=new Set((shown.results||[]).map(row=>String(row.devotional_id)));
+ let remaining=eligible.filter(id=>!seen.has(id));
+ if(!remaining.length){cycle++;remaining=eligible}
+ const choice=remaining[Math.floor(Math.random()*remaining.length)];
+ await env.DB.prepare('INSERT OR IGNORE INTO daily_devotion_rotation (day,devotional_id,cycle) VALUES (?,?,?)').bind(date,choice,cycle).run();
+ const saved=await env.DB.prepare('SELECT day,devotional_id,cycle FROM daily_devotion_rotation WHERE day=?').bind(date).first();
+ return {...saved,eligible:eligible.length};
+}
   if(path==='/api/devotionals'&&request.method==='GET'){
     try{return json(await list(env,false))}catch{return fail('Database unavailable',503)}
   }
@@ -1826,6 +1849,16 @@ const whdcWorker = {async fetch(request,env,ctx){
         const underway=await env.DB.prepare("SELECT title FROM writer_devotionals WHERE status IN ('draft','revisions','needs_approval','published')").all();
         return json({titles:[...(published.results||[]),...(underway.results||[])].map(x=>x.title)});
       }catch{return fail('Unable to load outline availability',503)}
+    }
+    if(path==='/api/admin/daily-rotation'&&request.method==='GET'&&isAdmin(user)){
+      try{
+        const current=await dailyRotation(env);
+        const history=await env.DB.prepare('SELECT day,devotional_id,cycle FROM daily_devotion_rotation ORDER BY day DESC LIMIT 100').all();
+        const shown=await env.DB.prepare('SELECT devotional_id FROM daily_devotion_rotation WHERE cycle=?').bind(current.cycle).all();
+        const seen=new Set((shown.results||[]).map(r=>String(r.devotional_id)));
+        const published=await list(env,false);
+        return json({current,displayed:published.filter(d=>seen.has(String(d.id))).map(d=>({id:d.id,title:d.title})),remaining:published.filter(d=>!seen.has(String(d.id))).map(d=>({id:d.id,title:d.title})),history:history.results||[]});
+      }catch(e){console.error('Rotation admin error',e);return fail('Rotation history unavailable',503)}
     }
     if(path==='/api/admin/devotionals'&&request.method==='GET'&&user.role!=='editor')try{return json(isAdmin(user)?await list(env,true):await scriptureExtras(env,await Promise.all((await env.DB.prepare(`${writerSelect} WHERE owner_email=? ORDER BY day ASC`).bind(user.email).all()).results.map(r=>withSuggestions(env,writerRow(r))))))}catch{return fail('Database unavailable',503)}
     if(path==='/api/admin/devotionals'&&request.method==='POST'&&user.role!=='editor'){

@@ -76,26 +76,33 @@ window.addEventListener('whdc:plan-actions-synced',applyReadActions);
 window.addEventListener('whdc:native-sync',applyReadActions);
 window.addEventListener('whdc:native-sync-resolved',applyReadActions);
 function toggleRead(id){recordReadAction(id,!readDate(id));}
-// Devotional of the Day: one shared, deterministic rotation based on Mountain Time.
-// All visitors with the same published collection see the same devotional.
-function pickDate(){
- return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-}
+// The server selects one shared devotional daily and persists each rotation in D1.
+// The cached ID is only an offline fallback, never the authority for new selections.
+const DAILY_ROTATION_CACHE='whdc-daily-rotation-cache-v1';
+let sharedDailySelection=null;
+function pickDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Denver',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
 function dailyPick(items){
  const eligible=items.filter(d=>d.status!=='draft'&&d.status!=='unpublished');
  if(!eligible.length)return null;
- const ordered=[...eligible].sort((a,b)=>String(a.id).localeCompare(String(b.id)));
- const date=pickDate();
- const parts=date.match(/(\d{4})-(\d{2})-(\d{2})/);
- if(!parts)return ordered[0];
- const dayNumber=Math.floor(Date.UTC(Number(parts[1]),Number(parts[2])-1,Number(parts[3]))/86400000);
- return ordered[((dayNumber%ordered.length)+ordered.length)%ordered.length];
+ const cached=sharedDailySelection?.day===pickDate()?sharedDailySelection:load(DAILY_ROTATION_CACHE,null);
+ const found=cached?.day===pickDate()?eligible.find(d=>String(d.id)===String(cached.devotional_id)):null;
+ return found||eligible[0];
+}
+async function fetchSharedDailySelection(){
+ if(!navigator.onLine)return;
+ try{
+  const response=await fetch('/api/devotion-of-the-day',{cache:'no-store'});
+  if(!response.ok)throw Error('Daily selection unavailable');
+  const selection=await response.json();
+  if(selection?.day&&selection?.devotional_id){sharedDailySelection=selection;localStorage.setItem(DAILY_ROTATION_CACHE,JSON.stringify(selection))}
+ }catch(e){console.warn('Using cached daily devotional',e)}
 }
 // Recheck when a visitor returns to an open tab after the Mountain Time date changes.
 let displayedPickDate='';
-function refreshDailyPick(){
+async function refreshDailyPick(){
  const today=pickDate();
  if(today===displayedPickDate)return;
+ await fetchSharedDailySelection();
  displayedPickDate=today;
  const next=dailyPick(data);
  if(!next)return;
@@ -1456,6 +1463,7 @@ async function start(){if(new URLSearchParams(location.search).has('whdcPreview'
   catch{if(savedOffline)data=savedOffline}
  }
  validate(data)
+ await fetchSharedDailySelection();
  loadCustomReadingPlans();
  }catch(err){$('#app').innerHTML='<main class="wrap"><h1>Content unavailable offline</h1><p>Connect to the internet once to finish saving the app for offline use, then reopen it.</p></main>';return}if(!localStorage.getItem(APPEARANCE_KEY)&&localStorage.getItem('whdc-dark')==='1')localStorage.setItem(APPEARANCE_KEY,'dark');if(!localStorage.getItem(READING_SIZE_KEY)&&localStorage.getItem('whdc-large')==='1')localStorage.setItem(READING_SIZE_KEY,'120');applyReadingPreferences();const visited=localStorage.getItem(VISITED_KEY)==='1';const hash=location.hash.slice(1);const saved=localStorage.getItem(START_PAGE_KEY);const valid=['bible','home','today','read','explore','resources','topics','saved','history','plans','plan-detail','support','contact','about','settings'];const openMatch=/^devotional\/(.+)$/.exec(hash);let restoredId=null;if(openMatch){try{const id=decodeURIComponent(openMatch[1]);if(data.some(d=>d.id===id))restoredId=id}catch{}}view=restoredId?(selectedTopicReading()===restoredId?'read':'today'):valid.includes(hash.split('?')[0])?hash.split('?')[0]:openingPage();currentId=(view==='read'&&data.some(d=>d.id===selectedTopicReading())?selectedTopicReading():restoredId)||dailyPick(data)?.id;if(openMatch&&!restoredId)history.replaceState(null,'','#'+view);if(view==='read'&&!selectedTopicReading()){view='explore'}displayedPickDate=pickDate();applyReadActions();applyPlanEnrollmentActions();render();checkNewAnnouncementOnArrival();if(visited)welcomeOpeningChoice();localStorage.setItem(VISITED_KEY,'1')}start().then(()=>loadCustomReadingPlans());
 
