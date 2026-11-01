@@ -2229,7 +2229,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
 // Native-only cross-origin access for public, read-only APIs.
 // Existing same-origin web requests and reader account routes retain their behavior.
 const WHDC_NATIVE_PUBLIC_PATHS = new Set([
-  '/api/devotionals', '/api/scripture', '/api/reading-plans',
+  '/api/devotionals', '/api/devotion-of-the-day', '/api/scripture', '/api/reading-plans',
   '/api/resources', '/api/announcement',
   '/api/audio/manifest', '/api/audio/file', '/api/audio/sample'
 ]);
