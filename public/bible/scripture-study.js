@@ -112,35 +112,37 @@ function selectedSegments(range){
 }
 function selection(){const s=getSelection();if(!s||s.isCollapsed||!s.rangeCount)return null;const r=s.getRangeAt(0);if(!root.querySelector('.scripture')?.contains(r.commonAncestorContainer))return null;const segments=selectedSegments(r);return segments.length?segments:null}
 
-// Keep the current passage in view when the fixed study palette grows.
+// Keep tapped verses visible above the study menu without jumping to the top.
 function keepStudySelectionVisible(){
  if(bar.hidden)return;
  requestAnimationFrame(()=>requestAnimationFrame(()=>{
   if(bar.hidden)return;
-  const selected=[...selectedVerses].filter(el=>el.isConnected);
+  const verse=[...selectedVerses].find(el=>el.isConnected);
   const range=window.getSelection()?.rangeCount?window.getSelection().getRangeAt(0):null;
-  const node=selected[0]||range?.startContainer;
+  const node=verse||range?.startContainer;
   const element=node?.nodeType===1?node:node?.parentElement;
-  const passage=element?.closest?.('.verse-unit,.scripture p')||(active?.length?paragraphs()[active[0].p]:null);
+  const passage=verse||element?.closest?.('.verse-unit,.scripture p');
   if(!passage)return;
-  // Respect the actual visible Bible navigation, including its sticky position.
-  // Only count headers intersecting the top of the viewport; ignore the study toolbar.
-  let top=12;
-  const selectors=['.bible-nav','.bible-navigation','.bible-toolbar','.bible-header','.reader-nav','.reader-toolbar','header','nav','[data-bible-nav]'];
-  document.querySelectorAll(selectors.join(',')).forEach(el=>{
-   if(el===bar||bar.contains(el)||el.closest('#whdcStudyBar'))return;
-   const r=el.getBoundingClientRect();const css=getComputedStyle(el);
-   if(r.height>0&&r.height<180&&r.top<=top+16&&r.bottom>0&&r.bottom<innerHeight*.45&&css.visibility!=='hidden'&&css.display!=='none')top=Math.max(top,r.bottom+12);
-  });
-  const scroller=[...function*(el){for(let p=el.parentElement;p;p=p.parentElement)yield p}(passage)].find(el=>{const style=getComputedStyle(el);return /(auto|scroll)/.test(style.overflowY)&&el.scrollHeight>el.clientHeight+4});
+  const menu=bar.getBoundingClientRect();
   const rect=passage.getBoundingClientRect();
-  // Place the selected passage just below the Bible navigation, rather than
-  // merely moving it far enough to clear the expanded color menu.
-  if(scroller){
-   const sr=scroller.getBoundingClientRect();
-   const desired=Math.max(top,sr.top+12);
-   if(Math.abs(rect.top-desired)>8)scroller.scrollBy({top:rect.top-desired,behavior:'smooth'});
-  }else if(Math.abs(rect.top-top)>8){window.scrollBy({top:rect.top-top,behavior:'smooth'});}
+  const bottomLimit=menu.top-12;
+  if(rect.bottom<=bottomLimit)return;
+  let topLimit=12;
+  document.querySelectorAll('.mobile-bible-toolbar,.site-header,.bible-nav,.bible-navigation,.bible-toolbar,.bible-header,.reader-nav,.reader-toolbar').forEach(el=>{
+   if(el===bar||bar.contains(el))return;
+   const r=el.getBoundingClientRect();
+   if(r.height>0&&r.top<topLimit+16&&r.bottom>0&&r.bottom<innerHeight*.6)topLimit=Math.max(topLimit,r.bottom+12);
+  });
+  const needed=rect.bottom-bottomLimit;
+  const allowed=Math.max(0,rect.top-topLimit);
+  const shift=Math.min(needed,allowed);
+  if(shift<1)return;
+  const scroller=[...function*(el){for(let p=el.parentElement;p;p=p.parentElement)yield p}(passage)].find(el=>{
+   const style=getComputedStyle(el);
+   return /(auto|scroll)/.test(style.overflowY)&&el.scrollHeight>el.clientHeight+4;
+  });
+  if(scroller)scroller.scrollBy({top:shift,behavior:'auto'});
+  else window.scrollBy({top:shift,behavior:'auto'});
  }));
 }
 
