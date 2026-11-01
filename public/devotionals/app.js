@@ -52,7 +52,30 @@ async function shareDevotional(d){
 function clearOpenDevotional(){sessionStorage.removeItem(OPEN_DEVOTIONAL_KEY)}
 const readHistory=()=>load(READ_KEY,{});
 const readDate=id=>readHistory()[id]||'';
-function toggleRead(id){const history=readHistory();if(history[id])delete history[id];else history[id]=new Date().toLocaleDateString('en-CA');localStorage.setItem(READ_KEY,JSON.stringify(history));}
+const READ_ACTION_KEY='whdc-read-history-actions-v1';
+function readActions(){return load(READ_ACTION_KEY,{})}
+function recordReadAction(id,read){
+ const actions=readActions(),previous=actions[id];
+ const at=Math.max(Date.now(),Number(previous?.at||0)+1);
+ const date=read?new Date().toLocaleDateString('en-CA'):null;
+ actions[id]={read:!!read,date,at,device:planActionDevice()};
+ localStorage.setItem(READ_ACTION_KEY,JSON.stringify(actions));
+ const history=readHistory();if(read)history[id]=date;else delete history[id];
+ localStorage.setItem(READ_KEY,JSON.stringify(history));
+}
+function applyReadActions(){
+ const actions=readActions(),history=readHistory();let changed=false;
+ for(const [id,action] of Object.entries(actions)){
+  if(!action||typeof action.read!=='boolean'||!Number.isSafeInteger(action.at)||action.at<=0)continue;
+  if(action.read){const date=action.date||new Date(action.at).toLocaleDateString('en-CA');if(history[id]!==date){history[id]=date;changed=true}}
+  else if(Object.prototype.hasOwnProperty.call(history,id)){delete history[id];changed=true}
+ }
+ if(changed){localStorage.setItem(READ_KEY,JSON.stringify(history));syncPlanCompletions();if(typeof render==='function'&&['plans','plan-detail','plan-complete','history','today','read'].includes(view))render()}
+}
+window.addEventListener('whdc:plan-actions-synced',applyReadActions);
+window.addEventListener('whdc:native-sync',applyReadActions);
+window.addEventListener('whdc:native-sync-resolved',applyReadActions);
+function toggleRead(id){recordReadAction(id,!readDate(id));}
 // Devotional of the Day: one shared, deterministic rotation based on Mountain Time.
 // All visitors with the same published collection see the same devotional.
 function pickDate(){
@@ -101,7 +124,7 @@ async function shareThisApp(){
 const WHDC_NEW_DOMAIN='https://whdcdevotions.com';
 const WHDC_OLD_HOST='when-healing-doesnt-come.whenhealingdoesntcome.workers.dev';
 const WHDC_TRANSFER_KEYS=[
- 'whdc-private-journal-v1','whdc-favorites-v1','whdc-read-history-v1',
+ 'whdc-private-journal-v1','whdc-favorites-v1','whdc-read-history-v1','whdc-read-history-actions-v1',
  'whdc-bible-annotations-v1','whdc-devotional-annotations-v1',
  'whdc-favorite-verses-v1','whdc-saved-quotes-v1','whdc-saved-resources-v1',
  'whdc-inductive-paragraph-notes-v1','whdc-reading-plan-completions-v1',
@@ -911,8 +934,7 @@ function wirePlanAutoRead(){
    if(!marker.isConnected||!marker.getBoundingClientRect||!marker.getClientRects().length)return;
    const rect=marker.getBoundingClientRect();
    if(rect.bottom<0||rect.top>window.innerHeight)return;
-   const reads=readHistory();reads[devotionalId]=new Date().toLocaleDateString('en-CA');
-   try{localStorage.setItem(READ_KEY,JSON.stringify(reads));syncPlanCompletions()}catch{return}
+   try{recordReadAction(devotionalId,true);syncPlanCompletions()}catch{return}
    stopPlanAutoRead();
    // Update the button without navigating away from the devotional.
    const button=document.getElementById('markRead');
@@ -1435,7 +1457,7 @@ async function start(){if(new URLSearchParams(location.search).has('whdcPreview'
  }
  validate(data)
  loadCustomReadingPlans();
- }catch(err){$('#app').innerHTML='<main class="wrap"><h1>Content unavailable offline</h1><p>Connect to the internet once to finish saving the app for offline use, then reopen it.</p></main>';return}if(!localStorage.getItem(APPEARANCE_KEY)&&localStorage.getItem('whdc-dark')==='1')localStorage.setItem(APPEARANCE_KEY,'dark');if(!localStorage.getItem(READING_SIZE_KEY)&&localStorage.getItem('whdc-large')==='1')localStorage.setItem(READING_SIZE_KEY,'120');applyReadingPreferences();const visited=localStorage.getItem(VISITED_KEY)==='1';const hash=location.hash.slice(1);const saved=localStorage.getItem(START_PAGE_KEY);const valid=['bible','home','today','read','explore','resources','topics','saved','history','plans','plan-detail','support','contact','about','settings'];const openMatch=/^devotional\/(.+)$/.exec(hash);let restoredId=null;if(openMatch){try{const id=decodeURIComponent(openMatch[1]);if(data.some(d=>d.id===id))restoredId=id}catch{}}view=restoredId?(selectedTopicReading()===restoredId?'read':'today'):valid.includes(hash.split('?')[0])?hash.split('?')[0]:openingPage();currentId=(view==='read'&&data.some(d=>d.id===selectedTopicReading())?selectedTopicReading():restoredId)||dailyPick(data)?.id;if(openMatch&&!restoredId)history.replaceState(null,'','#'+view);if(view==='read'&&!selectedTopicReading()){view='explore'}displayedPickDate=pickDate();render();checkNewAnnouncementOnArrival();if(visited)welcomeOpeningChoice();localStorage.setItem(VISITED_KEY,'1')}start().then(()=>loadCustomReadingPlans());
+ }catch(err){$('#app').innerHTML='<main class="wrap"><h1>Content unavailable offline</h1><p>Connect to the internet once to finish saving the app for offline use, then reopen it.</p></main>';return}if(!localStorage.getItem(APPEARANCE_KEY)&&localStorage.getItem('whdc-dark')==='1')localStorage.setItem(APPEARANCE_KEY,'dark');if(!localStorage.getItem(READING_SIZE_KEY)&&localStorage.getItem('whdc-large')==='1')localStorage.setItem(READING_SIZE_KEY,'120');applyReadingPreferences();const visited=localStorage.getItem(VISITED_KEY)==='1';const hash=location.hash.slice(1);const saved=localStorage.getItem(START_PAGE_KEY);const valid=['bible','home','today','read','explore','resources','topics','saved','history','plans','plan-detail','support','contact','about','settings'];const openMatch=/^devotional\/(.+)$/.exec(hash);let restoredId=null;if(openMatch){try{const id=decodeURIComponent(openMatch[1]);if(data.some(d=>d.id===id))restoredId=id}catch{}}view=restoredId?(selectedTopicReading()===restoredId?'read':'today'):valid.includes(hash.split('?')[0])?hash.split('?')[0]:openingPage();currentId=(view==='read'&&data.some(d=>d.id===selectedTopicReading())?selectedTopicReading():restoredId)||dailyPick(data)?.id;if(openMatch&&!restoredId)history.replaceState(null,'','#'+view);if(view==='read'&&!selectedTopicReading()){view='explore'}displayedPickDate=pickDate();applyReadActions();applyPlanEnrollmentActions();render();checkNewAnnouncementOnArrival();if(visited)welcomeOpeningChoice();localStorage.setItem(VISITED_KEY,'1')}start().then(()=>loadCustomReadingPlans());
 
 // Only mobile browsers use offline app caching.
 const whdcDesktopBrowser=!/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)&&!(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -1723,8 +1745,24 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&whdcBookModalId){wh
    return JSON.stringify(result);
   }catch{return null}
  };
- const mergeSaved=(key,base,local,remote,initial=false)=>
-  (key==='whdc-reading-plan-enrollment-actions-v1'?mergeEnrollmentActions(local,remote):null)??collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
+  const mergeReadActions=(local,remote)=>{
+  try{
+   const a=JSON.parse(local),b=JSON.parse(remote);
+   if(!a||!b||typeof a!=='object'||typeof b!=='object'||Array.isArray(a)||Array.isArray(b))return null;
+   const result={};
+   const valid=v=>v&&typeof v.read==='boolean'&&Number.isSafeInteger(v.at)&&v.at>0&&typeof v.device==='string'&&(v.date===null||typeof v.date==='string');
+   for(const id of new Set([...Object.keys(a),...Object.keys(b)])){
+    const x=a[id],y=b[id];if(x&&!valid(x)||y&&!valid(y))return null;
+    if(!x||!y){result[id]=x||y;continue}
+    if(x.at===y.at&&(x.read!==y.read||x.date!==y.date))return null;
+    if(Math.abs(x.at-y.at)>7*86400000&&x.device!==y.device)return null;
+    result[id]=x.at>y.at?x:y.at>x.at?y:(x.device>=y.device?x:y);
+   }
+   return JSON.stringify(result);
+  }catch{return null}
+ };
+const mergeSaved=(key,base,local,remote,initial=false)=>
+  (key==='whdc-reading-plan-enrollment-actions-v1'||key==='whdc-read-history-actions-v1')?(key==='whdc-read-history-actions-v1'?mergeReadActions(local,remote):mergeEnrollmentActions(local,remote)):collectionMerge(key,base,local,remote,initial)??mergeStrings(base,local,remote,initial);
  const clearResolvedConflict=key=>{
   const entries=readConflicts();
   if(entries.some(entry=>entry.key===key)){
