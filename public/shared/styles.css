@@ -724,8 +724,30 @@ html:not(.whdc-desktop-device) body.dark .home-hero .whdc-mobile-home-logo.whdc-
 }
 
 /* Today page: mobile/tablet shortcut to Explore > Topics. */
-.whdc-today-more-devotions{display:none}
-@media (max-width:1024px){
- .whdc-today-more-devotions{display:flex;justify-content:center;padding:1.25rem 1rem 2rem}
- .whdc-today-more-devotions-button{width:100%;max-width:420px;text-align:center}
+.whdc-today-more-devotions {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .whdc-today-more-devotions {
+    display: flex;
+    justify-content: center;
+    padding: 1.25rem 1rem 2rem;
+  }
+
+  .whdc-today-more-devotions-button {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    background-color: #526B57;
+    color: #FFFFFF;
+    border: 1px solid #526B57;
+    border-radius: 8px;
+  }
+
+  .whdc-today-more-devotions-button:hover,
+  .whdc-today-more-devotions-button:focus-visible {
+    background-color: #405545;
+    color: #FFFFFF;
+  }
 }
