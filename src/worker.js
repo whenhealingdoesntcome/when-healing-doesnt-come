@@ -614,6 +614,70 @@ async function synthesizeDevotionalAudio(env,text,voice,key){
   return gemini38Synthesize(env,text,voice,key,{production:true});
 }
 
+// Durable publication audio queue. The existing minute cron processes one recording
+// per tick, outside the editor request, and retries transient synthesis failures.
+async function ensurePublicationAudioQueue(env){
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS publication_audio_queue (
+    devotional_id TEXT NOT NULL, part TEXT NOT NULL, voice TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at INTEGER NOT NULL DEFAULT 0, locked_at INTEGER,
+    last_error TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(devotional_id,part,voice)
+  )`).run();
+}
+async function queuePublishedDevotionalAudio(env,id){
+  await ensurePublicationAudioQueue(env);
+  for(const part of ['devotional','scripture','deeper']){
+    for(const voice of ['sulafat','sadachbia']){
+      await env.DB.prepare(`INSERT INTO publication_audio_queue (devotional_id,part,voice)
+        VALUES (?,?,?) ON CONFLICT(devotional_id,part,voice) DO UPDATE SET
+        status='pending', attempts=0, next_attempt_at=0, locked_at=NULL,
+        last_error=NULL, updated_at=CURRENT_TIMESTAMP`).bind(id,part,voice).run();
+    }
+  }
+}
+async function processPublicationAudioQueue(env){
+  // The table may not exist until the first devotional is published with this release.
+  let row;
+  try{
+    row=await env.DB.prepare(`SELECT devotional_id,part,voice FROM publication_audio_queue
+      WHERE (status='pending' AND next_attempt_at<=?) OR
+      (status='processing' AND locked_at<?)
+      ORDER BY next_attempt_at ASC, updated_at ASC LIMIT 1`)
+      .bind(Date.now(),Date.now()-15*60*1000).first();
+  }catch(e){if(/no such table/i.test(String(e.message)))return;throw e;}
+  if(!row)return;
+  const {devotional_id:id,part,voice}=row;
+  const claim=await env.DB.prepare(`UPDATE publication_audio_queue SET status='processing',
+    locked_at=?,updated_at=CURRENT_TIMESTAMP WHERE devotional_id=? AND part=? AND voice=?
+    AND ((status='pending' AND next_attempt_at<=?) OR (status='processing' AND locked_at<?))`)
+    .bind(Date.now(),id,part,voice,Date.now(),Date.now()-15*60*1000).run();
+  if(!claim.meta?.changes)return;
+  try{
+    const request=new Request('https://whdcdevotions.com/');
+    const source=await publishedAudioSource(env,id,part,request);
+    if(!source)throw Error('Published narration text unavailable');
+    const key=source.key(voice);
+    if(!(await env.AUDIO_BUCKET.head(key))){
+      await synthesizeDevotionalAudio(env,source.text,voice,key);
+    }
+    const saved=await env.AUDIO_BUCKET.head(key);
+    if(!saved?.size)throw Error('Audio was not saved in R2');
+    await rememberAudioFingerprint(env,id,part,voice,key,source);
+    try{await deleteSupersededAudio(env,id,part,voice,key)}catch(e){console.error('Publication audio cleanup:',e)}
+    await env.DB.prepare(`UPDATE publication_audio_queue SET status='complete',locked_at=NULL,
+      last_error=NULL,updated_at=CURRENT_TIMESTAMP WHERE devotional_id=? AND part=? AND voice=?`)
+      .bind(id,part,voice).run();
+  }catch(e){
+    console.error('Publication audio generation failed:',id,part,voice,e);
+    await env.DB.prepare(`UPDATE publication_audio_queue SET attempts=attempts+1,
+      status=CASE WHEN attempts+1>=3 THEN 'failed' ELSE 'pending' END,
+      next_attempt_at=?,locked_at=NULL,last_error=?,updated_at=CURRENT_TIMESTAMP
+      WHERE devotional_id=? AND part=? AND voice=?`)
+      .bind(Date.now()+10*60*1000,String(e.message||e).slice(0,500),id,part,voice).run();
+  }
+}
+
 // Byte-range responses let the browser seek through saved audio recordings.
 async function audioPlaybackResponse(request,env,key,cacheControl){
   const head=await env.AUDIO_BUCKET.head(key);
@@ -1954,7 +2018,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
         }else {
           // Keep previously assigned days for existing admin devotionals.
           // New drafts are unnumbered until they are published.
-          const existing=await env.DB.prepare('SELECT day FROM devotionals WHERE id=?').bind(d.id).first();
+          const existing=await env.DB.prepare('SELECT day,status FROM devotionals WHERE id=?').bind(d.id).first();
           if(existing){
             d.day=Number(existing.day)||0;
           }else if(d.status==='draft'){
@@ -1976,6 +2040,10 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           }
           await save(env,d);
           await storeScripture(env,payload,request);
+          if(d.status==='published'&&existing?.status!=='published'){
+            try{await queuePublishedDevotionalAudio(env,d.id)}
+            catch(error){console.error('Could not queue publication audio:',d.id,error)}
+          }
         }
         return json({ok:true,id:d.id,day:d.day})}catch(e){return fail(e.message,400)}
     }
@@ -2191,6 +2259,8 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
       await env.DB.prepare("INSERT OR REPLACE INTO devotional_scripture (devotional_id,main_text,main_reference,context_references,context_passages,further_study_references) SELECT ?,main_text,main_reference,context_references,context_passages,further_study_references FROM devotional_scripture WHERE devotional_id=?").bind(publishedId,d.id).run();
       const updated=await env.DB.prepare("UPDATE writer_devotionals SET status='published',day=?,published_id=?,admin_feedback=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='needs_approval'").bind(nextDay,publishedId,note.trim(),id).run();
       if(!updated.meta?.changes)return fail('Publication record could not be updated. Contact support before retrying.',503);
+      try{await queuePublishedDevotionalAudio(env,publishedId)}
+      catch(error){console.error('Could not queue writer publication audio:',publishedId,error)}
       const writer=await env.DB.prepare('SELECT email,display_name FROM writers WHERE email=?').bind(d.ownerEmail).first();
       const emailSent=writer?await notifyEmail(env,'devotional_published',d,{email:writer.email,displayName:writer.display_name},request):false;
       return json({ok:true,emailSent});
@@ -2222,7 +2292,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
   }
   return env.ASSETS.fetch(request);
 },
- async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env),pushScriptureMemoryReminders(env),pushDeferredAnnouncements(env)]).catch(e=>console.error('Scheduled notifications failed',e)))}
+ async scheduled(event,env,ctx){ctx.waitUntil(Promise.all([pushDailyReminders(env),pushReadingPlanReminders(env),pushScriptureMemoryReminders(env),pushDeferredAnnouncements(env),processPublicationAudioQueue(env).catch(e=>console.error('Publication audio queue failed',e))]).catch(e=>console.error('Scheduled tasks failed',e)))}
 };
 
 
