@@ -19,8 +19,23 @@ function parseSingle(input){
 // Canonical display format for the optional Further Study references.
 // Keep each passage separate so the Bible Reader can open every reference.
 export function formatFurtherStudyReferences(value){
- const parts=String(value||'').split(/[;,\r\n]+/).map(x=>x.trim()).filter(Boolean);
- return parts.map(part=>parseSingle(part).reference.replace(/(\d)-(\d)/g,'$1–$2')).join('; ');
+ const parts=String(value||'').split(/[;\r\n]+/).map(x=>x.trim()).filter(Boolean);
+ const expanded=[];
+ for(const part of parts){
+  const refs=part.split(/,\s*/).map(x=>x.trim()).filter(Boolean);
+  if(!refs.length)continue;
+  const first=parseSingle(refs[0]);
+  expanded.push(first.reference);
+  for(const ref of refs.slice(1)){
+   // A bare verse number after a comma belongs to the preceding chapter.
+   // Example: Proverbs 18:13,17 -> Proverbs 18:13; Proverbs 18:17.
+   const full=/^\d+(?:\s*-\s*\d+)?$/.test(ref)
+    ? first.reference.replace(/:\d+(?:-\d+)?$/,':'+ref.replace(/\s+/g,''))
+    : ref;
+   expanded.push(parseSingle(full).reference);
+  }
+ }
+ return expanded.join('; ');
 }
 export async function scriptureLookup(reference,assets,request){
  const references=String(reference||'').split(/[;\n]+/).map(s=>s.trim()).filter(Boolean);
