@@ -15,9 +15,9 @@ on:
       limit:
         description: 'Maximum new recordings per run'
         required: false
-        default: '3'
+        default: '6'
   schedule:
-    - cron: '8,38 * * * *' # Check hourly; GitHub scheduled starts may be delayed.
+    - cron: '8 */12 * * *' # Check hourly; GitHub scheduled starts may be delayed.
 
 permissions:
   contents: read
