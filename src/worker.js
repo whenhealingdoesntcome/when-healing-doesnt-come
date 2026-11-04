@@ -2118,18 +2118,19 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           await saveOwned(env,d,user.email);
           if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
         }else {
-          // Keep previously assigned days for existing admin devotionals.
-          // New drafts are unnumbered until they are published.
+          // Honor an administrator's explicit day-number changes. New drafts remain
+          // unnumbered until publication, unless editing an existing numbered entry.
           const existing=await env.DB.prepare('SELECT day,status FROM devotionals WHERE id=?').bind(d.id).first();
-          if(existing){
-            d.day=Number(existing.day)||0;
-          }else if(d.status==='draft'){
+          if(d.status==='draft'&&!existing){
             d.day=0;
-          }
-          if(d.status==='published'&&d.day===0){
+          }else if(d.status==='published'&&d.day===0){
             const last=await env.DB.prepare('SELECT COALESCE(MAX(day),0) AS last_day FROM devotionals').first();
             d.day=Number(last?.last_day||0)+1;
             if(!Number.isSafeInteger(d.day)||d.day>100000)return fail('No available day numbers',409);
+          }
+          if(d.status==='published'){
+            const conflict=await env.DB.prepare("SELECT id,title FROM devotionals WHERE day=? AND status='published' AND id<>? LIMIT 1").bind(d.day,d.id).first();
+            if(conflict)return fail('Day '+d.day+' is already assigned to '+conflict.title+'. Choose another day number.',409);
           }
           // Older migrated devotionals store their broader reading in devotionals.scripture.
           // Keep that original context citation while editing the independent key verse.
