@@ -250,8 +250,9 @@ function normalize(x,allowUnassignedDay=false){
   const title=str('title',150),reference=str('reference',200),bibleUrl=str('bibleUrl',500),short=str('short'),deeper=str('deeper');
   const reflection=x.reflection==null?'':str('reflection');
   const author=x.author==null?'Heather Kusunoki':str('author',120);
-  if(!author)throw Error('Author name is required');
-  if(!title||!reference||!short||!deeper||!/^https:\/\//.test(bibleUrl))throw Error('Complete all fields and use an HTTPS Bible URL');
+  if(x.status==='published'){
+    if(!author||!title||!reference||!short||!deeper||!reflection||!/^https:\/\//.test(bibleUrl))throw Error('Complete all required fields before publishing');
+  }else if(bibleUrl&&!/^https:\/\//.test(bibleUrl))throw Error('Invalid HTTPS Bible URL');
   if(!Array.isArray(x.topics)||x.topics.length>30||x.topics.some(t=>typeof t!=='string'||t.length>80))throw Error('Invalid topics');
   const day=Number(x.day);if(!Number.isInteger(day)||day<0||day>100000||(!allowUnassignedDay&&day===0))throw Error('Invalid day');
   const status=['published','draft'].includes(x.status)?x.status:null;if(!status)throw Error('Invalid status');
@@ -2101,6 +2102,10 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
     if(path==='/api/admin/devotionals'&&request.method==='GET'&&user.role!=='editor')try{return json(isAdmin(user)?await list(env,true):await scriptureExtras(env,await Promise.all((await env.DB.prepare(`${writerSelect} WHERE owner_email=? ORDER BY day ASC`).bind(user.email).all()).results.map(r=>withSuggestions(env,writerRow(r))))))}catch{return fail('Database unavailable',503)}
     if(path==='/api/admin/devotionals'&&request.method==='POST'&&user.role!=='editor'){
       try{const payload=await request.json();const d=normalize(payload,true);
+        if(d.status==='published'){
+          const missing=[['mainScriptureText','Key Scripture text'],['contextReferences','Scripture Reading']].filter(([key])=>!String(payload[key]||'').trim()).map(([,label])=>label);
+          if(missing.length)return fail('Complete before publishing: '+missing.join(', '),400);
+        }
         if(!isAdmin(user)){
           if(d.status!=='draft')return fail('Writers can only save drafts. Use Submit for Approval.',403);
           const old=await env.DB.prepare('SELECT owner_email,status FROM writer_devotionals WHERE id=?').bind(d.id).first();
@@ -2111,7 +2116,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           d.day=0;
           if(await env.DB.prepare('SELECT id FROM devotionals WHERE id=?').bind(d.id).first())return fail('ID conflicts with an existing devotional',409);
           await saveOwned(env,d,user.email);
-          await storeScripture(env,payload,request);
+          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
         }else {
           // Keep previously assigned days for existing admin devotionals.
           // New drafts are unnumbered until they are published.
@@ -2144,7 +2149,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
             }
           }
           await save(env,d);
-          await storeScripture(env,payload,request);
+          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
           if(existing){
             for(const part of ['devotional','deeper','scripture']){
               try{
