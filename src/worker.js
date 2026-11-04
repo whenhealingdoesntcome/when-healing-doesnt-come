@@ -1773,23 +1773,11 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
         const rows=(await env.DB.prepare('SELECT devotional_id,part,voice,source_version,recording_key,bytes,timing_status FROM audio_library_snapshots').all()).results||[];
         const published=(await env.DB.prepare("SELECT id FROM devotionals WHERE status='published'").all()).results||[];
         const ids=new Set(published.map(x=>x.id));
-        const sourceVersions=new Map();
-        // Only evaluate text for entries with saved alignment. Never read their R2 objects.
-        const parts=new Set(rows.filter(r=>ids.has(r.devotional_id)).map(r=>r.devotional_id+'|'+r.part));
-        // Resolve distinct devotional sections with bounded concurrency. Previously
-        // these were awaited serially, causing 15–30 second initial page loads.
-        const pendingParts=[...parts];let nextPart=0;
-        await Promise.all(Array.from({length:Math.min(6,pendingParts.length)},async()=>{
-          while(nextPart<pendingParts.length){
-            const pair=pendingParts[nextPart++];
-            const cut=pair.lastIndexOf('|'),id=pair.slice(0,cut),part=pair.slice(cut+1);
-            try{sourceVersions.set(pair,(await publishedAudioSource(env,id,part,request))?.version||null)}
-            catch(e){console.error('Audio snapshot source unavailable:',id,part,e?.message);}
-          }
-        }));
+        // Read the persisted summary without resolving every devotional section.
+        // Changes to narrated wording invalidate affected rows at save time.
         const snapshots={};
         for(const r of rows){
-          if(!ids.has(r.devotional_id)||sourceVersions.get(r.devotional_id+'|'+r.part)!==r.source_version)continue;
+          if(!ids.has(r.devotional_id))continue;
           snapshots[r.devotional_id+'|'+r.part+'|'+r.voice]={exists:true,outdated:false,bytes:r.bytes,timingStatus:r.timing_status,recordingKey:r.recording_key};
         }
         return json({ok:true,snapshots});
@@ -2147,8 +2135,27 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
               if(oldReference?.scripture)d.reference=oldReference.scripture;
             }
           }
+          // Compare narrated source versions only when editing, never when opening
+          // the Audio Library. Preserve alignment for unchanged sections.
+          let priorAudioVersions={};
+          if(existing){
+            for(const part of ['devotional','deeper','scripture']){
+              try{priorAudioVersions[part]=(await publishedAudioSource(env,d.id,part,request))?.version||null}catch{}
+            }
+          }
           await save(env,d);
           await storeScripture(env,payload,request);
+          if(existing){
+            for(const part of ['devotional','deeper','scripture']){
+              try{
+                const nextVersion=(await publishedAudioSource(env,d.id,part,request))?.version||null;
+                if(priorAudioVersions[part]!==nextVersion){
+                  await ensureAudioLibrarySnapshots(env);
+                  await env.DB.prepare('DELETE FROM audio_library_snapshots WHERE devotional_id=? AND part=?').bind(d.id,part).run();
+                }
+              }catch(error){console.error('Audio snapshot invalidation failed:',d.id,part,error)}
+            }
+          }
           if(d.status==='published'&&existing?.status!=='published'){
             try{await queuePublishedDevotionalAudio(env,d.id)}
             catch(error){console.error('Could not queue publication audio:',d.id,error)}
