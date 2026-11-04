@@ -547,6 +547,18 @@ async function cachedAudioAlignmentStatus(env,id,part,voice,hash,recordingKey){
   await env.DB.prepare('INSERT OR IGNORE INTO audio_alignment_ready (recording_key,checked_at) VALUES (?,?)').bind(recordingKey,Math.floor(Date.now()/1000)).run();
   return 'ready';
 }
+// Persist complete audio-library status snapshots. A source version is derived from
+// the exact narrated words, so unrelated devotional edits do not invalidate alignment.
+let audioLibrarySnapshotSetup;
+async function ensureAudioLibrarySnapshots(env){
+ if(!audioLibrarySnapshotSetup)audioLibrarySnapshotSetup=env.DB.prepare(`CREATE TABLE IF NOT EXISTS audio_library_snapshots (devotional_id TEXT NOT NULL, part TEXT NOT NULL, voice TEXT NOT NULL, source_version TEXT NOT NULL, recording_key TEXT NOT NULL, bytes INTEGER NOT NULL, timing_status TEXT NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY(devotional_id,part,voice))`).run().catch(e=>{audioLibrarySnapshotSetup=null;throw e;});
+ await audioLibrarySnapshotSetup;
+}
+async function saveAudioLibrarySnapshot(env,id,part,voice,source,result){
+ if(!source||!result.exists||result.outdated||result.timingStatus!=='ready')return;
+ await ensureAudioLibrarySnapshots(env);
+ await env.DB.prepare(`INSERT INTO audio_library_snapshots (devotional_id,part,voice,source_version,recording_key,bytes,timing_status,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(devotional_id,part,voice) DO UPDATE SET source_version=excluded.source_version,recording_key=excluded.recording_key,bytes=excluded.bytes,timing_status=excluded.timing_status,updated_at=excluded.updated_at`).bind(id,part,voice,source.version,result.recordingKey,result.bytes,'ready',Math.floor(Date.now()/1000)).run();
+}
 async function storedAudioRecording(env,id,part,voice,source){
   const fingerprintKey=audioFingerprintKey(id,part,voice);
   const currentKey=source?.key(voice);
@@ -1006,29 +1018,6 @@ function rememberAlignment(result){
  knownAligned[result.recordingKey]=1;
  try{localStorage.setItem(alignmentStorageKey,JSON.stringify(knownAligned));}catch{}
 }
-// Cache verified, current recordings against the devotional's published wording.
-// This prevents a page reload from restarting completed alignment checks.
-const completedStatusKey='whdc-audio-completed-by-text-v1';
-let completedStatuses={};
-try{const saved=JSON.parse(localStorage.getItem(completedStatusKey)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved))completedStatuses=saved;}catch{}
-function sourceSignature(d,part){
- // Include all text-bearing fields, including contextual Scripture and editor extras.
- // Exclude administrative timestamps, counts, and non-text metadata.
- const fields=part==='devotional'?['short','title']:part==='deeper'?['deeper','title']:['scripture','contextReferences','contextPassages','scriptureReading','reading','title'];
- return JSON.stringify(fields.map(k=>d[k]??null));
-}
-function statusCacheId(d,part,voice){return d.id+'|'+part+'|'+voice;}
-function cachedCompletedStatus(d,part,voice){
- const saved=completedStatuses[statusCacheId(d,part,voice)];
- return saved&&saved.signature===sourceSignature(d,part)&&saved.result?.exists&&!saved.result.outdated&&saved.result.timingStatus==='ready'?saved.result:null;
-}
-function storeCompletedStatus(d,part,voice,result){
- const key=statusCacheId(d,part,voice);
- if(result?.exists&&!result.outdated&&result.timingStatus==='ready')completedStatuses[key]={signature:sourceSignature(d,part),result};
- else delete completedStatuses[key];
- try{localStorage.setItem(completedStatusKey,JSON.stringify(completedStatuses));}catch{}
-}
-function invalidateCompletedStatus(d,part,voice){delete completedStatuses[statusCacheId(d,part,voice)];try{localStorage.setItem(completedStatusKey,JSON.stringify(completedStatuses));}catch{}}
 const audioStatusQueue=[];let audioStatusActive=0;
 function queuedAudioStatus(payload){
  return new Promise((resolve,reject)=>{
@@ -1053,7 +1042,10 @@ async function audioAction(path,payload,method='POST'){
  if(path==='/api/admin/audio/status'&&method==='POST')return queuedAudioStatus(payload);
  return api(path,{method,headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
 }
-(async()=>{try{const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';if(!ds.some(d=>d.status==='published')){alignmentOverall.textContent='No published devotionals to check.';audioFilterStatus.textContent='No published devotionals.';}for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
+(async()=>{try{
+let savedSnapshots={};
+try{const snapshotResponse=await api('/api/admin/audio/snapshots');savedSnapshots=snapshotResponse.snapshots||{};}catch(e){console.warn('Saved audio alignment statuses unavailable; falling back to live checks',e);}
+const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';if(!ds.some(d=>d.status==='published')){alignmentOverall.textContent='No published devotionals to check.';audioFilterStatus.textContent='No published devotionals.';}for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
 const batchButton=document.createElement('button');batchButton.type='button';batchButton.textContent='Generate All Audio';batchButton.style.cssText='margin:8px 0 12px;padding:10px 14px';
 const batchProgress=document.createElement('p');batchProgress.setAttribute('role','status');batchProgress.setAttribute('aria-live','polite');
 const audioTasks=[];let batchRunning=false;devotionalEntries.push({section,tasks:audioTasks,title:'Day '+d.day+': '+d.title});applyAudioFilter();updateAlignment();
@@ -1073,16 +1065,16 @@ batchButton.onclick=async()=>{
  try{await Promise.all([worker(),worker()]);batchProgress.textContent+=(failed?' · Retry with Generate All Audio to process missing/failed files.':' · All six recordings are saved.');}
  finally{batchRunning=false;batchButton.disabled=false;batchButton.textContent=failed?'Retry Missing Audio':'Generate All Audio';}
 };
-for(const part of ['devotional','deeper','scripture']){const row=document.createElement('div');row.style.margin='9px 0';const label=document.createElement('strong');label.textContent=part;row.append(label);for(const voice of ['sulafat','sadachbia']){const box=document.createElement('div');box.style.cssText='padding:7px 0;border-bottom:1px dotted #ddd';const name=document.createElement('strong');name.textContent=voice.charAt(0).toUpperCase()+voice.slice(1)+' ';const generate=document.createElement('button');const remove=document.createElement('button');remove.textContent='Delete recording';remove.style.marginLeft='6px';remove.disabled=true;remove.hidden=true;const confirmCurrent=document.createElement('button');confirmCurrent.textContent='Confirm existing recording';confirmCurrent.hidden=true;confirmCurrent.style.marginLeft='6px';const message=document.createElement('span');message.setAttribute('role','status');message.style.marginLeft='8px';const player=document.createElement('audio');player.controls=true;player.preload='none';player.onerror=()=>{if(player.getAttribute('src'))message.textContent=' Playback failed: saved recording could not be loaded.'};player.style.cssText='display:none;max-width:100%;width:350px;margin-top:5px';const payload={id:d.id,part,voice};const playback='/api/admin/audio/play/'+encodeURIComponent(d.id)+'/'+part+'/'+voice;let busy=false;function update(present){generate.textContent=present?'Regenerate':'Generate';remove.disabled=!present;remove.hidden=!present;player.style.display=present?'block':'none';if(present){player.src=playback+'?v='+Date.now();player.load()}else{player.pause();player.removeAttribute('src');player.load()}}const taskState={state:null,timing:null,part,voice};audioTasks.push(taskState);async function refresh(force=false){try{const result=(!force&&cachedCompletedStatus(d,part,voice))||await audioAction('/api/admin/audio/status',payload);storeCompletedStatus(d,part,voice,result);taskState.state=result.exists&&!result.outdated?'current':'needs';taskState.timing=result.timingStatus||'unknown';confirmCurrent.hidden=!(result.exists&&result.outdated);applyAudioFilter();updateAlignment();update(result.exists);message.textContent=result.exists?(result.outdated?' Previous recording (outdated, regenerate to update)':' Saved')+' ('+Math.max(1,Math.round((result.bytes||0)/1024))+' KB)':' Not generated'}catch(e){taskState.state='error';taskState.timing='error';confirmCurrent.hidden=true;applyAudioFilter();updateAlignment();if(part==='scripture'&&/Published reading unavailable/i.test(e.message)){message.textContent=' Scripture text unavailable. Check Scripture in Context in the devotional editor.'}else{message.textContent=' Status unavailable: '+e.message}}}confirmCurrent.onclick=async()=>{if(busy||batchRunning)return;if(!confirm('Have you listened to this entire '+voice+' '+part+' recording for '+d.title+' and confirmed that its spoken words match the current devotional? This will mark the recording current without changing its audio or word timings.'))return;busy=true;confirmCurrent.disabled=true;try{await audioAction('/api/admin/audio/confirm-current',payload);invalidateCompletedStatus(d,part,voice);await refresh(true);message.textContent=' Existing recording confirmed against current text. Word timings were not changed.'}catch(e){message.textContent=' Confirmation failed: '+e.message}finally{busy=false;confirmCurrent.disabled=false}};generate.onclick=async()=>{if(busy||batchRunning)return;const replacing=!remove.disabled;if(replacing&&!confirm('Replace the saved '+voice+' '+part+' recording for '+d.title+'? This will generate new audio and may incur a Google voice charge.'))return;busy=true;generate.disabled=true;remove.disabled=true;message.textContent=' Generating…';status.textContent='Generating '+d.title+' / '+part+' / '+voice+'…';try{const generation=await audioAction('/api/admin/audio/generate',{...payload,regenerate:replacing});invalidateCompletedStatus(d,part,voice);await refresh(true);if(remove.disabled)throw Error('Recording could not be verified in R2 after generation.');message.textContent=(generation.segments>1?' Recording saved using '+generation.segments+' segments (text exceeded the single-request limit).':' Recording saved in one segment.')+(generation.cleanupFailed?' Some older recordings could not be deleted.':' Press Play below.');status.textContent=generation.cleanupFailed?'New recording saved; some older recordings remain in R2.':(generation.segments>1?'Recording saved using '+generation.segments+' segments.':'Recording saved in one segment. Player is ready.')}catch(e){await refresh();message.textContent=' Generation failed: '+e.message;status.textContent='Generation failed: '+e.message}finally{busy=false;generate.disabled=false}};remove.onclick=async()=>{if(busy||batchRunning||!confirm('Permanently delete the '+voice+' '+part+' recording for '+d.title+'?'))return;busy=true;generate.disabled=true;remove.disabled=true;message.textContent=' Deleting…';try{await audioAction('/api/admin/audio/recording',payload,'DELETE');invalidateCompletedStatus(d,part,voice);update(false);taskState.state='needs';taskState.timing='not-found';applyAudioFilter();updateAlignment();message.textContent=' Recording deleted';status.textContent='Recording deleted.'}catch(e){message.textContent=' Delete failed: '+e.message;await refresh()}finally{busy=false;generate.disabled=false}};Object.assign(taskState,{
+for(const part of ['devotional','deeper','scripture']){const row=document.createElement('div');row.style.margin='9px 0';const label=document.createElement('strong');label.textContent=part;row.append(label);for(const voice of ['sulafat','sadachbia']){const box=document.createElement('div');box.style.cssText='padding:7px 0;border-bottom:1px dotted #ddd';const name=document.createElement('strong');name.textContent=voice.charAt(0).toUpperCase()+voice.slice(1)+' ';const generate=document.createElement('button');const remove=document.createElement('button');remove.textContent='Delete recording';remove.style.marginLeft='6px';remove.disabled=true;remove.hidden=true;const confirmCurrent=document.createElement('button');confirmCurrent.textContent='Confirm existing recording';confirmCurrent.hidden=true;confirmCurrent.style.marginLeft='6px';const message=document.createElement('span');message.setAttribute('role','status');message.style.marginLeft='8px';const player=document.createElement('audio');player.controls=true;player.preload='none';player.onerror=()=>{if(player.getAttribute('src'))message.textContent=' Playback failed: saved recording could not be loaded.'};player.style.cssText='display:none;max-width:100%;width:350px;margin-top:5px';const payload={id:d.id,part,voice};const playback='/api/admin/audio/play/'+encodeURIComponent(d.id)+'/'+part+'/'+voice;let busy=false;function update(present){generate.textContent=present?'Regenerate':'Generate';remove.disabled=!present;remove.hidden=!present;player.style.display=present?'block':'none';if(present){player.src=playback+'?v='+Date.now();player.load()}else{player.pause();player.removeAttribute('src');player.load()}}const taskState={state:null,timing:null,part,voice};audioTasks.push(taskState);async function refresh(){try{const result=await audioAction('/api/admin/audio/status',payload);taskState.state=result.exists&&!result.outdated?'current':'needs';taskState.timing=result.timingStatus||'unknown';confirmCurrent.hidden=!(result.exists&&result.outdated);applyAudioFilter();updateAlignment();update(result.exists);message.textContent=result.exists?(result.outdated?' Previous recording (outdated, regenerate to update)':' Saved')+' ('+Math.max(1,Math.round((result.bytes||0)/1024))+' KB)':' Not generated'}catch(e){taskState.state='error';taskState.timing='error';confirmCurrent.hidden=true;applyAudioFilter();updateAlignment();if(part==='scripture'&&/Published reading unavailable/i.test(e.message)){message.textContent=' Scripture text unavailable. Check Scripture in Context in the devotional editor.'}else{message.textContent=' Status unavailable: '+e.message}}}confirmCurrent.onclick=async()=>{if(busy||batchRunning)return;if(!confirm('Have you listened to this entire '+voice+' '+part+' recording for '+d.title+' and confirmed that its spoken words match the current devotional? This will mark the recording current without changing its audio or word timings.'))return;busy=true;confirmCurrent.disabled=true;try{await audioAction('/api/admin/audio/confirm-current',payload);await refresh();message.textContent=' Existing recording confirmed against current text. Word timings were not changed.'}catch(e){message.textContent=' Confirmation failed: '+e.message}finally{busy=false;confirmCurrent.disabled=false}};generate.onclick=async()=>{if(busy||batchRunning)return;const replacing=!remove.disabled;if(replacing&&!confirm('Replace the saved '+voice+' '+part+' recording for '+d.title+'? This will generate new audio and may incur a Google voice charge.'))return;busy=true;generate.disabled=true;remove.disabled=true;message.textContent=' Generating…';status.textContent='Generating '+d.title+' / '+part+' / '+voice+'…';try{const generation=await audioAction('/api/admin/audio/generate',{...payload,regenerate:replacing});await refresh();if(remove.disabled)throw Error('Recording could not be verified in R2 after generation.');message.textContent=(generation.segments>1?' Recording saved using '+generation.segments+' segments (text exceeded the single-request limit).':' Recording saved in one segment.')+(generation.cleanupFailed?' Some older recordings could not be deleted.':' Press Play below.');status.textContent=generation.cleanupFailed?'New recording saved; some older recordings remain in R2.':(generation.segments>1?'Recording saved using '+generation.segments+' segments.':'Recording saved in one segment. Player is ready.')}catch(e){await refresh();message.textContent=' Generation failed: '+e.message;status.textContent='Generation failed: '+e.message}finally{busy=false;generate.disabled=false}};remove.onclick=async()=>{if(busy||batchRunning||!confirm('Permanently delete the '+voice+' '+part+' recording for '+d.title+'?'))return;busy=true;generate.disabled=true;remove.disabled=true;message.textContent=' Deleting…';try{await audioAction('/api/admin/audio/recording',payload,'DELETE');update(false);taskState.state='needs';taskState.timing='not-found';applyAudioFilter();updateAlignment();message.textContent=' Recording deleted';status.textContent='Recording deleted.'}catch(e){message.textContent=' Delete failed: '+e.message;await refresh()}finally{busy=false;generate.disabled=false}};Object.assign(taskState,{
  async runBatch(){
   if(busy)throw Error('An individual audio operation is already running.');
   busy=true;generate.disabled=true;remove.disabled=true;
   try{
    message.textContent=' Checking recording…';
-   const current=cachedCompletedStatus(d,part,voice)||await audioAction('/api/admin/audio/status',payload);
+   const current=await audioAction('/api/admin/audio/status',payload);
    if(current.exists&&!current.outdated){await refresh();return 'saved';}
    message.textContent=' Generating…';
-   const result=await audioAction('/api/admin/audio/generate',{...payload,regenerate:false});invalidateCompletedStatus(d,part,voice);
+   const result=await audioAction('/api/admin/audio/generate',{...payload,regenerate:false});
    const verified=await audioAction('/api/admin/audio/status',payload);
    if(!verified.exists||verified.outdated)throw Error('Recording was not verified as current in R2.');
    await refresh();message.textContent=result.cleanupFailed?' Saved (older file cleanup incomplete)':' Saved successfully';
@@ -1091,7 +1083,13 @@ for(const part of ['devotional','deeper','scripture']){const row=document.create
  },
  showError(error){message.textContent=' Failed: '+(error?.message||'Unknown error');}
 });
-box.append(name,generate,remove,confirmCurrent,message,player);row.append(box);refresh()}section.append(row)}items.append(section);applyAudioFilter()}}catch(e){status.textContent=e.message;alignmentOverall.textContent='Unable to check recordings: '+e.message;audioFilterStatus.textContent='Audio status checks could not start.'}})();
+box.append(name,generate,remove,confirmCurrent,message,player);row.append(box);
+const snapshot=savedSnapshots[d.id+'|'+part+'|'+voice];
+if(snapshot?.exists&&!snapshot.outdated&&snapshot.timingStatus==='ready'){
+ taskState.state='current';taskState.timing='ready';update(true);
+ message.textContent=' Saved ('+Math.max(1,Math.round((snapshot.bytes||0)/1024))+' KB)';
+ updateAlignment();applyAudioFilter();
+}else refresh()}section.append(row)}items.append(section);applyAudioFilter()}}catch(e){status.textContent=e.message;alignmentOverall.textContent='Unable to check recordings: '+e.message;audioFilterStatus.textContent='Audio status checks could not start.'}})();
 </script></body></html>`;
 // Experimental Gemini 3.8 Flash TTS through Vertex AI, separate from production audio.
 const GEMINI38_MODEL='gemini-3.8-flash-tts';
@@ -1763,6 +1761,30 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
         return await audioPlaybackResponse(request,env,recording.key,'private, no-store')||fail('Recording not found',404);
       }catch(error){console.error('Admin audio playback failed:',error);return fail('Audio unavailable',503)}
     }
+    // One bulk D1 read for completed alignment; no R2 HEAD/GET/LIST for cached rows.
+    if(path==='/api/admin/audio/snapshots'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      try{
+        await ensureAudioLibrarySnapshots(env);
+        const rows=(await env.DB.prepare('SELECT devotional_id,part,voice,source_version,recording_key,bytes,timing_status FROM audio_library_snapshots').all()).results||[];
+        const published=(await env.DB.prepare("SELECT id FROM devotionals WHERE status='published'").all()).results||[];
+        const ids=new Set(published.map(x=>x.id));
+        const sourceVersions=new Map();
+        // Only evaluate text for entries with saved alignment. Never read their R2 objects.
+        const parts=new Set(rows.filter(r=>ids.has(r.devotional_id)).map(r=>r.devotional_id+'|'+r.part));
+        for(const pair of parts){
+          const cut=pair.lastIndexOf('|'),id=pair.slice(0,cut),part=pair.slice(cut+1);
+          try{sourceVersions.set(pair,(await publishedAudioSource(env,id,part,request))?.version||null)}
+          catch(e){console.error('Audio snapshot source unavailable:',id,part,e?.message);}
+        }
+        const snapshots={};
+        for(const r of rows){
+          if(!ids.has(r.devotional_id)||sourceVersions.get(r.devotional_id+'|'+r.part)!==r.source_version)continue;
+          snapshots[r.devotional_id+'|'+r.part+'|'+r.voice]={exists:true,outdated:false,bytes:r.bytes,timingStatus:r.timing_status,recordingKey:r.recording_key};
+        }
+        return json({ok:true,snapshots});
+      }catch(e){console.error('Audio snapshots unavailable:',e);return fail(e.message,502)}
+    }
     if(path==='/api/admin/audio/status'&&request.method==='POST'||path==='/api/admin/audio/recording'&&request.method==='DELETE'){
       if(!isAdmin(user))return fail('Administrator only',403);
       const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
@@ -1782,7 +1804,9 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
             if(match){timingStatus=await cachedAudioAlignmentStatus(env,id,part,voice,match[1],recording.key);}
             else timingStatus='unknown';
           }
-          return json({ok:true,exists:!!recording,bytes:recording?.item?.size||0,outdated:!!recording?.outdated,timingStatus,recordingKey:recording?.key||null});
+          const result={ok:true,exists:!!recording,bytes:recording?.item?.size||0,outdated:!!recording?.outdated,timingStatus,recordingKey:recording?.key||null};
+          if(result.timingStatus==='ready')await saveAudioLibrarySnapshot(env,id,part,voice,source,result);
+          return json(result);
         }
         if(!recording)return fail('Recording not found',404);
         await env.AUDIO_BUCKET.delete(recording.key);
