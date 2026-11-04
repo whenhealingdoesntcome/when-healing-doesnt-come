@@ -1017,7 +1017,7 @@ function drainAudioStatusQueue(){
   const job=audioStatusQueue.shift();audioStatusActive++;
   (async()=>{
    for(let attempt=0;attempt<4;attempt++){
-    try{const result=await api('/api/admin/audio/status',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...job.payload,knownAlignedKeys:Object.keys(knownAligned).slice(-100)})});rememberAlignment(result);return result;}
+    try{const result=await Promise.race([api('/api/admin/audio/status',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(job.payload)}),new Promise((_,reject)=>setTimeout(()=>reject(Error('Audio status request timed out')),20000))]);rememberAlignment(result);return result;}
     catch(error){
      if(!/10058|reduce your rate of simultaneous reads|429|too many requests/i.test(String(error?.message))||attempt===3)throw error;
      await new Promise(r=>setTimeout(r,500*Math.pow(2,attempt)+Math.floor(Math.random()*250)));
@@ -1756,7 +1756,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           if(recording&&!recording.outdated){
             const filename=recording.key.split('/').pop()||'';
             const match=new RegExp('^'+voice+'-([a-f0-9]{8,128})\\.(?:wav|mp3)$').exec(filename);
-            if(match){timingStatus=Array.isArray(body.knownAlignedKeys)&&body.knownAlignedKeys.includes(recording.key)?'ready':await cachedAudioAlignmentStatus(env,id,part,voice,match[1],recording.key);}
+            if(match){timingStatus=await cachedAudioAlignmentStatus(env,id,part,voice,match[1],recording.key);}
             else timingStatus='unknown';
           }
           return json({ok:true,exists:!!recording,bytes:recording?.item?.size||0,outdated:!!recording?.outdated,timingStatus,recordingKey:recording?.key||null});
