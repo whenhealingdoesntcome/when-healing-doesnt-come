@@ -555,9 +555,9 @@ async function ensureAudioLibrarySnapshots(env){
  await audioLibrarySnapshotSetup;
 }
 async function saveAudioLibrarySnapshot(env,id,part,voice,source,result){
- if(!source||!result.exists||result.outdated||result.timingStatus!=='ready')return;
+ if(!source)return;
  await ensureAudioLibrarySnapshots(env);
- await env.DB.prepare(`INSERT INTO audio_library_snapshots (devotional_id,part,voice,source_version,recording_key,bytes,timing_status,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(devotional_id,part,voice) DO UPDATE SET source_version=excluded.source_version,recording_key=excluded.recording_key,bytes=excluded.bytes,timing_status=excluded.timing_status,updated_at=excluded.updated_at`).bind(id,part,voice,source.version,result.recordingKey,result.bytes,'ready',Math.floor(Date.now()/1000)).run();
+ await env.DB.prepare(`INSERT INTO audio_library_snapshots (devotional_id,part,voice,source_version,recording_key,bytes,timing_status,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(devotional_id,part,voice) DO UPDATE SET source_version=excluded.source_version,recording_key=excluded.recording_key,bytes=excluded.bytes,timing_status=excluded.timing_status,updated_at=excluded.updated_at`).bind(id,part,voice,source.version,result.recordingKey||'',result.bytes||0,result.timingStatus||'unknown',Math.floor(Date.now()/1000)).run();
 }
 async function storedAudioRecording(env,id,part,voice,source){
   const fingerprintKey=audioFingerprintKey(id,part,voice);
@@ -1048,7 +1048,7 @@ try{const snapshotResponse=await api('/api/admin/audio/snapshots');savedSnapshot
 const ds=await api('/api/admin/devotionals');status.textContent=ds.filter(d=>d.status==='published').length+' published devotionals';if(!ds.some(d=>d.status==='published')){alignmentOverall.textContent='No published devotionals to check.';audioFilterStatus.textContent='No published devotionals.';}for(const d of ds.filter(x=>x.status==='published')){const section=document.createElement('section');section.style.cssText='padding:16px 0;border-bottom:1px solid #ddd';const h=document.createElement('h2');h.textContent='Day '+d.day+': '+d.title;h.style.fontSize='1.1rem';section.append(h);
 const batchButton=document.createElement('button');batchButton.type='button';batchButton.textContent='Generate All Audio';batchButton.style.cssText='margin:8px 0 12px;padding:10px 14px';
 const batchProgress=document.createElement('p');batchProgress.setAttribute('role','status');batchProgress.setAttribute('aria-live','polite');
-const audioTasks=[];let batchRunning=false;devotionalEntries.push({section,tasks:audioTasks,title:'Day '+d.day+': '+d.title});applyAudioFilter();updateAlignment();
+const audioTasks=[];let batchRunning=false;devotionalEntries.push({section,tasks:audioTasks,title:'Day '+d.day+': '+d.title});
 section.append(batchButton,batchProgress);
 batchButton.onclick=async()=>{
  if(batchRunning)return;
@@ -1085,11 +1085,12 @@ for(const part of ['devotional','deeper','scripture']){const row=document.create
 });
 box.append(name,generate,remove,confirmCurrent,message,player);row.append(box);
 const snapshot=savedSnapshots[d.id+'|'+part+'|'+voice];
-if(snapshot?.exists&&!snapshot.outdated&&snapshot.timingStatus==='ready'){
- taskState.state='current';taskState.timing='ready';update(true);
- message.textContent=' Saved ('+Math.max(1,Math.round((snapshot.bytes||0)/1024))+' KB)';
- updateAlignment();applyAudioFilter();
-}else refresh()}section.append(row)}items.append(section);applyAudioFilter()}}catch(e){status.textContent=e.message;alignmentOverall.textContent='Unable to check recordings: '+e.message;audioFilterStatus.textContent='Audio status checks could not start.'}})();
+if(snapshot){
+ taskState.state=snapshot.exists&&!snapshot.outdated?'current':'needs';
+ taskState.timing=snapshot.timingStatus||'unknown';
+ update(!!snapshot.exists);
+ message.textContent=snapshot.exists?(snapshot.outdated?' Previous recording (outdated)':' Saved')+' ('+Math.max(1,Math.round((snapshot.bytes||0)/1024))+' KB)':' Not generated';
+}else refresh()}section.append(row)}items.append(section)}updateAlignment();applyAudioFilter()}catch(e){status.textContent=e.message;alignmentOverall.textContent='Unable to check recordings: '+e.message;audioFilterStatus.textContent='Audio status checks could not start.'}})();
 </script></body></html>`;
 // Experimental Gemini 3.8 Flash TTS through Vertex AI, separate from production audio.
 const GEMINI38_MODEL='gemini-3.8-flash-tts';
@@ -1766,7 +1767,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
       if(!isAdmin(user))return fail('Administrator only',403);
       try{
         await ensureAudioLibrarySnapshots(env);
-        const rows=(await env.DB.prepare('SELECT devotional_id,part,voice,source_version,recording_key,bytes,timing_status FROM audio_library_snapshots').all()).results||[];
+        const rows=(await env.DB.prepare('SELECT devotional_id,part,voice,source_version,recording_key,bytes,timing_status,updated_at FROM audio_library_snapshots').all()).results||[];
         const published=(await env.DB.prepare("SELECT id FROM devotionals WHERE status='published'").all()).results||[];
         const ids=new Set(published.map(x=>x.id));
         const sourceVersions=new Map();
@@ -1780,7 +1781,9 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
         const snapshots={};
         for(const r of rows){
           if(!ids.has(r.devotional_id)||sourceVersions.get(r.devotional_id+'|'+r.part)!==r.source_version)continue;
-          snapshots[r.devotional_id+'|'+r.part+'|'+r.voice]={exists:true,outdated:false,bytes:r.bytes,timingStatus:r.timing_status,recordingKey:r.recording_key};
+          // Pending or absent audio is periodically rechecked; completed alignment never expires.
+          if(r.timing_status!=='ready'&&Date.now()/1000-r.updated_at>600)continue;
+          snapshots[r.devotional_id+'|'+r.part+'|'+r.voice]={exists:!!r.recording_key,outdated:r.timing_status==='outdated',bytes:r.bytes,timingStatus:r.timing_status,recordingKey:r.recording_key||null};
         }
         return json({ok:true,snapshots});
       }catch(e){console.error('Audio snapshots unavailable:',e);return fail(e.message,502)}
@@ -1805,7 +1808,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
             else timingStatus='unknown';
           }
           const result={ok:true,exists:!!recording,bytes:recording?.item?.size||0,outdated:!!recording?.outdated,timingStatus,recordingKey:recording?.key||null};
-          if(result.timingStatus==='ready')await saveAudioLibrarySnapshot(env,id,part,voice,source,result);
+          await saveAudioLibrarySnapshot(env,id,part,voice,source,result);
           return json(result);
         }
         if(!recording)return fail('Recording not found',404);
