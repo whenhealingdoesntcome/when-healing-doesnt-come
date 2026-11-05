@@ -1148,9 +1148,13 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
   if(chunks.length>24)throw Error('Reading exceeds the test limit of 24 segments.');
   const token=await googleAccessToken(env),pieces=[];
   const endpoint=`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${GEMINI38_MODEL}:generateContent`;
-  for(let i=0;i<chunks.length;i++){
-    const payload={contents:[{role:'user',parts:[{text:chunks[i],speechMetadata:{style:GEMINI38_STYLE}}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{voice:AUDIO_VOICES[voice]}}}};
-    let bytes=null, lastReason='';
+  // A successful HTTP response with finishReason OTHER can contain no audio.
+  // Retry the original segment, then subdivide only that segment at natural
+  // boundaries. Never omit text or store a partial recording.
+  let generatedSegments=0;
+  async function synthesizeSegment(segment,label,depth=0){
+    const payload={contents:[{role:'user',parts:[{text:segment,speechMetadata:{style:GEMINI38_STYLE}}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{voice:AUDIO_VOICES[voice]}}}};
+    let lastReason='';
     for(let attempt=1;attempt<=3;attempt++){
       let r;
       try{r=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});}
@@ -1160,30 +1164,43 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
         const reason=String(info?.error?.message||'').replace(/https?:\/\/\S+/g,'[URL]').slice(0,240);
         lastReason=`HTTP ${r.status}${reason?': '+reason:''}`;
         if(attempt<3&&(r.status===429||r.status>=500)){await new Promise(resolve=>setTimeout(resolve,attempt*900));continue;}
-        throw Error(`Gemini 3.8 generation failed (segment ${i+1}/${chunks.length}): ${lastReason}`);
+        throw Error(`Gemini 3.8 generation failed (segment ${label}): ${lastReason}`);
       }
       const result=await r.json().catch(()=>null);
       const audio=result?.candidates?.flatMap(c=>c?.content?.parts||[]).find(p=>p?.inlineData?.data)?.inlineData;
       if(audio?.data){
-        const raw=atob(audio.data);bytes=new Uint8Array(raw.length);
+        const raw=atob(audio.data),bytes=new Uint8Array(raw.length);
         for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
-        break;
+        generatedSegments++;
+        return [bytes];
       }
       const candidate=result?.candidates?.[0];
       const finish=String(candidate?.finishReason||'unspecified');
       const promptFeedback=String(result?.promptFeedback?.blockReason||'');
-      lastReason=`No audio in response (finish reason: ${finish}${promptFeedback?', prompt feedback: '+promptFeedback:''})`;
+      lastReason=`No audio in response (finish reason: ${finish}${promptFeedback?', prompt feedback: '+promptFeedback':''})`;
+      // Explicitly blocked requests should not be worked around by splitting.
+      if(promptFeedback||['SAFETY','PROHIBITED_CONTENT','BLOCKLIST','SPII'].includes(finish))break;
       if(attempt<3)await new Promise(resolve=>setTimeout(resolve,attempt*900));
     }
-    if(!bytes)throw Error(`Gemini 3.8 did not return audio for segment ${i+1}/${chunks.length} after 3 attempts. ${lastReason}`);
-    pieces.push(bytes);
+    const blocked=/prompt feedback:|finish reason: (SAFETY|PROHIBITED_CONTENT|BLOCKLIST|SPII)/.test(lastReason);
+    if(!blocked&&depth<2&&new TextEncoder().encode(segment).length>500){
+      const target=depth===0?1000:500;
+      const smaller=audioChunks(segment,target);
+      if(smaller.length>1){
+        const result=[];
+        for(let j=0;j<smaller.length;j++)result.push(...await synthesizeSegment(smaller[j],`${label}.${j+1}/${smaller.length}`,depth+1));
+        return result;
+      }
+    }
+    throw Error(`Gemini 3.8 did not return audio for segment ${label} after 3 attempts. ${lastReason}`);
   }
+  for(let i=0;i<chunks.length;i++)pieces.push(...await synthesizeSegment(chunks[i],`${i+1}/${chunks.length}`));
   const combined=joinGemini38Wav(pieces);
   // Test files cannot overwrite production recordings or other test results.
   if(!production&&await hasProductionAudio(env,key.split('/')[2]))throw Error('Production audio was added during generation. No test was saved.');
   if(!production&&await env.AUDIO_BUCKET.head(key))throw Error('Test recording already exists.');
   await env.AUDIO_BUCKET.put(key,combined,{httpMetadata:{contentType:'audio/wav'},customMetadata:{model:GEMINI38_MODEL,voice,experimental:String(!production)}});
-  return {bytes:combined.length,segments:chunks.length};
+  return {bytes:combined.length,segments:generatedSegments};
 }
 const AUDIO_TEST_HTML=`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WHDC Voice Test</title><body style="font:16px system-ui;max-width:720px;margin:3rem auto;padding:1rem;line-height:1.6"><a href="/admin">← Admin</a><h1>WHDC Gemini 3.1 Flash Voice Test</h1><p>Admin-only preview. Generate each sample once, then listen to its stored R2 recording. This does not change reader audio.</p><p>Sample: ${AUDIO_SAMPLE}</p><div id="voices"></div><p id="status" role="status"></p><script>const status=document.getElementById('status'),root=document.getElementById('voices');for(const voice of ['sulafat','sadachbia']){const box=document.createElement('section');const title=document.createElement('h2');title.textContent=voice==='sadachbia'?'Sadachbia (male)':voice.charAt(0).toUpperCase()+voice.slice(1)+' (female)';const btn=document.createElement('button');btn.textContent='Generate sample';const audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.src='/api/admin/audio-test/file?voice='+voice;btn.onclick=async()=>{btn.disabled=true;status.textContent='Generating '+voice+'…';try{const r=await fetch('/api/admin/audio-test/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({voice})});const data=await r.json();if(!r.ok)throw Error(data.error||'Generation failed');audio.src='/api/admin/audio-test/file?voice='+voice+'&v='+Date.now();status.textContent='Saved '+voice+' recording to R2.'}catch(e){status.textContent=e.message}finally{btn.disabled=false}};box.append(title,btn,document.createElement('br'),audio);root.append(box)}</script></body></html>`;
 
