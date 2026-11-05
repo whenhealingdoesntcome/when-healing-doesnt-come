@@ -260,6 +260,16 @@ function normalize(x,allowUnassignedDay=false){
 }
 async function ensureScriptureTable(env){await env.DB.prepare("CREATE TABLE IF NOT EXISTS devotional_scripture (devotional_id TEXT PRIMARY KEY, main_text TEXT NOT NULL, context_references TEXT NOT NULL, context_passages TEXT NOT NULL)").run()}
 async function scriptureExtras(env,items){if(!items.length)return items;await ensureScriptureTable(env);return Promise.all(items.map(async d=>{const r=await env.DB.prepare('SELECT main_text,main_reference,context_references,context_passages,further_study_references FROM devotional_scripture WHERE devotional_id=?').bind(d.id).first();return r?{...d,mainScriptureText:r.main_text,mainScriptureReference:r.main_reference||null,furtherStudyReferences:r.further_study_references?formatFurtherStudyReferences(r.further_study_references):'',contextReferences:r.context_references,contextPassages:JSON.parse(r.context_passages)}:d}))}
+// Drafts must retain every Scripture field without requiring a complete, valid passage.
+// Publication still uses storeScripture() for full WEBU validation and canonicalization.
+async function storeDraftScripture(env,d){
+  await ensureScriptureTable(env);
+  const main=String(d.mainScriptureReference??d.reference??'').trim();
+  const text=String(d.mainScriptureText??'');
+  const context=String(d.contextReferences??'');
+  const further=String(d.furtherStudyReferences??'');
+  await env.DB.prepare('INSERT INTO devotional_scripture (devotional_id,main_text,main_reference,context_references,context_passages,further_study_references) VALUES (?,?,?,?,?,?) ON CONFLICT(devotional_id) DO UPDATE SET main_text=excluded.main_text,main_reference=excluded.main_reference,context_references=excluded.context_references,context_passages=excluded.context_passages,further_study_references=excluded.further_study_references').bind(d.id,text,main,context,'[]',further).run();
+}
 async function storeScripture(env,d,request){if(d.mainScriptureText===undefined&&d.contextReferences===undefined)return;const main=String(d.mainScriptureReference||d.reference||'').trim();const references=String(d.contextReferences||'').trim();const further=String(d.furtherStudyReferences||'').trim()?formatFurtherStudyReferences(d.furtherStudyReferences):'';if(further.length>1000)throw Error('Further Study references are too long');if(further)await scriptureLookup(further,env.ASSETS,request);if(references.length>1000)throw Error('Context references are too long');const mainResult=await scriptureLookup(main,env.ASSETS,request);if(mainResult.verses.length<1||mainResult.verses.length>2)throw Error('Main Scripture must contain one or two verses');const mainText=mainResult.verses.map(v=>v.text).join(' ');const context=references?await scriptureLookup(references,env.ASSETS,request):{passages:[]};await ensureScriptureTable(env);await env.DB.prepare('INSERT INTO devotional_scripture (devotional_id,main_text,main_reference,context_references,context_passages,further_study_references) VALUES (?,?,?,?,?,?) ON CONFLICT(devotional_id) DO UPDATE SET main_text=excluded.main_text,main_reference=excluded.main_reference,context_references=excluded.context_references,context_passages=excluded.context_passages,further_study_references=excluded.further_study_references').bind(d.id,mainText,main,references,JSON.stringify(context.passages),further).run()}
 function row(r){return {id:r.id,title:r.title,day:r.day,topics:JSON.parse(r.topics||'[]'),reference:r.scripture,bibleUrl:r.bible_url,short:r.short,deeper:r.deeper,reflection:r.reflection||'',author:r.author||'Heather Kusunoki',status:r.status,ownerEmail:r.owner_email||null,reviewNote:r.review_note||''}}
 const select='SELECT id, title, day, topics, scripture, bible_url, short, deeper, reflection, author, status FROM devotionals';
@@ -2116,7 +2126,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           d.day=0;
           if(await env.DB.prepare('SELECT id FROM devotionals WHERE id=?').bind(d.id).first())return fail('ID conflicts with an existing devotional',409);
           await saveOwned(env,d,user.email);
-          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
+          if(d.status==='published')await storeScripture(env,payload,request);else await storeDraftScripture(env,payload);
         }else {
           // Honor an administrator's explicit day-number changes. New drafts remain
           // unnumbered until publication, unless editing an existing numbered entry.
@@ -2150,7 +2160,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
             }
           }
           await save(env,d);
-          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
+          if(d.status==='published')await storeScripture(env,payload,request);else await storeDraftScripture(env,payload);
           if(existing){
             for(const part of ['devotional','deeper','scripture']){
               try{
