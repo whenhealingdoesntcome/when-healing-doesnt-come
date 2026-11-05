@@ -260,16 +260,6 @@ function normalize(x,allowUnassignedDay=false){
 }
 async function ensureScriptureTable(env){await env.DB.prepare("CREATE TABLE IF NOT EXISTS devotional_scripture (devotional_id TEXT PRIMARY KEY, main_text TEXT NOT NULL, context_references TEXT NOT NULL, context_passages TEXT NOT NULL)").run()}
 async function scriptureExtras(env,items){if(!items.length)return items;await ensureScriptureTable(env);return Promise.all(items.map(async d=>{const r=await env.DB.prepare('SELECT main_text,main_reference,context_references,context_passages,further_study_references FROM devotional_scripture WHERE devotional_id=?').bind(d.id).first();return r?{...d,mainScriptureText:r.main_text,mainScriptureReference:r.main_reference||null,furtherStudyReferences:r.further_study_references?formatFurtherStudyReferences(r.further_study_references):'',contextReferences:r.context_references,contextPassages:JSON.parse(r.context_passages)}:d}))}
-// Drafts must retain every Scripture field without requiring a complete, valid passage.
-// Publication still uses storeScripture() for full WEBU validation and canonicalization.
-async function storeDraftScripture(env,d){
-  await ensureScriptureTable(env);
-  const main=String(d.mainScriptureReference??d.reference??'').trim();
-  const text=String(d.mainScriptureText??'');
-  const context=String(d.contextReferences??'');
-  const further=String(d.furtherStudyReferences??'');
-  await env.DB.prepare('INSERT INTO devotional_scripture (devotional_id,main_text,main_reference,context_references,context_passages,further_study_references) VALUES (?,?,?,?,?,?) ON CONFLICT(devotional_id) DO UPDATE SET main_text=excluded.main_text,main_reference=excluded.main_reference,context_references=excluded.context_references,context_passages=excluded.context_passages,further_study_references=excluded.further_study_references').bind(d.id,text,main,context,'[]',further).run();
-}
 async function storeScripture(env,d,request){if(d.mainScriptureText===undefined&&d.contextReferences===undefined)return;const main=String(d.mainScriptureReference||d.reference||'').trim();const references=String(d.contextReferences||'').trim();const further=String(d.furtherStudyReferences||'').trim()?formatFurtherStudyReferences(d.furtherStudyReferences):'';if(further.length>1000)throw Error('Further Study references are too long');if(further)await scriptureLookup(further,env.ASSETS,request);if(references.length>1000)throw Error('Context references are too long');const mainResult=await scriptureLookup(main,env.ASSETS,request);if(mainResult.verses.length<1||mainResult.verses.length>2)throw Error('Main Scripture must contain one or two verses');const mainText=mainResult.verses.map(v=>v.text).join(' ');const context=references?await scriptureLookup(references,env.ASSETS,request):{passages:[]};await ensureScriptureTable(env);await env.DB.prepare('INSERT INTO devotional_scripture (devotional_id,main_text,main_reference,context_references,context_passages,further_study_references) VALUES (?,?,?,?,?,?) ON CONFLICT(devotional_id) DO UPDATE SET main_text=excluded.main_text,main_reference=excluded.main_reference,context_references=excluded.context_references,context_passages=excluded.context_passages,further_study_references=excluded.further_study_references').bind(d.id,mainText,main,references,JSON.stringify(context.passages),further).run()}
 function row(r){return {id:r.id,title:r.title,day:r.day,topics:JSON.parse(r.topics||'[]'),reference:r.scripture,bibleUrl:r.bible_url,short:r.short,deeper:r.deeper,reflection:r.reflection||'',author:r.author||'Heather Kusunoki',status:r.status,ownerEmail:r.owner_email||null,reviewNote:r.review_note||''}}
 const select='SELECT id, title, day, topics, scripture, bible_url, short, deeper, reflection, author, status FROM devotionals';
@@ -1154,22 +1144,38 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
   const credentials=JSON.parse(env.GOOGLE_TTS_CREDENTIALS||'{}');
   const project=String(env.GEMINI38_PROJECT_ID||credentials.project_id||'').trim();
   if(!/^[a-z][a-z0-9-]{4,61}[a-z0-9]$/.test(project))throw Error('Google Cloud project ID missing. Set GEMINI38_PROJECT_ID or use a service account with project_id.');
-  const chunks=audioChunks(text);
+  const chunks=audioChunks(text,2000);
   if(chunks.length>24)throw Error('Reading exceeds the test limit of 24 segments.');
   const token=await googleAccessToken(env),pieces=[];
   const endpoint=`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${GEMINI38_MODEL}:generateContent`;
   for(let i=0;i<chunks.length;i++){
     const payload={contents:[{role:'user',parts:[{text:chunks[i],speechMetadata:{style:GEMINI38_STYLE}}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{voice:AUDIO_VOICES[voice]}}}};
-    const r=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok){
-      const info=await r.json().catch(()=>null);
-      const reason=String(info?.error?.message||'').replace(/https?:\/\/\S+/g,'[URL]').slice(0,300);
-      throw Error(`Gemini 3.8 generation failed (HTTP ${r.status}, segment ${i+1}/${chunks.length})${reason?': '+reason:''}`);
+    let bytes=null, lastReason='';
+    for(let attempt=1;attempt<=3;attempt++){
+      let r;
+      try{r=await fetch(endpoint,{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify(payload)});}
+      catch(error){lastReason='Network error: '+String(error?.message||error).slice(0,180);if(attempt<3){await new Promise(resolve=>setTimeout(resolve,attempt*900));continue;}break;}
+      if(!r.ok){
+        const info=await r.json().catch(()=>null);
+        const reason=String(info?.error?.message||'').replace(/https?:\/\/\S+/g,'[URL]').slice(0,240);
+        lastReason=`HTTP ${r.status}${reason?': '+reason:''}`;
+        if(attempt<3&&(r.status===429||r.status>=500)){await new Promise(resolve=>setTimeout(resolve,attempt*900));continue;}
+        throw Error(`Gemini 3.8 generation failed (segment ${i+1}/${chunks.length}): ${lastReason}`);
+      }
+      const result=await r.json().catch(()=>null);
+      const audio=result?.candidates?.flatMap(c=>c?.content?.parts||[]).find(p=>p?.inlineData?.data)?.inlineData;
+      if(audio?.data){
+        const raw=atob(audio.data);bytes=new Uint8Array(raw.length);
+        for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
+        break;
+      }
+      const candidate=result?.candidates?.[0];
+      const finish=String(candidate?.finishReason||'unspecified');
+      const promptFeedback=String(result?.promptFeedback?.blockReason||'');
+      lastReason=`No audio in response (finish reason: ${finish}${promptFeedback?', prompt feedback: '+promptFeedback:''})`;
+      if(attempt<3)await new Promise(resolve=>setTimeout(resolve,attempt*900));
     }
-    const result=await r.json();
-    const audio=result?.candidates?.flatMap(c=>c?.content?.parts||[]).find(p=>p?.inlineData?.data)?.inlineData;
-    if(!audio?.data)throw Error('Gemini 3.8 did not return audio.');
-    const raw=atob(audio.data),bytes=new Uint8Array(raw.length);for(let j=0;j<raw.length;j++)bytes[j]=raw.charCodeAt(j);
+    if(!bytes)throw Error(`Gemini 3.8 did not return audio for segment ${i+1}/${chunks.length} after 3 attempts. ${lastReason}`);
     pieces.push(bytes);
   }
   const combined=joinGemini38Wav(pieces);
@@ -2126,7 +2132,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
           d.day=0;
           if(await env.DB.prepare('SELECT id FROM devotionals WHERE id=?').bind(d.id).first())return fail('ID conflicts with an existing devotional',409);
           await saveOwned(env,d,user.email);
-          if(d.status==='published')await storeScripture(env,payload,request);else await storeDraftScripture(env,payload);
+          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
         }else {
           // Honor an administrator's explicit day-number changes. New drafts remain
           // unnumbered until publication, unless editing an existing numbered entry.
@@ -2160,7 +2166,7 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
             }
           }
           await save(env,d);
-          if(d.status==='published')await storeScripture(env,payload,request);else await storeDraftScripture(env,payload);
+          if(d.status==='published'||(String(payload.mainScriptureReference||payload.reference||'').trim()&&String(payload.mainScriptureText||'').trim()))await storeScripture(env,payload,request);
           if(existing){
             for(const part of ['devotional','deeper','scripture']){
               try{
