@@ -1177,7 +1177,7 @@ async function gemini38Synthesize(env,text,voice,key,{production=false}={}){
       const candidate=result?.candidates?.[0];
       const finish=String(candidate?.finishReason||'unspecified');
       const promptFeedback=String(result?.promptFeedback?.blockReason||'');
-      lastReason=`No audio in response (finish reason: ${finish}${promptFeedback?', prompt feedback: '+promptFeedback':''})`;
+      lastReason=`No audio in response (finish reason: ${finish}${promptFeedback ? ', prompt feedback: '+promptFeedback : ''})`;
       // Explicitly blocked requests should not be worked around by splitting.
       if(promptFeedback||['SAFETY','PROHIBITED_CONTENT','BLOCKLIST','SPII'].includes(finish))break;
       if(attempt<3)await new Promise(resolve=>setTimeout(resolve,attempt*900));
