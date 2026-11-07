@@ -15,7 +15,9 @@
       "/admin/*",
       "/",
       "/index.html",
-      "/manifest.webmanifest"
+      "/manifest.webmanifest",
+      "/privacy/slow-your-roll",
+      "/privacy/slow-your-roll.html"
     ]
   },
   "r2_buckets": [

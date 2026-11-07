@@ -1372,6 +1372,12 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 
 const whdcWorker = {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
+  // Public Slow Your Roll privacy page: serve the bundled static asset directly.
+  if ((path === '/privacy/slow-your-roll.html' || path === '/privacy/slow-your-roll') && (request.method === 'GET' || request.method === 'HEAD')) {
+    const assetUrl = new URL('/privacy/slow-your-roll.html', url.origin);
+    return env.ASSETS.fetch(new Request(assetUrl.toString(), { method: request.method }));
+  }
+
   // Stage 2: administrative pages and APIs are only available on the
   // dedicated Cloudflare Access-protected admin hostname.
   const adminHost='admin.whdcdevotions.com';
