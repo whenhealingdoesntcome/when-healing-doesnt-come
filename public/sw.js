@@ -54,6 +54,8 @@ self.addEventListener('fetch',event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=='GET'||url.origin!==self.location.origin)return;
  const path=url.pathname;
+ // Deployment manifest must bypass the offline shell cache.
+ if(path==='/update-manifest.json'){event.respondWith(fetch(req,{cache:'no-store'}).catch(()=>Response.error()));return;}
  // Icons and manifest must come from the network when available, not an older PWA shell cache.
  if(path==='/manifest.webmanifest'||path.startsWith('/images/icons/')){
   event.respondWith(fetch(req,{cache:'no-store'}).catch(async()=>await caches.match(req)||Response.error()));return;

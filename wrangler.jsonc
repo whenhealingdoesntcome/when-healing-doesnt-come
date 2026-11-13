@@ -6,6 +6,7 @@
   "observability": {
     "enabled": true
   },
+  "build": {"command": "node scripts/build-update-manifest.mjs"},
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
