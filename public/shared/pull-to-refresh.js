@@ -35,7 +35,7 @@
   if(!navigator.onLine){show('Offline: saved content is still available',24);setTimeout(hide,2400);return;}
   running=true;show('Refreshing…',24);
   // User initiated: retain URL/hash and the existing navigation persistence.
-  location.reload();
+  window.dispatchEvent(new Event('whdc:before-manual-refresh'));location.reload();
  },{passive:true});
  document.addEventListener('touchcancel',()=>{tracking=false;startY=null;hide();},{passive:true});
  document.body.appendChild(bar);

@@ -146,6 +146,33 @@ window.WHDCAudio=(()=>{
   update();return true;
  }
  function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','scripture','deeper'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Audio playing.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
+ // Resume a user-requested refresh without replaying from the beginning.
+ const REFRESH_KEY='whdc-audio-refresh-intent';
+ function saveRefreshIntent(){
+  if(!audio||!currentId||!activePart)return;
+  remember();
+  try{sessionStorage.setItem(REFRESH_KEY,JSON.stringify({id:String(currentId),part:activePart,wasPlaying:!audio.paused,at:Date.now()}))}catch{}
+ }
+ function restoreAfterRefresh(){
+  let intent;
+  try{intent=JSON.parse(sessionStorage.getItem(REFRESH_KEY)||'null');sessionStorage.removeItem(REFRESH_KEY)}catch{return}
+  if(!intent||Date.now()-intent.at>120000||String(currentId)!==String(intent.id)||!['devotional','scripture','deeper'].includes(intent.part))return;
+  const selector={devotional:'#listen',scripture:'#scriptureListen',deeper:'#deeperListen'}[intent.part];
+  const button=document.querySelector(selector);
+  if(!button||!available(intent.part)[voice()]?.url)return;
+  const offer=()=>{
+   if(document.getElementById('whdc-resume-listening'))return;
+   const resume=document.createElement('button');resume.id='whdc-resume-listening';resume.type='button';
+   resume.textContent='▶ Resume Listening';
+   resume.style.cssText='position:fixed;bottom:calc(88px + env(safe-area-inset-bottom,0px));left:16px;right:16px;max-width:360px;margin:auto;z-index:9999;padding:12px 18px;border:0;border-radius:10px;background:#365e60;color:white;font:600 16px system-ui';
+   resume.onclick=()=>{resume.remove();play(intent.part,button)};
+   document.body.appendChild(resume);
+  };
+  // A reload loses the browser's user gesture. Do not assume autoplay is permitted.
+  // Always provide a one-tap recovery, with the position restored by play().
+  offer();
+ }
+ window.addEventListener('whdc:before-manual-refresh',saveRefreshIntent);
  window.addEventListener('pagehide',remember);document.addEventListener('visibilitychange',()=>{if(document.hidden)remember()});
- return {load,decorate,play,playAll,changeVoice,stopAll,setSleep,stop,available,setSpeed,state,isSequencing:()=>!!sequence};
+ return {load,decorate,play,playAll,changeVoice,stopAll,setSleep,stop,available,setSpeed,state,restoreAfterRefresh,isSequencing:()=>!!sequence};
 })();
