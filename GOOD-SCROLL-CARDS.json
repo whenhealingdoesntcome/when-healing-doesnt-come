@@ -1,0 +1,842 @@
+[
+  {
+    "file": "01_whdc_dont_have_to.png",
+    "id": "7465280f-f63e-f9fa-ddce-21f9b36d1e5c",
+    "sha256": "7465280ff63ef9faddce21f9b36d1e5c142e6c9b26b130ea8bfee8b2a2826764",
+    "bytes": 1929835,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "02_psalm_34_18.png",
+    "id": "6f9feae6-284e-7301-c0e3-3b3b45c42237",
+    "sha256": "6f9feae6284e7301c0e33b3b45c42237cbd42166b6cdb8e082275b2def3f85cc",
+    "bytes": 1482672,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "03_lewis_megaphone.png",
+    "id": "b7bc6806-399b-c097-32a9-81072a82c447",
+    "sha256": "b7bc6806399bc09732a981072a82c447e98e8203b2989738594a1037a40a115e",
+    "bytes": 2203551,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "04_keller_unbearable.png",
+    "id": "fd336665-545e-18fd-3330-3040271bb34e",
+    "sha256": "fd336665545e18fd33303040271bb34ea96c9709b157d716f7a96892662a63dc",
+    "bytes": 1907408,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "05_bridges_worst_days.png",
+    "id": "b011d260-fc6b-4dfe-42a8-67136d4c73b1",
+    "sha256": "b011d260fc6b4dfe42a867136d4c73b16c26c5fb66e0946fb5bd46687ad52a17",
+    "bytes": 1762108,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "06_joni_permits.png",
+    "id": "4f1e8606-2c4f-2668-4c77-868e752e5399",
+    "sha256": "4f1e86062c4f26684c77868e752e53992b8c832f96f69b7cb725b9b7cfefed19",
+    "bytes": 2004263,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "07_tripp_no_valley.png",
+    "id": "8aebb8da-29d2-25a0-a764-7d64a7275953",
+    "sha256": "8aebb8da29d225a0a7647d64a7275953a88a42cd9588ef04e4ddb2e99e32ade7",
+    "bytes": 1885126,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "08_lysa_feeling_pain.png",
+    "id": "0662644e-2a2a-4381-8d64-001ccf2daa11",
+    "sha256": "0662644e2a2a43818d64001ccf2daa11c36b28993761ce3e6bfeec043f179984",
+    "bytes": 1801632,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "09_2cor_12_9.png",
+    "id": "4f2a8e07-ee09-58bc-94f9-052d7c1d20dd",
+    "sha256": "4f2a8e07ee0958bc94f9052d7c1d20dd503c8133041f455796d7b86f82f7b6e0",
+    "bytes": 1844823,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "10_whdc_rest_gift.png",
+    "id": "fdeb6aae-8604-a564-cbbb-3ce2c87c4836",
+    "sha256": "fdeb6aae8604a564cbbb3ce2c87c4836ce0d91769d2ada83afd45f225468ceb5",
+    "bytes": 1259236,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "11_lewis_grief.png",
+    "id": "18963932-6ddb-ad2d-3b4a-ece1f8495011",
+    "sha256": "189639326ddbad2d3b4aece1f8495011dc50d396352b77732c014913b8bfb0aa",
+    "bytes": 1345325,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "12_psalm_56_8.png",
+    "id": "71e59b90-365c-b500-7e66-159b61e269b5",
+    "sha256": "71e59b90365cb5007e66159b61e269b5f47a72c84c51e7e5d99508707e42cb4c",
+    "bytes": 1869155,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "13_keller_refine.png",
+    "id": "b7087515-bef6-5ea4-0b0a-adc814b8bbda",
+    "sha256": "b7087515bef65ea40b0aadc814b8bbda13fb0028a5c70c3f24f97405b1986bea",
+    "bytes": 1082382,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "14_joni_questions.png",
+    "id": "00b50e6f-baf2-450f-cb9f-be62c9a14c9a",
+    "sha256": "00b50e6fbaf2450fcb9fbe62c9a14c9ac458040627cee9d7cc9dd00b9b04ffcd",
+    "bytes": 1707436,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "15_lam_3_22.png",
+    "id": "7852a053-e4c4-f510-349a-42f1ccccb033",
+    "sha256": "7852a053e4c4f510349a42f1ccccb0331b794ab058fce0229ba801a8dbd153b4",
+    "bytes": 1430943,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "16_tripp_not_alone.png",
+    "id": "b84f091d-f433-d89e-c33a-9397cca8194b",
+    "sha256": "b84f091df433d89ec33a9397cca8194b59f24a9e42cbff017d8fd6bf8aadbd4e",
+    "bytes": 2059374,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "17_whdc_tired_of_resting.png",
+    "id": "e5ec167c-c03b-a3db-24a5-df7d5b3bbec6",
+    "sha256": "e5ec167cc03ba3db24a5df7d5b3bbec62e973df79e67ccc1459bc974eff4801e",
+    "bytes": 2203554,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "18_bridges_trust.png",
+    "id": "9cc85273-f290-5fff-8d4c-3e6f3fddf52e",
+    "sha256": "9cc85273f2905fff8d4c3e6f3fddf52ef69ce67fd745ca1b69b9fe80d4837825",
+    "bytes": 2086240,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "19_lysa_hope.png",
+    "id": "9772e84c-fb7c-f869-db41-e2241919ca8e",
+    "sha256": "9772e84cfb7cf869db41e2241919ca8eaa47f761a726fafe1d59a253c3709f6f",
+    "bytes": 1349646,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "20_matt_11_28.png",
+    "id": "e189880d-f51e-f9a8-7d45-87ea5627a056",
+    "sha256": "e189880df51ef9a87d4587ea5627a05608992ed7a85589762849fae698209d26",
+    "bytes": 1269741,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "21_gal_6_2.png",
+    "id": "60fc1de1-1de8-abd0-cdbe-8d14c9d90c11",
+    "sha256": "60fc1de11de8abd0cdbe8d14c9d90c11727730d443d88ee69f4656f9dbf80da7",
+    "bytes": 1535368,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "22_isaiah_43_2.png",
+    "id": "3554649c-111a-7e02-a75a-958ec1f51689",
+    "sha256": "3554649c111a7e02a75a958ec1f51689fa5f265916beb90ef8a6ac18591a88fe",
+    "bytes": 1236135,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "23_psalm_73_26.png",
+    "id": "d4f93ac6-c16f-e51d-bb21-ec3e4d8bf828",
+    "sha256": "d4f93ac6c16fe51dbb21ec3e4d8bf82865c472f2811c57e915076264e34bfc9b",
+    "bytes": 2165458,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "24_whdc_cast_down.png",
+    "id": "52078250-0caa-815c-e49d-d0ec37a02be5",
+    "sha256": "520782500caa815ce49dd0ec37a02be5ce6414b15dc24d9a84223a689f24bca1",
+    "bytes": 1995573,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "25_whdc_slowness.png",
+    "id": "f72bc401-cf1c-2ecb-6428-207aceaeb857",
+    "sha256": "f72bc401cf1c2ecb6428207aceaeb857eeb1315ca5a6a710e5a35f19678f0700",
+    "bytes": 2058642,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "26_psalm_147_3.png",
+    "id": "69f6ab7a-4c5a-65bb-2806-186e90db5251",
+    "sha256": "69f6ab7a4c5a65bb2806186e90db525172f2c0195a611dc00d7a0b367ded810c",
+    "bytes": 1536134,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "27_lewis_seed.png",
+    "id": "d5b1281e-9ce8-40de-9c19-4a7e111ef1e9",
+    "sha256": "d5b1281e9ce840de9c194a7e111ef1e9eb449af47b824264b58f379b32fe1d4e",
+    "bytes": 2065635,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "28_keller_coming_joy.png",
+    "id": "ab9ca416-d8c0-c461-9d4c-a0d6c81e0db9",
+    "sha256": "ab9ca416d8c0c4619d4ca0d6c81e0db955ef05252cbb0d285e8a9074ac04deff",
+    "bytes": 1627519,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "29_bridges_no_detail.png",
+    "id": "a906f3fe-a088-d3e4-e94d-871e5b3de1aa",
+    "sha256": "a906f3fea088d3e4e94d871e5b3de1aa8de7cba787ed91e448a8d133823a8fb4",
+    "bytes": 1697189,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "30_tripp_hope.png",
+    "id": "511637ed-1e8d-be8c-8d0c-0bfeeca27c1c",
+    "sha256": "511637ed1e8dbe8c8d0c0bfeeca27c1c1b91ba8861196006c261822eaf031fda",
+    "bytes": 1429493,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "31_joni_gym.png",
+    "id": "f5c7a4fa-c042-b08e-a66b-6f114215c4a7",
+    "sha256": "f5c7a4fac042b08ea66b6f114215c4a7a697af1b35c0b5e6bfa054699f581db3",
+    "bytes": 2312825,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "32_lysa_remake.png",
+    "id": "fac37717-5dac-72f0-0376-6e741c5217cc",
+    "sha256": "fac377175dac72f003766e741c5217cc97ee1002f757c4e0ab11e73b821d3b55",
+    "bytes": 1653530,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "33_isaiah_41_10.png",
+    "id": "0dc54f85-f541-49c6-2331-baf73948039d",
+    "sha256": "0dc54f85f54149c62331baf73948039d65fe80622383fd88c6a2f11a5a8a0065",
+    "bytes": 1678797,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "34_whdc_never_better.png",
+    "id": "00105684-a730-3aac-64e8-e4324d289534",
+    "sha256": "00105684a7303aac64e8e4324d2895342036cd5a82f52b3fa3cd832db18bf35b",
+    "bytes": 1391189,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "35_psalm_46_1.png",
+    "id": "65a0cf6d-b186-bd8e-9421-cde704efc68b",
+    "sha256": "65a0cf6db186bd8e9421cde704efc68bfc4afaf57983e548c26b9ba6cf115b80",
+    "bytes": 1336376,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "36_bridges_one_circumstance.png",
+    "id": "fa87db75-f41f-0fb9-9612-621654d9d4bb",
+    "sha256": "fa87db75f41f0fb99612621654d9d4bbe70532cc66b26eb9ba15613c0122d6e4",
+    "bytes": 1246770,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "37_tripp_waiting.png",
+    "id": "c2b7fcf4-8102-0417-6d6e-9dda00e98553",
+    "sha256": "c2b7fcf4810204176d6e9dda00e9855303335bfed985f4406d92aff2dc2b5c2d",
+    "bytes": 1202690,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "38_joni_battlefield.png",
+    "id": "6930d3c6-92c4-b9ca-7a9b-8665042e31e9",
+    "sha256": "6930d3c692c4b9ca7a9b8665042e31e9682baca2be7dfbd1f42dd850d1946d83",
+    "bytes": 2010766,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "39_lysa_process.png",
+    "id": "13742196-243a-f266-58f6-0d0f041f01a7",
+    "sha256": "13742196243af26658f60d0f041f01a77914e79efe0f654c6c38a2890364bdbd",
+    "bytes": 1397810,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "40_john_16_33.png",
+    "id": "e2c66880-b25d-426f-32a9-e5cd3aeb61bc",
+    "sha256": "e2c66880b25d426f32a9e5cd3aeb61bc6b490f1b5fa87479715924dfb32ff387",
+    "bytes": 1549883,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "41_whdc_dwell.png",
+    "id": "ec1ed4ed-3d4b-bbf7-98eb-d6168c5873db",
+    "sha256": "ec1ed4ed3d4bbbf798ebd6168c5873db7290d23a217951bcf265a928ba7b93b3",
+    "bytes": 2107112,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "42_2cor_4_16.png",
+    "id": "3f3ff9ce-5861-65b7-31b6-f17d5fd0a427",
+    "sha256": "3f3ff9ce586165b731b6f17d5fd0a427f67a604ba4feb483d9f83cd979f78990",
+    "bytes": 1736242,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "43_romans_15_13.png",
+    "id": "52f1c165-1fa8-7ce2-bb72-df2705c66abb",
+    "sha256": "52f1c1651fa87ce2bb72df2705c66abbd17ec2f4910ae87deb55dd2356b3838c",
+    "bytes": 1333945,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "44_whdc_sacrifice_praise.png",
+    "id": "e7e3a038-bd90-b578-7262-7c3bdbd43ec0",
+    "sha256": "e7e3a038bd90b57872627c3bdbd43ec0cba244f77046d83bcc3420cc66c83ed1",
+    "bytes": 2044290,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "45_whdc_treasures.png",
+    "id": "f1eb7c81-bbf7-5135-ed2b-74f7b46d966a",
+    "sha256": "f1eb7c81bbf75135ed2b74f7b46d966a61f1451b8fdf9d9770b3bd6a83d10d31",
+    "bytes": 1809777,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "46_whdc_lord_if_you_had.png",
+    "id": "977dea6f-dd2b-2ef2-a692-d416b797f2c0",
+    "sha256": "977dea6fdd2b2ef2a692d416b797f2c07775398bfc8e74ca1954b67119854316",
+    "bytes": 1982178,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "47_whdc_el_roi.png",
+    "id": "d2aaba7a-792d-9efb-8b91-3571f5f58c58",
+    "sha256": "d2aaba7a792d9efb8b913571f5f58c58b19ab8b2cdb704fa59a95ec062afecd8",
+    "bytes": 1547813,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "48_whdc_interruption.png",
+    "id": "ca63125d-e295-1e9a-3630-7fcf6fcd59f5",
+    "sha256": "ca63125de2951e9a36307fcf6fcd59f5280467e7bd29724ca4f51de29fe88802",
+    "bytes": 1621984,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "49_whdc_blessed.png",
+    "id": "dce967f9-fd27-1993-fe04-16973e74a734",
+    "sha256": "dce967f9fd271993fe0416973e74a734478802522919626e70fd65706461bf29",
+    "bytes": 1637527,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "50_whdc_not_failed.png",
+    "id": "476e4cc6-899b-6ff5-4a6c-cf1a5e315e49",
+    "sha256": "476e4cc6899b6ff54a6ccf1a5e315e49c964161f6f984ace3c202ed47ab05c4a",
+    "bytes": 2080766,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "51_whdc_float.png",
+    "id": "e31c34f4-75e7-b310-b11a-e003f14ac959",
+    "sha256": "e31c34f475e7b310b11ae003f14ac959baf46f9ab22a7e3525f16a3a42c1aef3",
+    "bytes": 1274714,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "52_whdc_solid_ground.png",
+    "id": "6f62ad7f-9426-fbdd-f177-675f70051eaf",
+    "sha256": "6f62ad7f9426fbddf177675f70051eaf822ecb1fcd4cfe4f2a6e5e1409b20e97",
+    "bytes": 2044615,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "53_whdc_saint.png",
+    "id": "202fe14c-2931-7e95-c570-fa8abce153c3",
+    "sha256": "202fe14c29317e95c570fa8abce153c3eb1b0bbf78ef222c9197ce533cc8590b",
+    "bytes": 1789020,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "54_whdc_whose_we_are.png",
+    "id": "f610b27a-21ca-68fb-dd77-646ad19bc22d",
+    "sha256": "f610b27a21ca68fbdd77646ad19bc22d87cc1e8cf14a36f05b264c13297dc213",
+    "bytes": 1252399,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "55_whdc_streams.png",
+    "id": "d38eee4f-6991-fedd-458b-293d32881fc1",
+    "sha256": "d38eee4f6991fedd458b293d32881fc160c0b6b5a7de9fa4a7278dc70aa12089",
+    "bytes": 1618266,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  },
+  {
+    "file": "56_whdc_be_still.png",
+    "id": "0ab0de28-9bfa-7f0e-ca2e-ffa2ad47d959",
+    "sha256": "0ab0de289bfa7f0eca2effa2ad47d9597fcf41044905a1a94f24a19df69d52fe",
+    "bytes": 1149679,
+    "width": 1080,
+    "height": 1350,
+    "importStatus": "draft",
+    "reviewNeeded": [
+      "transcript",
+      "category",
+      "reference/attribution",
+      "caption"
+    ]
+  }
+]

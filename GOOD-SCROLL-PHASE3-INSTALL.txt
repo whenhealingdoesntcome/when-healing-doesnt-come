@@ -1,0 +1,9 @@
+WHDC The Good Scroll Phase 3 - Website/PWA
+
+Requires Phase 1 and Phase 2 installed.
+Replace src/good-scroll-feed.js in your website project.
+Deploy with npx wrangler deploy.
+
+Adds 1080x1350 PNG export, share image with Web Share API where supported, download fallback, and device-local saved posts.
+Saved posts are stored in browser localStorage, not synced to WHDC accounts.
+Native iOS app has NOT been updated. Test on your live website before preparing a native build.

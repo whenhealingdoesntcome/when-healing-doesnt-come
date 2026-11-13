@@ -1,0 +1,17 @@
+WHDC Streams rename patch
+
+Replace these files in your WHDC website repository:
+  src/worker.js
+  src/good-scroll-feed.js
+  src/admin/good-scroll-html.js
+  public/devotionals/app.js
+
+Deploy using your existing Cloudflare Worker deployment process (typically npx wrangler deploy).
+
+New public page: /streams
+Old /good-scroll redirects to /streams.
+Admin route remains /admin/good-scroll to avoid disrupting existing links.
+Database tables, API endpoints, image keys, and saved-post localStorage keys remain unchanged.
+No database migration is required. Native iOS files are unchanged.
+
+JavaScript syntax checked with node --check. Live deployment and browser testing still required.

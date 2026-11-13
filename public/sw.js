@@ -1,5 +1,5 @@
-const CACHE='whdc-public-shell-v43-topic-art-refresh';
-const SHELL=['/','/index.html','/devotionals/app.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/images/header-logo.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/images/todays-pick-banner-dark.png','/resources/resources.css','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
+const CACHE='whdc-public-shell-v44-good-scroll';
+const SHELL=['/','/index.html','/devotionals/app.js','/shared/good-scroll-saved.js','/shared/auto-update.js','/shared/pull-to-refresh.js','/shared/shared-nav.js','/audio/audio-player.js','/shared/styles.css','/content.json','/images/header-logo.png','/images/misty-mountain-divider.jpg','/images/todays-pick-banner.png','/images/todays-pick-banner-dark.png','/resources/resources.css','/bible/component.js','/bible/component.css','/bible/component-template.html','/bible/reader.js','/bible/scripture-study.js','/bible/study-notes.js','/bible/reader.css','/bible/manifest.json','/bible/paragraphs.json'];
 const CORE=['/index.html','/devotionals/app.js','/shared/shared-nav.js','/shared/styles.css','/content.json','/bible/reader.js','/bible/reader.css'];
 
 // iOS Safari rejects redirected Response objects returned for navigation by a
@@ -71,6 +71,10 @@ self.addEventListener('fetch',event=>{
    }catch{return await cacheLookup(path,req)||Response.error()}
   })());return;
  }
+ // The feed is a separate document; never replace the cached devotional shell with it.
+ if(path==='/good-scroll'&&req.mode==='navigate'){
+  event.respondWith(fetch(req,{cache:'no-store'}).catch(()=>new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>The Good Scroll — Offline</title><main><h1>The Good Scroll</h1><p>Connect to view cards. Your saved bookmarks remain on this device.</p><a href="/#saved">Return to Saved</a></main></html>',{status:503,headers:{'content-type':'text/html; charset=utf-8'}})));return;
+ }
  if(req.mode==='navigate'){
   // Serve the offline shell immediately when a network connection is unavailable
   // or stalled. Browser Home Screen launches must not hang indefinitely.
@@ -110,7 +114,7 @@ self.addEventListener('fetch',event=>{
    return await cache.match(req)||Response.error();
   })());return;
  }
- if(path==='/devotionals/app.js'){
+ if(['/devotionals/app.js','/shared/good-scroll-saved.js','/good-scroll-feed.js'].includes(path)){
   event.respondWith((async()=>{
    const cache=await caches.open(CACHE);
    try{const response=await fetch(req,{cache:'no-store'});if(response.ok&&response.type==='basic')await cache.put(path,response.clone());return response}

@@ -1,0 +1,1 @@
+Replace these two files in the matching src/admin paths of the website repository. No database migration is required for this fix. Deploy only after approval. Refresh the admin editor after the updated Worker is deployed. Select PNG cards, then click Import selected cards as drafts. File selection alone does not upload. Progress and results appear beneath the button.

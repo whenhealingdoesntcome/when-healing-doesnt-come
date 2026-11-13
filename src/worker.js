@@ -1,3 +1,6 @@
+import { GOOD_SCROLL_FEED_HTML, GOOD_SCROLL_FEED_JS } from './good-scroll-feed.js';
+import { GOOD_SCROLL_HTML } from './admin/good-scroll-html.js';
+import { GOOD_SCROLL_JS } from './admin/good-scroll-client.js';
 // Optional reader accounts: enabled only on whdcdevotions.com.
 const ADMIN_READER_ACCOUNTS_HTML = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Manage User Accounts</title><style>body{font:16px/1.6 system-ui;background:#f6f4ef;color:#303c42;max-width:850px;margin:24px auto;padding:16px}main{background:white;padding:24px;border-radius:14px}input,button{font:inherit;padding:10px}button{cursor:pointer;background:#dbe7de;border:1px solid #8ca595;border-radius:6px}li{border-bottom:1px solid #ddd;padding:12px}small{display:block;color:#52635c}</style><main><a href="/admin">← Admin Dashboard</a><h1>Manage User Accounts</h1><p>Deleting a reader account removes its cloud backup, synchronized items, and sessions. Device-only data is not deleted. Writer/editor records are separate.</p><form id="search"><input id="q" type="search" placeholder="Search email"><button>Search</button></form><p id="status" role="status"></p><ul id="results"></ul></main><script>
 const statusEl=document.getElementById('status'),results=document.getElementById('results');
@@ -268,7 +271,7 @@ function writerRow(r){return {...row(r),ownerEmail:r.owner_email,reviewNote:r.ad
 async function reviewSuggestions(env,id){const r=await env.DB.prepare('SELECT original_json,suggested_json FROM writer_review_suggestions WHERE devotional_id=?').bind(id).first();return r?{original:JSON.parse(r.original_json),suggested:JSON.parse(r.suggested_json)}:null}
 async function withSuggestions(env,d){return {...d,trackedChanges:await reviewSuggestions(env,d.id)}}
 async function list(env,all){const q=await env.DB.prepare(`${select} ${all?'':'WHERE status = ?'} ORDER BY day ASC, created_at ASC`).bind(...(all?[]:['published'])).all();return scriptureExtras(env,(q.results||[]).map(row))}
-async function save(env,d){await env.DB.prepare(`INSERT INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,reflection,author,status) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET day=excluded.day,title=excluded.title,topics=excluded.topics,scripture=excluded.scripture,bible_url=excluded.bible_url,short=excluded.short,deeper=excluded.deeper,reflection=excluded.reflection,author=excluded.author,status=excluded.status,updated_at=CURRENT_TIMESTAMP`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.reflection,d.author,d.status).run()}
+async function save(env,d){await env.DB.prepare(`INSERT INTO devotionals (id,day,title,topics,scripture,bible_url,short,deeper,reflection,author,status) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET day=excluded.day,title=excluded.title,topics=excluded.topics,scripture=excluded.scripture,bible_url=excluded.bible_url,short=excluded.short,deeper=excluded.deeper,reflection=excluded.reflection,author=excluded.author,status=excluded.status,design=excluded.design,updated_at=CURRENT_TIMESTAMP`).bind(d.id,d.day,d.title,JSON.stringify(d.topics),d.reference,d.bibleUrl,d.short,d.deeper,d.reflection,d.author,d.status).run()}
 
 const lower=x=>String(x||'').trim().toLowerCase();
 async function identity(request,env){
@@ -888,11 +891,31 @@ function withSharedDashboardNav(html, active) {
 .whdc-dashboard-tool-main #devotions{height:240px}
 .whdc-dashboard-tool-main a{color:#315b5c}
 `;
+ // Streams keeps its dedicated editor layout while using the shared dashboard header.
+ // The wrapper previously discarded its <style> block, leaving the editor unstyled.
+ const streams = active === '/admin/good-scroll';
+ const streamsCss = streams ? html.slice(html.indexOf('<style>') + 7, styleClose) : '';
+ const streamsShellCss = streams ? `
+.whdc-dashboard-tool-main{max-width:1488px!important;padding:18px 24px 64px!important}
+.whdc-dashboard-tool-main .gs-wrap{max-width:1440px;width:100%;margin:0 auto;padding:0 0 40px}
+.whdc-dashboard-tool-main .gs-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,410px);align-items:start;gap:18px}
+.whdc-dashboard-tool-main .gs-grid>section,.whdc-dashboard-tool-main .gs-grid>aside{min-width:0;width:100%;margin:0}
+.whdc-dashboard-tool-main .gs-grid>aside{position:sticky;top:18px}
+.whdc-dashboard-tool-main .gs-panel,.whdc-dashboard-tool-main .gs-import{margin:0;background:#fff;border:1px solid #dce4de;border-radius:12px;padding:16px}
+.whdc-dashboard-tool-main .gs-import{margin:16px 0 18px}
+.whdc-dashboard-tool-main .gs-color-row{display:flex;flex-direction:row;align-items:center;gap:8px;width:max-content;max-width:100%}
+.whdc-dashboard-tool-main .gs-color-row input[type=color]{appearance:auto;width:34px!important;min-width:34px!important;max-width:34px!important;height:34px!important;min-height:34px!important;flex:none;padding:2px!important;margin:0!important}
+.whdc-dashboard-tool-main .gs-color-row input[type=text]{width:112px!important;min-width:112px!important;max-width:112px!important;height:34px!important;min-height:34px!important;flex:none;padding:5px 7px!important;margin:0!important}
+.whdc-dashboard-tool-main .gs-panel canvas{width:100%;height:auto;aspect-ratio:4/5}
+@media(max-width:820px){.whdc-dashboard-tool-main .gs-grid{grid-template-columns:minmax(0,1fr)}.whdc-dashboard-tool-main .gs-grid>aside{position:static}.whdc-dashboard-tool-main{padding:14px!important}}
+` : '';
  const css = `<style>
 .whdc-dashboard-tool-main{max-width:1100px;margin:0 auto;padding:28px 22px 64px}
 .whdc-dashboard-tool-main h1{margin-top:0}
 @media(max-width:720px){.whdc-dashboard-tool-main{padding:20px 16px 50px}}
-${scopedCss}</style>`;
+${scopedCss}
+${streamsCss}
+${streamsShellCss}</style>`;
  return shell + css + '<main class="whdc-dashboard-tool-main">' + content + '</main>' + alertScript + '</body></html>';
 }
 
@@ -1372,6 +1395,35 @@ $('form').onsubmit=async e=>{e.preventDefault();const ids=Array.from($('devotion
 
 const whdcWorker = {async fetch(request,env,ctx){
   const url=new URL(request.url),path=url.pathname;
+  // Unlinked, read-only devotional reference pages. Published entries only.
+  // These endpoints do not alter robots.txt, Cloudflare security, or app navigation.
+  if (request.method === 'GET' && (path === '/devotional-index' || path === '/devotional-reading' || path === '/devotional-sitemap.xml')) {
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const headers = {'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-robots-tag':'noindex, nofollow, noarchive','x-content-type-options':'nosniff'};
+    const page = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>${esc(title)} | When Healing Doesn't Come</title><style>body{font:17px/1.7 system-ui,sans-serif;max-width:780px;margin:2rem auto;padding:0 1.2rem;color:#303b35;background:#faf9f5}h1,h2{line-height:1.25}a{color:#456c5c}article{margin:2rem 0}section{white-space:pre-wrap;margin:1.2rem 0}small{color:#666}</style></head><body><main>${body}</main></body></html>`;
+    try {
+      if (path === '/devotional-sitemap.xml') {
+        const rows = await env.DB.prepare("SELECT id FROM devotionals WHERE status='published' ORDER BY day ASC").all();
+        const origin = url.origin;
+        const entries = [`<url><loc>${esc(origin+'/devotional-index')}</loc></url>`,...(rows.results||[]).map(d=>`<url><loc>${esc(origin+'/devotional-reading?id='+encodeURIComponent(d.id))}</loc></url>`)];
+        return new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+entries.join('')+'</urlset>',{headers:{...headers,'content-type':'application/xml; charset=utf-8'}});
+      }
+      if (path === '/devotional-index') {
+        const rows = await env.DB.prepare("SELECT id,day,title FROM devotionals WHERE status='published' ORDER BY day ASC").all();
+        const items = (rows.results||[]).map(d=>`<li><a href="/devotional-reading?id=${encodeURIComponent(d.id)}">Day ${esc(d.day)}: ${esc(d.title)}</a></li>`).join('');
+        return new Response(page('Devotional Index',`<h1>Published Devotional Index</h1><p>When Healing Doesn't Come: Hope for the Journey</p><p>${(rows.results||[]).length} published devotionals</p><ol>${items}</ol>`),{headers});
+      }
+      const id = url.searchParams.get('id');
+      if (!id || id.length > 200) return new Response('Not found',{status:404,headers});
+      const d = await env.DB.prepare("SELECT id,day,title,scripture,short,deeper,reflection,author FROM devotionals WHERE id=? AND status='published'").bind(id).first();
+      if (!d) return new Response('Not found',{status:404,headers});
+      const extras = await env.DB.prepare('SELECT main_text,main_reference,context_references,further_study_references FROM devotional_scripture WHERE devotional_id=?').bind(id).first();
+      const section = (label,value) => value ? `<h2>${esc(label)}</h2><section>${esc(value)}</section>` : '';
+      const body = `<p><a href="/devotional-index">Devotional index</a></p><article><h1>Day ${esc(d.day)}: ${esc(d.title)}</h1>${section('Key Scripture',extras?.main_text ? (extras.main_reference||d.scripture||'')+'\n'+extras.main_text : d.scripture)}${section('Short Devotional',d.short)}${section('Scripture Reading',extras?.context_references)}${section('Go Deeper',d.deeper)}${section('Reflection Questions',d.reflection)}${section('Further Study',extras?.further_study_references)}${d.author?`<small>By ${esc(d.author)}</small>`:''}</article>`;
+      return new Response(page(d.title,body),{headers});
+    } catch(e) {console.error('Public devotional reference page failed',e);return new Response('Devotional reference unavailable',{status:503,headers});}
+  }
+
   // Public Slow Your Roll privacy page: serve the bundled static asset directly.
   if ((path === '/privacy/slow-your-roll.html' || path === '/privacy/slow-your-roll') && (request.method === 'GET' || request.method === 'HEAD')) {
     const assetUrl = new URL('/privacy/slow-your-roll.html', url.origin);
@@ -1548,6 +1600,22 @@ async function dailyRotation(env){
  const saved=await env.DB.prepare('SELECT day,devotional_id,cycle FROM daily_devotion_rotation WHERE day=?').bind(date).first();
  return {...saved,eligible:eligible.length};
 }
+  if(path==='/streams'&&request.method==='GET')return Response.redirect(new URL('/#streams',request.url).toString(),302);
+  if(path==='/good-scroll'&&request.method==='GET')return Response.redirect(new URL('/streams',request.url).toString(),301);
+
+  if(path==='/good-scroll-feed.js'&&request.method==='GET')return new Response(GOOD_SCROLL_FEED_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'public,max-age=300','x-content-type-options':'nosniff'}});
+  if(path==='/api/good-scroll'&&request.method==='GET'){
+    const limit=Math.min(20,Math.max(1,Number.parseInt(url.searchParams.get('limit')||'10',10)||10));
+    const cursor=url.searchParams.get('cursor')||'';
+    if(cursor&&!/^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\|[a-f0-9-]{36}$/.test(cursor))return fail('Invalid cursor',400);
+    try{
+      const sql=cursor?"SELECT id,title,type,text,reference,caption,background,color,align,image_key,design,updated_at FROM good_scroll_posts WHERE status='published' AND (updated_at < ? OR (updated_at = ? AND id < ?)) ORDER BY updated_at DESC,id DESC LIMIT ?":"SELECT id,title,type,text,reference,caption,background,color,align,image_key,design,updated_at FROM good_scroll_posts WHERE status='published' ORDER BY updated_at DESC,id DESC LIMIT ?";
+      const rows=cursor?(await env.DB.prepare(sql).bind(cursor.split('|')[0],cursor.split('|')[0],cursor.split('|')[1],limit+1).all()).results:(await env.DB.prepare(sql).bind(limit+1).all()).results;
+      const posts=rows.slice(0,limit);
+      const last=posts[posts.length-1];
+      return json({posts,nextCursor:rows.length>limit&&last?last.updated_at+'|'+last.id:null});
+    }catch(e){console.error('Streams public feed',e);return fail('Feed unavailable',503)}
+  }
   if(path==='/api/devotionals'&&request.method==='GET'){
     try{return json(await list(env,false))}catch{return fail('Database unavailable',503)}
   }
@@ -1560,6 +1628,15 @@ async function dailyRotation(env){
       return new Response(obj.body,{headers:{'content-type':obj.httpMetadata?.contentType||'application/octet-stream','cache-control':'public,max-age=31536000,immutable','x-content-type-options':'nosniff'}});
     }
 
+  if(path.startsWith('/api/good-scroll/image/')&&request.method==='GET'){
+    const key=decodeURIComponent(path.slice('/api/good-scroll/image/'.length));
+    if(!/^good-scroll\/[a-f0-9-]{36}\.(jpg|png|webp)$/.test(key))return fail('Not found',404);
+    const post=await env.DB.prepare("SELECT id FROM good_scroll_posts WHERE image_key=? AND status='published' LIMIT 1").bind(key).first().catch(()=>null);
+    // Draft and newly uploaded images are visible only to the administrator.
+    if(!post){const admin=await identity(request,env).catch(()=>null);if(!admin||!isAdmin(admin))return fail('Not found',404)}
+    const object=await env.AUDIO_BUCKET.get(key);if(!object)return fail('Not found',404);
+    return new Response(object.body,{headers:{'content-type':object.httpMetadata?.contentType||'image/jpeg','cache-control':'private, max-age=300','x-content-type-options':'nosniff'}});
+  }
   if(path==='/admin'||path.startsWith('/admin/')||path==='/editor'||path==='/editor/client.js'||path.startsWith('/api/admin/')){
     let user;
     try{user=await identity(request,env)}catch{return fail('Writer database migration required. See MULTI-WRITER-SETUP.md.',503)}
@@ -1747,8 +1824,51 @@ const DAILY_ROTATION_ADMIN_HTML = `<!doctype html><html lang="en"><head><meta ch
         return json({ok:true});
       }catch(e){console.error('Reading plan admin failed',e);return fail('Reading plans database unavailable; apply migration 0003',503)}
     }
+    // Streams admin tools are behind the existing Cloudflare Access identity gate.
+    if(path==='/admin/good-scroll'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(withSharedDashboardNav(GOOD_SCROLL_HTML,'/admin/good-scroll'),{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    }
+    if(path==='/admin/good-scroll.js'&&request.method==='GET'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      return new Response(GOOD_SCROLL_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    }
+    if(path==='/api/admin/good-scroll/image'&&request.method==='POST'){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+      const type=(request.headers.get('content-type')||'').split(';')[0];
+      const extensions={'image/jpeg':'jpg','image/png':'png','image/webp':'webp'};
+      if(!extensions[type])return fail('Unsupported image format',415);
+      if(Number(request.headers.get('content-length')||0)>5*1024*1024)return fail('Image too large',413);
+      const bytes=await request.arrayBuffer();if(bytes.byteLength>5*1024*1024||!bytes.byteLength)return fail('Image must be 1 byte to 5 MB',413);
+      const b=new Uint8Array(bytes);const valid=type==='image/png'?b[0]===137&&b[1]===80&&b[2]===78&&b[3]===71:type==='image/jpeg'?b[0]===255&&b[1]===216:type==='image/webp'?String.fromCharCode(...b.slice(0,4))==='RIFF'&&String.fromCharCode(...b.slice(8,12))==='WEBP':false;
+      if(!valid)return fail('Invalid image file',400);
+      if(!env.AUDIO_BUCKET)return fail('Image storage unavailable',503);
+      const key='good-scroll/'+crypto.randomUUID()+'.'+extensions[type];
+      await env.AUDIO_BUCKET.put(key,bytes,{httpMetadata:{contentType:type}});
+      return json({key});
+    }
+    if(path==='/api/admin/good-scroll'&&['GET','POST','DELETE'].includes(request.method)){
+      if(!isAdmin(user))return fail('Administrator only',403);
+      try{
+        if(request.method==='GET')return json((await env.DB.prepare('SELECT * FROM good_scroll_posts ORDER BY updated_at DESC LIMIT 500').all()).results||[]);
+        const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return fail('Invalid origin',403);
+        if(request.method==='DELETE'){
+          const id=url.searchParams.get('id')||'';if(!/^[a-zA-Z0-9-]{1,80}$/.test(id))return fail('Invalid ID',400);
+          await env.DB.prepare('DELETE FROM good_scroll_posts WHERE id=?').bind(id).run();return json({ok:true});
+        }
+        if(Number(request.headers.get('content-length')||0)>16000)return fail('Request too large',413);
+        const d=await request.json();const id=String(d.id||crypto.randomUUID());
+        if(!/^[a-zA-Z0-9-]{1,80}$/.test(id))return fail('Invalid ID',400);
+        const design=JSON.stringify(d.design&&typeof d.design==='object'?d.design:{});if(design.length>4000)return fail('Design settings too large',400);const mode=(d.design&&d.design.mode)||'text';if(!['text','artwork'].includes(mode))return fail('Invalid design mode',400);const title=String(d.title||'').trim(),type=String(d.type||''),text=String(d.text||'').trim(),reference=String(d.reference||'').trim(),caption=String(d.caption||'').trim(),background=String(d.background||''),color=String(d.color||''),align=String(d.align||''),imageKey=String(d.image_key||''),status=String(d.status||'draft');
+        if(!title||title.length>120||(status==='published'&&!text)||text.length>1500||reference.length>180||caption.length>2000||!['scripture','encouragement','quote','fun','prayer'].includes(type)||!/^#[0-9a-fA-F]{6}$/.test(background)||!/^#[0-9a-fA-F]{6}$/.test(color)||!['left','center','right'].includes(align)||!['draft','published'].includes(status)||(mode==='artwork'&&status==='published'&&!imageKey)||imageKey&&!/^good-scroll\/[a-f0-9-]{36}\.(jpg|png|webp)$/.test(imageKey))return fail('Invalid post fields',400);
+        if(status==='published'&&type==='scripture'&&!reference)return fail('Scripture reference required',400);
+        await env.DB.prepare(`INSERT INTO good_scroll_posts(id,title,type,text,reference,caption,background,color,align,image_key,status,design) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,type=excluded.type,text=excluded.text,reference=excluded.reference,caption=excluded.caption,background=excluded.background,color=excluded.color,align=excluded.align,image_key=excluded.image_key,status=excluded.status,design=excluded.design,updated_at=CURRENT_TIMESTAMP`).bind(id,title,type,text,reference,caption,background,color,align,imageKey,status,design).run();
+        return json({ok:true,id});
+      }catch(e){console.error('Streams admin',e);return fail('Streams database unavailable. Apply GOOD-SCROLL-MIGRATION.sql.',503)}
+    }
     if(path==='/admin/preview'&&request.method==='GET'){if(!isAdmin(user))return fail('Administrator only',403);return new Response(PREVIEW_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','content-security-policy':"frame-ancestors 'none'"}});}
-    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?adminDashboardForSection(url.searchParams).replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/resources">Manage Resources</a> · <a href="/admin/reader-accounts">Manage User Accounts</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
+    if(path==='/admin'&&request.method==='GET')return new Response(user.role==='editor'?EDITOR_HTML:isAdmin(user)?adminDashboardForSection(url.searchParams).replace('</body>','<p style="text-align:center;padding:18px"><a href="/admin/reading-plans">Manage Reading Plans</a> · <a href="/admin/good-scroll">Streams</a> · <a href="/admin/resources">Manage Resources</a> · <a href="/admin/reader-accounts">Manage User Accounts</a></p></body>'):WRITER_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
     if(path==='/admin/outline'&&request.method==='GET'&&user.role==='editor')return fail('Not available to editors',403);
     if(path==='/admin/outline'&&request.method==='GET')return new Response(isAdmin(user)?outlineWithDashboardNav():OUTLINE_HTML,{headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}});
     if(path==='/admin/outline.js'&&request.method==='GET')return new Response(isAdmin(user)?OUTLINE_JS:WRITER_OUTLINE_JS,{headers:{'content-type':'text/javascript; charset=utf-8','cache-control':'no-store'}});

@@ -1,0 +1,19 @@
+THE GOOD SCROLL — PHASE 2: VERTICAL WEBSITE FEED
+
+Requires Phase 1 already installed and GOOD-SCROLL-MIGRATION.sql already applied.
+
+Copy the following files into the matching paths in the website repository:
+ src/worker.js
+ src/good-scroll-feed.js
+ public/devotionals/app.js
+
+Then deploy using npx wrangler deploy.
+
+Check:
+ 1. /admin/good-scroll shows published posts.
+ 2. https://whdcdevotions.com/good-scroll displays a vertical feed.
+ 3. Explore has a The Good Scroll tile that opens the feed.
+ 4. Draft posts do not appear. Published posts do.
+ 5. Check mobile and desktop scrolling, image loading, and the Share link action.
+
+This phase implements a public vertical feed with incremental loading and link sharing. Image-file sharing, downloading, saved posts, and native iOS navigation integration are reserved for Phase 3. The iOS app bundle is NOT modified by this ZIP. It may still load the feed via its live site URL, but no iOS integration is claimed.
