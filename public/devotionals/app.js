@@ -76,9 +76,11 @@ function refreshDailyPick(){
  displayedPickDate=today;
  const next=dailyPick(data);
  if(!next)return;
- if(view==='today'&&location.hash.startsWith('#devotional/'))return;
+ // Only advance the daily pick when no devotional is actively being read.
+ if(view!=='today'||location.hash.startsWith('#devotional/'))return;
+ // Preserve the selected reading rather than replacing it on focus/date changes.
+ if(currentId&&currentId!==next.id)return;
  currentId=next.id;
- if(view==='today')render();
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&data.length)refreshDailyPick()});
 window.addEventListener('focus',()=>{if(data.length)refreshDailyPick()});

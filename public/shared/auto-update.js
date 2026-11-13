@@ -33,28 +33,20 @@
     }
     return 'bytes:'+bytes.byteLength+':'+new TextDecoder().decode(bytes).slice(0,100);
   };
-  const editing=()=>{
-    const el=document.activeElement;
-    return !!el&&(el.matches?.('textarea,input:not([type=checkbox]):not([type=radio]),select,[contenteditable="true"]')||!!el.closest?.('[contenteditable="true"]'));
-  };
+  // Never interrupt an active reading, audio session, or settings edit.
+  // An update is installed only after the reader explicitly taps Refresh now.
   const showPending=()=>{
     if(document.getElementById('whdc-update-notice'))return;
     const el=document.createElement('div');
     el.id='whdc-update-notice';
     el.setAttribute('role','status');
-    el.style.cssText='position:fixed;bottom:16px;left:16px;right:16px;max-width:420px;margin:auto;z-index:2147483647;padding:14px 18px;background:#f7f5f0;color:#263b40;border:2px solid #7e93ab;border-radius:12px;box-shadow:0 6px 24px #0002;font:16px/1.5 system-ui,sans-serif';
-    el.innerHTML='<strong>An app update is ready.</strong> Finish typing, then tap <button type="button" style="padding:6px 12px;margin-left:8px;cursor:pointer">Refresh now</button>.';
-    el.querySelector('button').addEventListener('click',()=>location.reload());
+    el.style.cssText='position:fixed;bottom:calc(78px + env(safe-area-inset-bottom, 0px));left:16px;right:16px;max-width:420px;margin:auto;z-index:2147483647;padding:14px 18px;background:#f7f5f0;color:#263b40;border:2px solid #7e93ab;border-radius:12px;box-shadow:0 6px 24px #0002;font:16px/1.5 system-ui,sans-serif';
+    el.innerHTML='<strong>An app update is ready.</strong> Your current reading and audio will not be interrupted. <button type="button" style="padding:6px 12px;margin-left:8px;cursor:pointer">Refresh now</button> <button type="button" data-dismiss style="padding:6px 10px;margin-left:4px;cursor:pointer">Later</button>';
+    el.querySelector('button').addEventListener('click',()=>{refreshing=true;location.reload()});
+    el.querySelector('[data-dismiss]').addEventListener('click',()=>el.remove());
     document.body.appendChild(el);
   };
-  const refresh=()=>{
-    if(refreshing)return;
-    pending=true;
-    if(document.hidden)return;
-    if(editing()){showPending();return;}
-    refreshing=true;
-    location.reload();
-  };
+  const refresh=()=>{if(refreshing)return;pending=true;if(!document.hidden)showPending();};
   let lastCacheRefresh=0;
   const refreshDownloadedCache=()=>{
     if(whdcDesktopBrowser||!navigator.onLine||!navigator.serviceWorker)return;
@@ -96,10 +88,10 @@
     if(location.protocol==='https:')navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{});
   }
   document.addEventListener('visibilitychange',()=>{
-    if(!document.hidden){if(pending)refresh();else check();}
+    if(!document.hidden){if(pending)showPending();else check();}
   });
-  window.addEventListener('focus',()=>{if(pending)refresh();else check();});
+  window.addEventListener('focus',()=>{if(pending)showPending();else check();});
   window.addEventListener('online',check);
-  document.addEventListener('focusout',()=>{if(pending)setTimeout(refresh,300);});
+  // No automatic refresh on input blur: a reader may be editing settings.
   window.addEventListener('load',()=>{check();setInterval(check,90000);});
 })();
