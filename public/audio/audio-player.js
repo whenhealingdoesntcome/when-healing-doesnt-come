@@ -141,11 +141,14 @@ window.WHDCAudio=(()=>{
   audio.addEventListener('timeupdate',()=>{remember();highlightAt(audio.currentTime);update()});audio.addEventListener('durationchange',update);
   audio.addEventListener('play',update);audio.addEventListener('pause',()=>{remember();update()});
   audio.addEventListener('ended',()=>{stopAll();const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Finished all three sections.'});
-  audio.addEventListener('error',()=>{if(!sequence)return;const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Continuous playback unavailable. Switching to section playback.';if(audio){audio.pause();audio.removeAttribute('src');audio.load();audio=null}if(player){player.remove();player=null}activePart=null;activeButton=null;nextSequence()});
+  audio.addEventListener('error',()=>{if(!sequence)return;const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Continuous audio could not load. Try another voice or check that all three WAV recordings are available. Section playback is available individually.';stopAll()});
   audio.play().catch(()=>{const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Tap Play to start continuous audio.';update()});
   update();return true;
  }
- function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','scripture','deeper'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Audio playing.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';nextSequence()}
+ function playAll(getText){if(sequence){stopAll();return}stop();sequence={parts:['devotional','scripture','deeper'],getText};if(playContinuous()){const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';const status=document.getElementById('whdcAudioStatus');if(status)status.textContent='Audio playing.';return}const b=document.getElementById('whdcPlayAll');if(b)b.textContent='■ Stop All';
+  const status=document.getElementById('whdcAudioStatus');
+  if(status)status.textContent='Continuous audio is unavailable for this voice or devotional. Section-by-section playback may pause when your screen locks.';
+  nextSequence()}
  // Resume a user-requested refresh without replaying from the beginning.
  const REFRESH_KEY='whdc-audio-refresh-intent';
  function saveRefreshIntent(){
